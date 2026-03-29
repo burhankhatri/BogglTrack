@@ -215,7 +215,7 @@ export function GlobalTimerBar() {
             placeholder="What are you working on?"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
+            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-2 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
             disabled={isRunning}
           />
         </div>
