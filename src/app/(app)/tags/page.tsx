@@ -11,27 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
+import { PROJECT_COLORS } from "@/lib/constants";
 
-const TAG_COLORS = [
-  "#4F46E5",
-  "#2563EB",
-  "#06B6D4",
-  "#14B8A6",
-  "#22C55E",
-  "#84CC16",
-  "#EAB308",
-  "#F97316",
-  "#EF4444",
-  "#EC4899",
-  "#A855F7",
-  "#6B7280",
-];
+// Use the same colors we do for projects (or a nice earthy set)
+const TAG_COLORS = PROJECT_COLORS;
 
 interface Tag {
   id: string;
@@ -141,107 +127,109 @@ export default function TagsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="space-y-8 max-w-[800px] mx-auto py-8 px-4 lg:px-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Tags</h1>
-          <p className="text-sm text-muted-foreground">Organize your time entries with color-coded tags.</p>
+          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">Tags</h1>
+          <p className="text-[15px] text-[var(--text-olive)]">Organize your time entries with color-coded tags.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger render={<Button onClick={openCreateDialog} />}>
-            <Plus className="h-4 w-4" />
-            New Tag
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTag ? "Edit Tag" : "New Tag"}</DialogTitle>
-              <DialogDescription>
-                {editingTag ? "Update the tag name and color." : "Create a new tag to categorize your time entries."}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-2">
-              <div className="grid gap-2">
-                <Label htmlFor="tag-name">Name *</Label>
-                <Input
-                  id="tag-name"
-                  placeholder="Tag name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Color</Label>
-                <div className="flex flex-wrap gap-2">
-                  {TAG_COLORS.map((c) => (
-                    <button
-                      key={c}
-                      type="button"
-                      className="flex h-8 w-8 items-center justify-center rounded-full transition-transform hover:scale-110"
-                      style={{ backgroundColor: c }}
-                      onClick={() => setColor(c)}
-                    >
-                      {color === c && (
-                        <svg
-                          className="h-4 w-4 text-white"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                          strokeWidth={3}
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  ))}
-                </div>
+        <Button onClick={openCreateDialog} className="rounded-full shadow-sm text-[15px] h-[40px] px-5">
+          <Plus className="size-4 mr-2" />
+          New Tag
+        </Button>
+      </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl tracking-tight text-[var(--text-forest)]">
+              {editingTag ? "Edit Tag" : "New Tag"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="tag-name" className="text-[14px]">Name *</Label>
+              <Input
+                id="tag-name"
+                placeholder="Tag name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="rounded-[var(--radius-lg)] h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[14px]">Color</Label>
+              <div className="grid grid-cols-6 gap-3">
+                {TAG_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`size-10 rounded-[var(--radius-md)] transition-all flex items-center justify-center ${
+                      color === c
+                        ? "ring-2 ring-offset-2 ring-offset-[var(--bg-cream)] ring-[var(--accent-olive)] scale-110"
+                        : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setColor(c)}
+                    aria-label={`Select color ${c}`}
+                  />
+                ))}
               </div>
             </div>
-            <DialogFooter>
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? "Saving..." : editingTag ? "Save Changes" : "Create Tag"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+            <Button 
+              className="w-full rounded-full h-[40px] text-[15px] font-medium mt-2"
+              onClick={handleSave} 
+              disabled={saving}
+            >
+              {saving ? "Saving..." : editingTag ? "Save Changes" : "Create Tag"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="text-sm text-muted-foreground">Loading tags...</div>
+          <div className="text-[15px] text-[var(--text-olive)] flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full border-2 border-[var(--text-olive)] border-t-transparent animate-spin" />
+            Loading tags...
+          </div>
         </div>
       ) : tags.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16">
-          <Tags className="h-12 w-12 text-muted-foreground/50" />
-          <h3 className="mt-4 text-lg font-medium">No tags yet</h3>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-center rounded-[var(--radius-xl)] border border-[var(--border-subtle)] border-dashed bg-[var(--bg-cream)] py-20 text-center shadow-sm">
+          <div className="size-14 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-4">
+            <Tags className="size-6 text-[var(--accent-olive)]" />
+          </div>
+          <h3 className="text-xl font-serif font-medium text-[var(--text-forest)]">No tags yet</h3>
+          <p className="mt-2 text-[15px] text-[var(--text-olive)]">
             Create your first tag to categorize time entries.
           </p>
-          <Button className="mt-4" onClick={openCreateDialog}>
-            <Plus className="h-4 w-4" />
+          <Button className="mt-6 rounded-full shadow-sm" onClick={openCreateDialog}>
+            <Plus className="size-4 mr-2" />
             New Tag
           </Button>
         </div>
       ) : (
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {tags.map((tag) => (
             <div
               key={tag.id}
-              className="flex items-center justify-between rounded-xl border px-4 py-3 transition-colors hover:bg-muted/50"
+              className="flex items-center justify-between rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] px-5 py-4 transition-colors hover:bg-[var(--bg-muted)]/30 group shadow-sm"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-4">
                 <span
-                  className="h-3 w-3 shrink-0 rounded-full"
+                  className="h-4 w-4 shrink-0 rounded-full"
                   style={{ backgroundColor: tag.color }}
                 />
-                <span className="font-medium">{tag.name}</span>
-                <Badge variant="secondary" className="text-xs">
+                <span className="font-semibold text-[16px] text-[var(--text-forest)]">{tag.name}</span>
+                <Badge variant="outline" className="text-[12px] ml-2 font-medium bg-[var(--bg-muted)]/50 border-[var(--border-subtle)] px-2.5 py-0.5 text-[var(--text-olive)]">
                   {tag.usageCount} {tag.usageCount === 1 ? "entry" : "entries"}
                 </Badge>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-lg)]"
                   onClick={() => openEditDialog(tag)}
                 >
                   <Pencil className="h-4 w-4" />
@@ -250,9 +238,10 @@ export default function TagsPage() {
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-lg)]"
                   onClick={() => openDeleteDialog(tag)}
                 >
-                  <Trash2 className="h-4 w-4 text-destructive" />
+                  <Trash2 className="h-4 w-4" />
                   <span className="sr-only">Delete</span>
                 </Button>
               </div>
@@ -264,19 +253,30 @@ export default function TagsPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Tag</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete the tag <strong>{deletingTag?.name}</strong>? It will be removed from all time entries.
-            </DialogDescription>
+            <DialogTitle className="font-serif text-[var(--accent-coral)]">Delete Tag</DialogTitle>
           </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={saving}>
-              {saving ? "Deleting..." : "Delete"}
-            </Button>
-          </DialogFooter>
+          <div className="space-y-6 pt-2">
+            <p className="text-[15px] text-[var(--text-olive)] leading-relaxed">
+              Are you sure you want to delete the tag <strong className="font-semibold text-[var(--text-forest)]">{deletingTag?.name}</strong>? It will be removed from all time entries.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button 
+                variant="outline" 
+                className="rounded-full h-10 px-5"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                variant="destructive" 
+                className="rounded-full h-10 px-5 bg-[var(--accent-coral)]"
+                onClick={handleDelete} 
+                disabled={saving}
+              >
+                {saving ? "Deleting..." : "Delete Tag"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

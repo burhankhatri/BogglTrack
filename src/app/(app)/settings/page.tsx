@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Settings, Save } from "lucide-react";
+import { Settings, Save, User, Clock, CreditCard, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 
@@ -118,14 +118,14 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex-1 space-y-6 p-6">
+      <div className="space-y-8 max-w-[800px] mx-auto py-8 px-4 lg:px-0">
         <div>
-          <Skeleton className="h-8 w-40" />
-          <Skeleton className="mt-2 h-4 w-64" />
+          <Skeleton className="h-10 w-48 mb-2" />
+          <Skeleton className="h-5 w-64" />
         </div>
         <div className="space-y-6">
           {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-48 w-full rounded-xl" />
+            <Skeleton key={i} className="h-48 w-full rounded-[var(--radius-xl)]" />
           ))}
         </div>
       </div>
@@ -133,59 +133,69 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-6">
+    <div className="space-y-8 max-w-[800px] mx-auto py-8 px-4 lg:px-0">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
-          <p className="text-sm text-muted-foreground">Manage your account preferences.</p>
+          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">
+            Settings
+          </h1>
+          <p className="text-[15px] text-[var(--text-olive)]">
+            Manage your account preferences and defaults.
+          </p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
-          <Save className="h-4 w-4" />
-          {saving ? "Saving..." : "Save"}
+        <Button onClick={handleSave} disabled={saving} className="rounded-full shadow-sm text-[15px] h-[40px] px-6">
+          <Save className="h-4 w-4 mr-2" />
+          {saving ? "Saving..." : "Save Changes"}
         </Button>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Profile */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Profile</CardTitle>
+        <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
+          <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl font-serif text-[var(--text-forest)]">
+              <User className="size-5 text-[var(--text-olive)]" />
+              Profile
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="settings-name">Name</Label>
+          <CardContent className="grid gap-6 sm:grid-cols-2 pt-6">
+            <div className="space-y-2">
+              <Label htmlFor="settings-name" className="text-[14px]">Name</Label>
               <Input
                 id="settings-name"
                 placeholder="Your name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="h-11"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="settings-email">Email</Label>
+            <div className="space-y-2">
+              <Label htmlFor="settings-email" className="text-[14px]">Email</Label>
               <Input
                 id="settings-email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                className="h-11"
               />
             </div>
           </CardContent>
         </Card>
 
-        <Separator />
-
         {/* Rates */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Rates</CardTitle>
+        <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
+          <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl font-serif text-[var(--text-forest)]">
+              <CreditCard className="size-5 text-[var(--text-olive)]" />
+              Rates & Currency
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2">
-              <Label htmlFor="settings-rate">Default Hourly Rate</Label>
+          <CardContent className="grid gap-6 sm:grid-cols-2 pt-6">
+            <div className="space-y-2">
+              <Label htmlFor="settings-rate" className="text-[14px]">Default Hourly Rate</Label>
               <div className="relative">
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-[var(--text-olive)]">
                   {currencySymbol}
                 </span>
                 <Input
@@ -196,14 +206,14 @@ export default function SettingsPage() {
                   placeholder="0.00"
                   value={defaultHourlyRate}
                   onChange={(e) => setDefaultHourlyRate(e.target.value)}
-                  className="pl-7"
+                  className="pl-8 h-11"
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Currency</Label>
+            <div className="space-y-2">
+              <Label className="text-[14px]">Currency</Label>
               <Select value={currency} onValueChange={handleCurrencyChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -218,18 +228,19 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Separator />
-
         {/* Preferences */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Preferences</CardTitle>
+        <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
+          <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl font-serif text-[var(--text-forest)]">
+              <Clock className="size-5 text-[var(--text-olive)]" />
+              Date & Time
+            </CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-3">
-            <div className="grid gap-2">
-              <Label>Date Format</Label>
+          <CardContent className="grid gap-6 sm:grid-cols-3 pt-6">
+            <div className="space-y-2">
+              <Label className="text-[14px]">Date Format</Label>
               <Select value={dateFormat} onValueChange={(v) => v && setDateFormat(v)}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -238,10 +249,10 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>Time Format</Label>
+            <div className="space-y-2">
+              <Label className="text-[14px]">Time Format</Label>
               <Select value={timeFormat} onValueChange={(v) => v && setTimeFormat(v)}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -250,10 +261,10 @@ export default function SettingsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label>Week Starts On</Label>
+            <div className="space-y-2">
+              <Label className="text-[14px]">Week Starts On</Label>
               <Select value={weekStartDay} onValueChange={(v) => v && setWeekStartDay(v)}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -265,24 +276,25 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Separator />
-
         {/* Appearance */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Appearance</CardTitle>
+        <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
+          <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">
+            <CardTitle className="flex items-center gap-2 text-xl font-serif text-[var(--text-forest)]">
+              <Palette className="size-5 text-[var(--text-olive)]" />
+              Appearance
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid gap-2 sm:max-w-xs">
-              <Label>Theme</Label>
+          <CardContent className="grid gap-6 sm:max-w-xs pt-6">
+            <div className="space-y-2">
+              <Label className="text-[14px]">Theme</Label>
               <Select value={themeValue} onValueChange={handleThemeChange}>
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full h-11">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="light">Light (Sage & Cream)</SelectItem>
                   <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="system">System</SelectItem>
+                  <SelectItem value="system">System Default</SelectItem>
                 </SelectContent>
               </Select>
             </div>

@@ -1,90 +1,72 @@
 "use client"
 
 import * as React from "react"
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover"
-
 import { cn } from "@/lib/utils"
 
-function Popover({ ...props }: PopoverPrimitive.Root.Props) {
-  return <PopoverPrimitive.Root data-slot="popover" {...props} />
-}
+const PopoverContext = React.createContext<{ open: boolean; onOpenChange: (open: boolean) => void }>({
+  open: false,
+  onOpenChange: () => {},
+})
 
-function PopoverTrigger({ ...props }: PopoverPrimitive.Trigger.Props) {
-  return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />
-}
+const Popover = ({ children, open, onOpenChange }: { children: React.ReactNode, open?: boolean, onOpenChange?: (open: boolean) => void }) => {
+  const [internalOpen, setInternalOpen] = React.useState(false)
 
-function PopoverContent({
-  className,
-  align = "center",
-  alignOffset = 0,
-  side = "bottom",
-  sideOffset = 4,
-  ...props
-}: PopoverPrimitive.Popup.Props &
-  Pick<
-    PopoverPrimitive.Positioner.Props,
-    "align" | "alignOffset" | "side" | "sideOffset"
-  >) {
+  const handleOpenChange = (newOpen: boolean) => {
+    if (open === undefined) setInternalOpen(newOpen)
+    if (onOpenChange) onOpenChange(newOpen)
+  }
+
+  const isControlled = open !== undefined
+  const currentOpen = isControlled ? open : internalOpen
+
   return (
-    <PopoverPrimitive.Portal>
-      <PopoverPrimitive.Positioner
-        align={align}
-        alignOffset={alignOffset}
-        side={side}
-        sideOffset={sideOffset}
-        className="isolate z-50"
+    <PopoverContext.Provider value={{ open: currentOpen, onOpenChange: handleOpenChange }}>
+      <div className="relative inline-block text-left">{children}</div>
+    </PopoverContext.Provider>
+  )
+}
+
+const PopoverTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
+  ({ className, onClick, children, ...props }, ref) => {
+    const { open, onOpenChange } = React.useContext(PopoverContext)
+    return (
+      <button
+        ref={ref}
+        type="button"
+        onClick={(e) => {
+          onOpenChange(!open)
+          if (onClick) onClick(e)
+        }}
+        className={cn("focus:outline-none", className)}
+        {...props}
       >
-        <PopoverPrimitive.Popup
-          data-slot="popover-content"
-          className={cn(
-            "z-50 flex w-72 origin-(--transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-2.5 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=inline-end]:slide-in-from-left-2 data-[side=inline-start]:slide-in-from-right-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
-            className
-          )}
-          {...props}
-        />
-      </PopoverPrimitive.Positioner>
-    </PopoverPrimitive.Portal>
-  )
-}
+        {children}
+      </button>
+    )
+  }
+)
+PopoverTrigger.displayName = "PopoverTrigger"
 
-function PopoverHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return (
-    <div
-      data-slot="popover-header"
-      className={cn("flex flex-col gap-0.5 text-sm", className)}
-      {...props}
-    />
-  )
-}
+const PopoverContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement> & { align?: "center" | "start" | "end" }>(
+  ({ className, align = "center", children, ...props }, ref) => {
+    const { open } = React.useContext(PopoverContext)
+    if (!open) return null
 
-function PopoverTitle({ className, ...props }: PopoverPrimitive.Title.Props) {
-  return (
-    <PopoverPrimitive.Title
-      data-slot="popover-title"
-      className={cn("font-heading font-medium", className)}
-      {...props}
-    />
-  )
-}
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          "absolute z-50 mt-2 w-72 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] p-4 text-[var(--text-forest)] shadow-[var(--shadow-dropdown)] outline-none animate-in zoom-in-95 duration-200",
+          align === "center" ? "left-1/2 -translate-x-1/2" : align === "end" ? "right-0" : "left-0",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
+    )
+  }
+)
+PopoverContent.displayName = "PopoverContent"
 
-function PopoverDescription({
-  className,
-  ...props
-}: PopoverPrimitive.Description.Props) {
-  return (
-    <PopoverPrimitive.Description
-      data-slot="popover-description"
-      className={cn("text-muted-foreground", className)}
-      {...props}
-    />
-  )
-}
-
-export {
-  Popover,
-  PopoverContent,
-  PopoverDescription,
-  PopoverHeader,
-  PopoverTitle,
-  PopoverTrigger,
-}
+export { Popover, PopoverTrigger, PopoverContent }

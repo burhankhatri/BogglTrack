@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Pencil, Trash2, Archive, RotateCcw } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Archive, RotateCcw, Clock } from "lucide-react";
 import { toast } from "sonner";
 import {
   startOfWeek,
@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { TimeEntryRow } from "@/components/ui/time-entry-row";
 
 import {
   getApplicableRate,
@@ -186,18 +188,6 @@ export default function ProjectDetailPage() {
     });
   }, [entries]);
 
-  function getBudgetColor(percent: number): string {
-    if (percent > 90) return "bg-red-500";
-    if (percent >= 75) return "bg-yellow-500";
-    return "bg-green-500";
-  }
-
-  function getBudgetTrackColor(percent: number): string {
-    if (percent > 90) return "bg-red-100 dark:bg-red-950";
-    if (percent >= 75) return "bg-yellow-100 dark:bg-yellow-950";
-    return "bg-green-100 dark:bg-green-950";
-  }
-
   async function handleSaveName() {
     if (!editName.trim() || !project) return;
     setSaving(true);
@@ -255,16 +245,17 @@ export default function ProjectDetailPage() {
 
   if (loading || !project) {
     return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 animate-pulse rounded bg-muted" />
-          <div className="h-6 w-48 animate-pulse rounded bg-muted" />
+      <div className="space-y-8 max-w-[1000px] mx-auto py-8">
+        <div className="flex items-center gap-4">
+          <div className="h-10 w-10 animate-pulse rounded-full bg-[var(--bg-muted)]" />
+          <div className="h-8 w-64 animate-pulse rounded bg-[var(--bg-muted)]" />
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-4">
-                <div className="h-8 w-20 rounded bg-muted" />
+            <Card key={i} className="animate-pulse shadow-sm">
+              <CardContent className="pt-6">
+                <div className="h-10 w-24 rounded bg-[var(--bg-muted)]" />
+                <div className="h-4 w-16 mt-3 rounded bg-[var(--bg-muted)]" />
               </CardContent>
             </Card>
           ))}
@@ -274,33 +265,45 @@ export default function ProjectDetailPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-[1000px] mx-auto py-8">
       {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between bg-[var(--bg-cream)] p-6 rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--border-subtle)]">
+        <div className="flex items-center gap-4 flex-wrap">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => router.push("/projects")}
+            className="h-9 w-9 bg-[var(--bg-muted)] hover:bg-[var(--accent-olive)]/20 hover:text-[var(--text-forest)] rounded-full shrink-0"
           >
             <ArrowLeft className="size-4" />
           </Button>
-          <span
-            className="inline-block size-4 shrink-0 rounded-full"
-            style={{ backgroundColor: project.color }}
-          />
-          <h1 className="text-2xl font-semibold">{project.name}</h1>
-          {project.client && (
-            <span className="text-sm text-muted-foreground">
-              {project.client.name}
-            </span>
-          )}
-          {project.hourlyRate != null && project.hourlyRate > 0 && (
-            <span className="rounded-md bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-              {settings.currencySymbol}
-              {project.hourlyRate}/hr
-            </span>
-          )}
+          <div className="h-[40px] w-1 shrink-0 rounded-full" style={{ backgroundColor: project.color }} />
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-[24px] font-serif font-semibold text-[var(--text-forest)] leading-none">{project.name}</h1>
+              {project.status === "archived" && (
+                <span className="rounded-full bg-[var(--accent-coral)]/10 text-[var(--accent-coral)] px-2.5 py-0.5 text-[11px] font-semibold tracking-wider uppercase">
+                  Archived
+                </span>
+              )}
+            </div>
+            
+            <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+              {project.client && (
+                <span className="text-[14px] font-medium text-[var(--text-olive)]">
+                  For {project.client.name}
+                </span>
+              )}
+              {project.client && project.hourlyRate != null && project.hourlyRate > 0 && (
+                <span className="text-[var(--text-olive)] opacity-50">•</span>
+              )}
+              {project.hourlyRate != null && project.hourlyRate > 0 && (
+                <span className="text-[14px] font-medium text-[var(--accent-teal)]">
+                  {settings.currencySymbol}{project.hourlyRate}/hr
+                </span>
+              )}
+            </div>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <Button
@@ -310,19 +313,25 @@ export default function ProjectDetailPage() {
               setEditName(project.name);
               setEditDialogOpen(true);
             }}
+            className="h-9 rounded-full px-4 text-[13px] border-[var(--border-subtle)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
           >
-            <Pencil className="size-3.5" data-icon="inline-start" />
+            <Pencil className="size-3.5 mr-1.5" />
             Edit
           </Button>
-          <Button variant="outline" size="sm" onClick={handleToggleStatus}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleToggleStatus}
+            className="h-9 rounded-full px-4 text-[13px] border-[var(--border-subtle)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
+          >
             {project.status === "active" ? (
               <>
-                <Archive className="size-3.5" data-icon="inline-start" />
+                <Archive className="size-3.5 mr-1.5" />
                 Archive
               </>
             ) : (
               <>
-                <RotateCcw className="size-3.5" data-icon="inline-start" />
+                <RotateCcw className="size-3.5 mr-1.5" />
                 Reactivate
               </>
             )}
@@ -331,68 +340,48 @@ export default function ProjectDetailPage() {
             variant="destructive"
             size="sm"
             onClick={() => setDeleteDialogOpen(true)}
+            className="h-9 rounded-full px-4 text-[13px] bg-[var(--accent-coral)]/10 text-[var(--accent-coral)] hover:bg-[var(--accent-coral)] hover:text-white border-transparent"
           >
-            <Trash2 className="size-3.5" data-icon="inline-start" />
+            <Trash2 className="size-3.5 mr-1.5" />
             Delete
           </Button>
         </div>
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Hours
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <Card className="shadow-sm border-[var(--border-subtle)]">
+          <CardContent className="p-6">
+            <span className="text-[12px] font-semibold text-[var(--text-olive)] uppercase tracking-wider mb-2 block">Total Tracked</span>
+            <p className="text-[32px] font-semibold text-[var(--text-forest)] font-sans leading-none">
               {formatHours(project.totalDuration)}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Earnings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-semibold">
+        <Card className="shadow-sm border-[var(--border-subtle)]">
+          <CardContent className="p-6">
+            <span className="text-[12px] font-semibold text-[var(--text-olive)] uppercase tracking-wider mb-2 block">Earnings</span>
+            <p className="text-[32px] font-semibold text-[var(--accent-teal)] font-sans leading-none">
               {formatCurrency(totalEarnings, settings.currencySymbol)}
             </p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              Budget Used
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        <Card className="shadow-sm border-[var(--border-subtle)]">
+          <CardContent className="p-6">
+            <span className="text-[12px] font-semibold text-[var(--text-olive)] uppercase tracking-wider mb-2 block">Budget Used</span>
             {project.estimatedHours ? (
-              <div className="space-y-2">
-                <p className="text-2xl font-semibold">
-                  {totalHours.toFixed(1)} / {project.estimatedHours}h
+              <div className="space-y-3">
+                <p className="text-[32px] font-semibold text-[var(--text-forest)] font-sans leading-none">
+                  {totalHours.toFixed(1)} <span className="text-xl text-[var(--text-olive)]">/ {project.estimatedHours}h</span>
                 </p>
-                <div
-                  className={`h-2 w-full overflow-hidden rounded-full ${getBudgetTrackColor(
-                    budgetPercent ?? 0
-                  )}`}
-                >
-                  <div
-                    className={`h-full rounded-full transition-all ${getBudgetColor(
-                      budgetPercent ?? 0
-                    )}`}
-                    style={{
-                      width: `${Math.min(budgetPercent ?? 0, 100)}%`,
-                    }}
-                  />
-                </div>
+                <ProgressBar 
+                  value={budgetPercent ?? 0}
+                  className="h-2"
+                  style={{"--accent-olive": project.color} as React.CSSProperties}
+                />
               </div>
             ) : (
-              <p className="text-2xl font-semibold text-muted-foreground">
+              <p className="text-[32px] font-semibold text-[var(--text-olive)] font-sans leading-none mt-1 opacity-50">
                 No budget
               </p>
             )}
@@ -401,41 +390,54 @@ export default function ProjectDetailPage() {
       </div>
 
       {/* Weekly Chart */}
-      <Card>
-        <CardHeader>
-          <CardTitle>This Week</CardTitle>
+      <Card className="shadow-[var(--shadow-card)] border-[var(--border-subtle)]">
+        <CardHeader className="pb-2">
+          <CardTitle className="font-sans text-[16px]">This Week&apos;s Activity</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="h-64">
+          <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={weeklyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <BarChart data={weeklyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                 <XAxis
                   dataKey="day"
-                  tick={{ fontSize: 12 }}
-                  className="fill-muted-foreground"
+                  tick={{ fontSize: 13, fill: "var(--text-olive)", fontFamily: "Inter" }}
+                  axisLine={false}
+                  tickLine={false}
+                  dy={10}
                 />
                 <YAxis
-                  tick={{ fontSize: 12 }}
-                  className="fill-muted-foreground"
+                  tick={{ fontSize: 13, fill: "var(--text-olive)", fontFamily: "Inter" }}
+                  axisLine={false}
+                  tickLine={false}
                   allowDecimals={false}
+                  dx={-10}
                 />
                 <Tooltip
+                  cursor={{ fill: "var(--bg-muted)", opacity: 0.5 }}
                   contentStyle={{
-                    backgroundColor: "hsl(var(--popover))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px",
+                    backgroundColor: "var(--bg-cream)",
+                    border: "1px solid var(--border-subtle)",
+                    borderRadius: "12px",
+                    boxShadow: "var(--shadow-dropdown)",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    color: "var(--text-forest)",
+                  }}
+                  itemStyle={{
+                    color: project.color,
+                    fontWeight: 600,
                   }}
                   formatter={(value) => [
                     `${Number(value).toFixed(2)}h`,
-                    "Hours",
+                    "Tracked",
                   ]}
                 />
                 <Bar
                   dataKey="hours"
                   fill={project.color}
-                  radius={[4, 4, 0, 0]}
+                  radius={[6, 6, 0, 0]}
+                  barSize={40}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -444,52 +446,37 @@ export default function ProjectDetailPage() {
       </Card>
 
       {/* Time Entries */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Time Entries</CardTitle>
+      <Card className="shadow-[var(--shadow-card)] border-[var(--border-subtle)]">
+        <CardHeader className="border-b border-[var(--border-subtle)] pb-4">
+          <CardTitle className="font-sans text-[16px]">Recent Time Entries</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-2 pb-2">
           {entries.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">
-              No time entries for this project yet.
-            </p>
+            <div className="py-12 flex flex-col items-center justify-center">
+              <div className="size-12 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-3">
+                <Clock className="size-5 text-[var(--text-olive)] opacity-50" />
+              </div>
+              <p className="text-[15px] font-medium text-[var(--text-olive)]">
+                No time entries for this project yet.
+              </p>
+            </div>
           ) : (
-            <div className="divide-y">
+            <div className="flex flex-col">
               {entries.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">
-                      {entry.description || "(no description)"}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {format(new Date(entry.startTime), "MMM d, yyyy 'at' HH:mm")}
-                      {entry.tags.length > 0 && (
-                        <span className="ml-2">
-                          {entry.tags
-                            .map((t) => t.tag.name)
-                            .join(", ")}
-                        </span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="ml-4 text-right">
-                    <p className="text-sm font-medium tabular-nums">
-                      {entry.duration
-                        ? formatDuration(entry.duration)
-                        : "Running..."}
-                    </p>
-                    {entry.duration && entry.billable && (
-                      <p className="text-xs text-muted-foreground">
-                        {formatCurrency(
-                          calculateEarnings(entry.duration, rate, true),
-                          settings.currencySymbol
-                        )}
-                      </p>
-                    )}
-                  </div>
+                <div key={entry.id} className="border-b border-[var(--border-subtle)] last:border-0 py-1">
+                  <TimeEntryRow
+                    className="hover:bg-transparent px-2"
+                    description={entry.description || "No description"}
+                    duration={entry.duration ? formatDuration(entry.duration) : "Running..."}
+                  />
+                  {entry.duration && entry.billable && (
+                    <div className="flex px-2 pb-2 -mt-1 text-[12px] font-medium text-[var(--text-olive)]">
+                      <span className="mr-3">{format(new Date(entry.startTime), "MMM d, h:mm a")}</span>
+                      <span className="text-[var(--accent-teal)]">
+                        {formatCurrency(calculateEarnings(entry.duration, rate, true), settings.currencySymbol)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -499,11 +486,11 @@ export default function ProjectDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
+            <DialogTitle className="font-serif">Edit Project Name</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-6 pt-4">
             <div className="space-y-2">
               <Label htmlFor="edit-name">Name</Label>
               <Input
@@ -513,20 +500,23 @@ export default function ProjectDetailPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSaveName();
                 }}
+                className="rounded-[var(--radius-lg)] h-11"
               />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex justify-end gap-3">
               <Button
                 variant="outline"
+                className="rounded-full h-10 px-5"
                 onClick={() => setEditDialogOpen(false)}
               >
                 Cancel
               </Button>
               <Button
+                className="rounded-full h-10 px-5"
                 onClick={handleSaveName}
                 disabled={saving || !editName.trim()}
               >
-                {saving ? "Saving..." : "Save"}
+                {saving ? "Saving..." : "Save Changes"}
               </Button>
             </div>
           </div>
@@ -537,27 +527,31 @@ export default function ProjectDetailPage() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Project</DialogTitle>
+            <DialogTitle className="font-serif text-[var(--accent-coral)]">Delete Project</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            Are you sure you want to delete &ldquo;{project.name}&rdquo;? This
-            action cannot be undone. Time entries linked to this project will be
-            unlinked.
-          </p>
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </Button>
+          <div className="space-y-6 pt-2">
+            <p className="text-[15px] text-[var(--text-olive)] leading-relaxed">
+              Are you sure you want to delete <span className="font-semibold text-[var(--text-forest)]">&ldquo;{project.name}&rdquo;</span>? This
+              action cannot be undone. Time entries linked to this project will be
+              unlinked and kept.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                className="rounded-full h-10 px-5"
+                onClick={() => setDeleteDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                className="rounded-full h-10 px-5 bg-[var(--accent-coral)]"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "Deleting..." : "Delete Project"}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

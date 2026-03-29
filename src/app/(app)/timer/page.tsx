@@ -443,37 +443,33 @@ export default function TimerPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="flex items-center gap-3 text-[var(--text-olive)]">
           <Clock className="h-5 w-5 animate-pulse" />
-          <span>Loading timer...</span>
+          <span className="font-sans">Loading timer...</span>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 md:pt-6 space-y-8">
+    <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-10">
       {/* Mobile Header */}
-      <div className="flex items-center justify-between md:hidden px-2 mb-2">
-        <h1 className="text-3xl font-serif text-foreground tracking-tight">Hello, Budi</h1>
-        <button className="h-10 w-10 flex items-center justify-center text-foreground hover:bg-muted rounded-full transition-colors">
-          {/* We import Bell inline or use Clock if not available, since Bell is not imported above */}
-          <span className="flex h-5 w-5 bg-foreground/20 rounded-full" />
-        </button>
+      <div className="flex items-center justify-between md:hidden px-2 mb-4">
+        <h1 className="text-[32px] font-serif font-semibold text-[var(--text-forest)] tracking-tight">Today</h1>
       </div>
 
       {/* Weekly summary bar */}
-      <Card className="px-6 py-4 shadow-sm border-transparent bg-card rounded-[20px]">
+      <Card className="px-6 py-5 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-            <Clock className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-[15px] font-medium text-[var(--text-olive)]">
+            <Clock className="h-[18px] w-[18px]" />
             <span>This week</span>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-lg font-semibold tabular-nums">
+            <span className="text-[18px] font-semibold tabular-nums text-[var(--text-forest)] font-sans">
               {weeklyHours.toFixed(1)} hrs
             </span>
-            <span className="text-lg font-semibold text-foreground tabular-nums">
+            <span className="text-[18px] font-semibold text-[var(--accent-teal)] tabular-nums font-sans">
               {formatCurrency(weeklyEarnings)}
             </span>
           </div>
@@ -481,78 +477,80 @@ export default function TimerPage() {
       </Card>
 
       {/* Timer / Manual tabs */}
-      <Tabs defaultValue="timer" className="w-full relative z-10 px-2 lg:px-0">
-        <TabsList className="bg-transparent h-12 p-1 gap-1 border border-border/60 rounded-full w-full max-w-[400px]">
-          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-foreground data-[state=active]:text-card font-medium transition-colors">
+      <Tabs defaultValue="timer" className="w-full relative z-10 lg:px-0">
+        <TabsList className="bg-[var(--bg-muted)] h-12 p-1 gap-1 border border-transparent rounded-full w-full max-w-[400px]">
+          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:shadow-sm font-medium transition-colors">
             Timer
           </TabsTrigger>
-          <TabsTrigger value="manual" className="rounded-full w-1/2 text-muted-foreground font-medium hover:text-foreground transition-colors">
+          <TabsTrigger value="manual" className="rounded-full w-1/2 text-[var(--text-olive)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:shadow-sm font-medium transition-colors">
             Manual
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="timer">
-          {/* Hide this on mobile or just leave it */}
         </TabsContent>
 
-        <TabsContent value="manual" className="mt-4">
-          <Card className="px-6 py-5 space-y-4 shadow-sm border-transparent bg-card rounded-[20px]">
+        <TabsContent value="manual" className="mt-6">
+          <Card className="px-6 py-6 space-y-5 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
             {/* Description */}
-            <Input
-              placeholder="What did you work on?"
-              value={manualDescription}
-              onChange={(e) => setManualDescription(e.target.value)}
-              className="bg-background/50 border-transparent rounded-xl"
-            />
+            <div className="relative">
+              <Input
+                placeholder="What did you work on?"
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
+              />
+              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--border-subtle)]" />
+            </div>
 
             {/* Date / Start / End row */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-6 pt-2">
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
                   Date
                 </label>
                 <Input
                   type="date"
                   value={manualDate}
                   onChange={(e) => setManualDate(e.target.value)}
-                  className="bg-background/50 border-transparent rounded-xl"
+                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
                   Start time
                 </label>
                 <Input
                   type="time"
                   value={manualStartTime}
                   onChange={(e) => setManualStartTime(e.target.value)}
-                  className="bg-background/50 border-transparent rounded-xl"
+                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
                   End time
                 </label>
                 <Input
                   type="time"
                   value={manualEndTime}
                   onChange={(e) => setManualEndTime(e.target.value)}
-                  className="bg-background/50 border-transparent rounded-xl"
+                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
                 />
               </div>
             </div>
 
             {/* Project / Billable row */}
-            <div className="flex items-end gap-3">
+            <div className="flex items-end gap-4 pt-2">
               <div className="flex-1">
-                <label className="text-xs font-medium text-muted-foreground mb-1 block">
+                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
                   Project
                 </label>
                 <Select
                   value={manualProjectId}
-                  onValueChange={(v) => v && setManualProjectId(v)}
+                  onValueChange={(v: string) => v && setManualProjectId(v)}
                 >
-                  <SelectTrigger className="bg-background/50 border-transparent rounded-xl">
+                  <SelectTrigger className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10">
                     <SelectValue placeholder="No project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -575,47 +573,47 @@ export default function TimerPage() {
               <Button
                 variant={manualBillable ? "default" : "outline"}
                 size="sm"
-                className={`shrink-0 gap-1.5 h-10 rounded-xl ${manualBillable ? "bg-primary text-foreground hover:bg-accent" : "border-border"}`}
+                className={`shrink-0 gap-1.5 h-10 rounded-[var(--radius-lg)] ${manualBillable ? "bg-[var(--accent-olive)] text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] shadow-sm" : "border-[var(--border-subtle)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"}`}
                 onClick={() => setManualBillable(!manualBillable)}
               >
-                <DollarSign className="h-3.5 w-3.5" />
+                <DollarSign className="h-4 w-4" />
                 {manualBillable ? "Billable" : "Non-billable"}
               </Button>
             </div>
 
             {/* Submit */}
             <Button
-              className="w-full h-10 rounded-xl bg-foreground text-card hover:bg-foreground/90"
+              className="w-full h-[46px] rounded-full bg-[var(--text-forest)] text-[var(--text-cream)] hover:bg-[var(--text-forest)]/90 shadow-sm mt-4 text-[15px] font-medium"
               onClick={handleManualAdd}
               disabled={manualSubmitting}
             >
               <Plus className="mr-2 h-4 w-4" />
-              {manualSubmitting ? "Adding..." : "Add Entry"}
+              {manualSubmitting ? "Adding..." : "Add Time Entry"}
             </Button>
           </Card>
         </TabsContent>
       </Tabs>
 
       {/* Time entry list grouped by day */}
-      <div className="space-y-6 px-2 lg:px-0">
+      <div className="space-y-8 lg:px-0">
         {dayGroups.length === 0 && (
-          <Card className="px-6 py-12 text-center text-muted-foreground border-transparent shadow-sm bg-card rounded-[20px]">
-            <p className="text-sm">No time entries. Start tracking!</p>
+          <Card className="px-6 py-16 text-center shadow-none border border-[var(--border-subtle)] border-dashed bg-transparent rounded-[var(--radius-xl)]">
+            <p className="text-[15px] text-[var(--text-olive)] font-medium">No time entries. Your tracked time will appear here.</p>
           </Card>
         )}
 
         {dayGroups.map((group) => (
-          <div key={group.label} className="space-y-3">
+          <div key={group.label} className="space-y-4">
             {/* Day header */}
             <div className="flex justify-between items-center mb-1">
-              <h2 className="text-lg font-medium text-foreground">{group.label}</h2>
-              <span className="tabular-nums font-mono text-muted-foreground font-medium">
+              <h2 className="text-[18px] font-semibold font-serif text-[var(--text-forest)]">{group.label}</h2>
+              <span className="tabular-nums font-sans text-[var(--text-olive)] font-medium tracking-wide">
                 {formatDurationHM(group.totalSeconds)}
               </span>
             </div>
 
             {/* Entries */}
-            <Card className="border-transparent shadow-sm bg-card rounded-[20px] overflow-hidden">
+            <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] overflow-hidden">
               <div className="flex flex-col">
                 {group.entries.map((entry, index) => {
                   const isEditing = editingId === entry.id;
@@ -628,28 +626,25 @@ export default function TimerPage() {
                   const earnings = calculateEarnings(dur, rate, entry.billable);
                   const isLast = index === group.entries.length - 1;
 
-                  // Define badge styles dynamically
-                  const defaultBadgeColor = "text-muted-foreground border-border bg-muted/50";
-                  
                   return (
                     <div
                       key={entry.id}
-                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-5 hover:bg-muted/30 transition-colors group ${!isLast ? 'border-b border-border/50' : ''}`}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-[var(--bg-sage)]/30 transition-colors group ${!isLast ? 'border-b border-[var(--border-subtle)]' : ''}`}
                     >
                       {isEditing ? (
                         /* ---- Inline edit mode ---- */
                         <div className="flex-1 flex items-center gap-3 flex-wrap">
                           <Input
-                            className="flex-1 min-w-[180px] bg-background/50 border-transparent rounded-xl"
+                            className="flex-1 min-w-[180px] bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-[15px]"
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
                             placeholder="Description"
                           />
                           <Select
                             value={editProjectId}
-                            onValueChange={(v) => v && setEditProjectId(v)}
+                            onValueChange={(v: string) => v && setEditProjectId(v)}
                           >
-                            <SelectTrigger className="w-[160px] bg-background/50 border-transparent rounded-xl">
+                            <SelectTrigger className="w-[180px] bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10">
                               <SelectValue placeholder="No project" />
                             </SelectTrigger>
                             <SelectContent>
@@ -672,27 +667,27 @@ export default function TimerPage() {
                           <Button
                             variant={editBillable ? "default" : "outline"}
                             size="icon"
-                            className={`h-9 w-9 rounded-full ${editBillable ? 'bg-primary text-foreground' : ''}`}
+                            className={`h-[40px] w-[40px] rounded-[var(--radius-lg)] shadow-sm shrink-0 ${editBillable ? 'bg-[var(--accent-olive)] text-[var(--text-forest)]' : 'border-[var(--border-subtle)] text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
                             onClick={() => setEditBillable(!editBillable)}
                           >
-                            <DollarSign className="h-4 w-4" />
+                            <DollarSign className="h-[18px] w-[18px]" />
                           </Button>
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5 ml-auto">
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-9 w-9 rounded-full"
+                              className="h-[40px] w-[40px] rounded-full hover:bg-[var(--accent-olive)]/30 hover:text-[var(--text-forest)]"
                               onClick={() => saveEdit(entry.id)}
                             >
-                              <Check className="h-4 w-4" />
+                              <Check className="h-5 w-5" />
                             </Button>
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-9 w-9 text-destructive rounded-full"
+                              className="h-[40px] w-[40px] text-[var(--accent-coral)] rounded-full hover:bg-[var(--accent-coral)]/10"
                               onClick={cancelEdit}
                             >
-                              <X className="h-4 w-4" />
+                              <X className="h-5 w-5" />
                             </Button>
                           </div>
                         </div>
@@ -700,65 +695,70 @@ export default function TimerPage() {
                         /* ---- Normal display mode ---- */
                         <>
                           {/* Left: Description + project + tags */}
-                          <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-4">
-                            <span className="text-base font-medium text-foreground leading-none truncate">
-                              {entry.description || "No description"}
+                          <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
+                            <span className="text-[15px] font-medium text-[var(--text-forest)] leading-none truncate font-sans">
+                              {entry.description || "(No description)"}
                             </span>
                             
-                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                              {entry.project && (
-                                <Badge variant="outline" className={`font-medium px-2.5 py-0.5 text-[11px] rounded-full border-border bg-background/50 text-foreground`}>
-                                  <span
-                                    className="h-2 w-2 rounded-full inline-block mr-1.5"
-                                    style={{ backgroundColor: entry.project.color }}
-                                  />
-                                  {entry.project.name}
-                                </Badge>
-                              )}
-                              {entry.tags.map((t) => (
-                                <Badge
-                                  key={t.tagId}
-                                  variant="outline"
-                                  className="font-medium px-2.5 py-0.5 text-[11px] rounded-full border-border bg-background/50 text-foreground"
-                                >
-                                  {t.tag.name}
-                                </Badge>
-                              ))}
-                            </div>
+                            {(entry.project || entry.tags.length > 0) && (
+                              <div className="flex flex-wrap items-center gap-2 mt-1">
+                                {entry.project && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className="font-medium px-2.5 py-[2px] text-[12px] rounded-[var(--radius-md)] border-transparent"
+                                    style={{ 
+                                      color: entry.project.color,
+                                      backgroundColor: `${entry.project.color}15`
+                                    }}
+                                  >
+                                    {entry.project.name}
+                                  </Badge>
+                                )}
+                                {entry.tags.map((t) => (
+                                  <Badge
+                                    key={t.tagId}
+                                    variant="outline"
+                                    className="font-medium px-2.5 py-[2px] text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
+                                  >
+                                    {t.tag.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            )}
                           </div>
 
                           {/* Right: Duration + Earnings + Play + Controls */}
-                          <div className="flex items-center justify-between sm:justify-end gap-3 mt-3 sm:mt-0">
-                            <div className="flex flex-col sm:items-end sm:mr-2">
+                          <div className="flex items-center justify-between sm:justify-end gap-4 mt-3 sm:mt-0">
+                            <div className="flex flex-col sm:items-end">
                               {/* Duration */}
-                              <span className="font-mono text-[15px] font-medium tracking-tight text-foreground/90">
+                              <span className="font-sans text-[16px] font-semibold tracking-tight text-[var(--text-forest)] tabular-nums">
                                 {formatDuration(dur)}
                               </span>
                               {/* Earnings */}
                               {earnings > 0 && (
-                                <span className="text-[13px] font-medium tabular-nums text-muted-foreground mr-1">
+                                <span className="text-[13px] font-medium tabular-nums text-[var(--text-olive)] mt-[2px]">
                                   {formatCurrency(earnings)}
                                 </span>
                               )}
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 ml-2">
                               {/* Hover actions (edit/delete) */}
-                              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mr-1">
+                              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                                 {isDeleting ? (
-                                  <div className="flex items-center gap-1 bg-background rounded-full p-1 border shadow-sm absolute right-20 z-10">
+                                  <div className="flex items-center gap-1 bg-[var(--bg-cream)] rounded-[var(--radius-lg)] p-1 border border-[var(--border-subtle)] shadow-[var(--shadow-dropdown)] absolute right-24 z-10 transition-all">
                                     <Button
                                       size="sm"
                                       variant="destructive"
-                                      className="h-7 text-xs rounded-full px-3"
+                                      className="h-8 text-[12px] rounded-[var(--radius-md)] px-3 bg-[var(--accent-coral)] text-[var(--text-cream)] hover:bg-[#d66a6a]"
                                       onClick={() => handleDelete(entry.id)}
                                     >
-                                      Confirm
+                                      Delete
                                     </Button>
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-7 text-xs rounded-full px-3"
+                                      className="h-8 text-[12px] rounded-[var(--radius-md)] px-3 text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
                                       onClick={() => setDeletingId(null)}
                                     >
                                       Cancel
@@ -767,18 +767,18 @@ export default function TimerPage() {
                                 ) : (
                                   <>
                                     <button
-                                      className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full flex items-center justify-center transition-colors shadow-none"
+                                      className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-lg)] flex items-center justify-center transition-colors shadow-none"
                                       onClick={() => startEditing(entry)}
                                       title="Edit"
                                     >
-                                      <Pencil className="h-3.5 w-3.5" />
+                                      <Pencil className="h-4 w-4" />
                                     </button>
                                     <button
-                                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-full flex items-center justify-center transition-colors shadow-none"
+                                      className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-lg)] flex items-center justify-center transition-colors shadow-none"
                                       onClick={() => setDeletingId(entry.id)}
                                       title="Delete"
                                     >
-                                      <Trash2 className="h-3.5 w-3.5" />
+                                      <Trash2 className="h-4 w-4" />
                                     </button>
                                   </>
                                 )}
@@ -787,10 +787,10 @@ export default function TimerPage() {
                               {/* Play Button */}
                               <button 
                                 onClick={() => handleResume(entry)}
-                                className="h-9 w-9 bg-primary hover:bg-accent text-foreground rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer shrink-0"
+                                className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 ml-1"
                                 title="Resume timer"
                               >
-                                <Play className="h-4 w-4 fill-current ml-0.5" />
+                                <Play className="h-[18px] w-[18px] fill-current ml-[2px]" />
                               </button>
                             </div>
                           </div>

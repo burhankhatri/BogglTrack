@@ -17,17 +17,7 @@ import {
 
 import { authClient } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-} from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -49,70 +39,57 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r border-border/50 bg-card">
-      <SidebarHeader className="border-b border-border/50 px-6 py-6">
-        <Link href="/" className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center shadow-sm">
-            <Clock className="h-4 w-4 text-primary-foreground" />
+    <aside className="hidden md:flex w-[240px] flex-col bg-[var(--bg-cream)] border-r border-[var(--border-subtle)] h-screen z-10 transition-all duration-300 shrink-0 shadow-sm relative">
+      <div className="h-20 flex items-center px-6 border-b border-[var(--border-subtle)]">
+        <Link href="/" className="flex items-center gap-3 decoration-transparent">
+          <div className="h-8 w-8 rounded-full bg-[var(--accent-olive)] flex items-center justify-center shadow-sm">
+            <Clock className="h-4 w-4 text-[var(--text-forest)]" />
           </div>
-          <span className="text-2xl font-serif text-foreground">BogglTrack</span>
+          <span className="text-2xl font-serif font-semibold text-[var(--text-forest)]">BogglTrack</span>
         </Link>
-      </SidebarHeader>
+      </div>
 
-      <SidebarContent className="px-4 py-6">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-2">
-              {navItems.map((item) => {
-                const isActive =
-                  item.href === "/"
-                    ? pathname === "/"
-                    : pathname.startsWith(item.href);
+      <nav className="flex-1 overflow-y-auto p-4 space-y-1 scrollbar-none">
+        {navItems.map((item) => {
+          const isActive =
+            item.href === "/"
+              ? pathname === "/"
+              : pathname.startsWith(item.href);
 
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      render={<Link href={item.href} />}
-                      className={`h-11 px-4 text-[15px] font-medium rounded-xl transition-colors ${
-                        isActive 
-                          ? "bg-primary/20 text-foreground hover:bg-primary/30" 
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      }`}
-                    >
-                      <item.icon className={`h-5 w-5 mr-3 ${isActive ? 'text-primary' : ''}`} />
-                      <span>{item.title}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-
-      <SidebarFooter className="border-t border-border/50 p-6">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              render={<Link href="/settings" />}
-              className="h-11 px-4 text-[15px] font-medium rounded-xl text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 h-11 px-4 text-[14px] font-medium rounded-xl transition-all",
+                isActive 
+                  ? "bg-[var(--accent-olive)]/20 text-[var(--text-forest)]" 
+                  : "text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)]"
+              )}
             >
-              <Settings className="h-5 w-5 mr-3" />
-              <span>Settings</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={handleSignOut}
-              className="h-11 px-4 text-[15px] font-medium rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-            >
-              <LogOut className="h-5 w-5 mr-3" />
-              <span>Sign out</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+              <item.icon className={cn("h-5 w-5", isActive ? "text-[var(--accent-olive)]" : "text-inherit")} />
+              <span>{item.title}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
+        <Link
+          href="/settings"
+          className="flex items-center gap-3 h-11 px-4 text-[14px] font-medium rounded-xl text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] transition-all"
+        >
+          <Settings className="h-5 w-5" />
+          <span>Settings</span>
+        </Link>
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 h-11 px-4 text-[14px] font-medium rounded-xl text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] transition-all text-left"
+        >
+          <LogOut className="h-5 w-5" />
+          <span>Sign out</span>
+        </button>
+      </div>
+    </aside>
   );
 }

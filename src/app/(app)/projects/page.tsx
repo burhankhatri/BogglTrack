@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ProgressBar } from "@/components/ui/progress-bar";
 
 import { PROJECT_COLORS } from "@/lib/constants";
 import {
@@ -159,34 +160,22 @@ export default function ProjectsPage() {
     }
   }
 
-  function getBudgetColor(percent: number): string {
-    if (percent > 90) return "bg-red-500";
-    if (percent >= 75) return "bg-yellow-500";
-    return "bg-green-500";
-  }
-
-  function getBudgetTrackColor(percent: number): string {
-    if (percent > 90) return "bg-red-100 dark:bg-red-950";
-    if (percent >= 75) return "bg-yellow-100 dark:bg-yellow-950";
-    return "bg-green-100 dark:bg-green-950";
-  }
-
   if (loading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8 max-w-[1200px] mx-auto py-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Projects</h1>
+          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)]">Projects</h1>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse">
+            <Card key={i} className="animate-pulse shadow-[var(--shadow-card)] border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <CardHeader>
-                <div className="h-5 w-32 rounded bg-muted" />
+                <div className="h-5 w-32 rounded bg-[var(--bg-muted)]" />
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <div className="h-4 w-24 rounded bg-muted" />
-                  <div className="h-4 w-20 rounded bg-muted" />
+                <div className="space-y-3 mt-2">
+                  <div className="h-4 w-24 rounded bg-[var(--bg-muted)]" />
+                  <div className="h-1.5 w-full rounded bg-[var(--bg-muted)]" />
                 </div>
               </CardContent>
             </Card>
@@ -197,9 +186,13 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-[1200px] mx-auto py-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Projects</h1>
+        <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight">Projects</h1>
+        <Button onClick={() => setDialogOpen(true)} className="rounded-full shadow-sm text-[15px] h-[40px] px-5">
+          <Plus className="size-4 mr-2" />
+          New Project
+        </Button>
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -207,43 +200,36 @@ export default function ProjectsPage() {
             if (!open) resetForm();
           }}
         >
-          <DialogTrigger
-            render={
-              <Button>
-                <Plus className="size-4" data-icon="inline-start" />
-                New Project
-              </Button>
-            }
-          />
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>New Project</DialogTitle>
+              <DialogTitle className="font-serif text-xl tracking-tight text-[var(--text-forest)]">New Project</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="space-y-5 pt-2">
               <div className="space-y-2">
-                <Label htmlFor="project-name">Name</Label>
+                <Label htmlFor="project-name" className="text-[14px]">Name</Label>
                 <Input
                   id="project-name"
-                  placeholder="Project name"
+                  placeholder="Website Redesign"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleCreate();
                   }}
+                  className="rounded-[var(--radius-lg)] h-11"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Color</Label>
-                <div className="grid grid-cols-6 gap-2">
+                <Label className="text-[14px]">Color</Label>
+                <div className="grid grid-cols-6 gap-3">
                   {PROJECT_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      className={`size-8 rounded-lg transition-all ${
+                      className={`size-10 rounded-[var(--radius-md)] transition-all flex items-center justify-center ${
                         color === c
-                          ? "ring-2 ring-ring ring-offset-2 ring-offset-background"
-                          : "hover:scale-110"
+                          ? "ring-2 ring-offset-2 ring-offset-[var(--bg-cream)] ring-[var(--accent-olive)] scale-110"
+                          : "hover:scale-105"
                       }`}
                       style={{ backgroundColor: c }}
                       onClick={() => setColor(c)}
@@ -254,14 +240,14 @@ export default function ProjectsPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Client</Label>
+                <Label className="text-[14px]">Client</Label>
                 <Select
                   value={clientId ?? ""}
-                  onValueChange={(val) =>
-                    setClientId(val === "" ? null : (val as string))
+                  onValueChange={(val: string) =>
+                    setClientId(val === "" ? null : val)
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full rounded-[var(--radius-lg)] h-11">
                     <SelectValue placeholder="No client" />
                   </SelectTrigger>
                   <SelectContent>
@@ -275,9 +261,9 @@ export default function ProjectsPage() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="hourly-rate">Hourly Rate</Label>
+                  <Label htmlFor="hourly-rate" className="text-[14px]">Hourly Rate</Label>
                   <Input
                     id="hourly-rate"
                     type="number"
@@ -286,10 +272,11 @@ export default function ProjectsPage() {
                     placeholder={`${settings.currencySymbol}0.00`}
                     value={hourlyRate}
                     onChange={(e) => setHourlyRate(e.target.value)}
+                    className="rounded-[var(--radius-lg)] h-11"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="estimated-hours">Est. Hours</Label>
+                  <Label htmlFor="estimated-hours" className="text-[14px]">Est. Hours</Label>
                   <Input
                     id="estimated-hours"
                     type="number"
@@ -298,12 +285,13 @@ export default function ProjectsPage() {
                     placeholder="0"
                     value={estimatedHours}
                     onChange={(e) => setEstimatedHours(e.target.value)}
+                    className="rounded-[var(--radius-lg)] h-11"
                   />
                 </div>
               </div>
 
               <Button
-                className="w-full"
+                className="w-full rounded-full h-[44px] text-[15px] font-medium mt-2"
                 onClick={handleCreate}
                 disabled={creating || !name.trim()}
               >
@@ -315,15 +303,17 @@ export default function ProjectsPage() {
       </div>
 
       {projects.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-16 text-center">
-          <FolderKanban className="mb-3 size-10 text-muted-foreground" />
-          <h2 className="text-lg font-medium">No projects yet</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+        <div className="flex flex-col items-center justify-center rounded-[var(--radius-xl)] border border-[var(--border-subtle)] border-dashed bg-[var(--bg-cream)] py-20 text-center shadow-sm">
+          <div className="size-14 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-4">
+            <FolderKanban className="size-6 text-[var(--accent-olive)]" />
+          </div>
+          <h2 className="text-xl font-serif font-medium text-[var(--text-forest)]">No projects yet</h2>
+          <p className="mt-2 text-[15px] text-[var(--text-olive)]">
             Create your first project to start tracking time.
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => {
             const totalHours = project.totalSeconds / 3600;
             const rate = getApplicableRate(
@@ -342,57 +332,58 @@ export default function ProjectsPage() {
             return (
               <Card
                 key={project.id}
-                className="cursor-pointer transition-shadow hover:shadow-md"
+                className="cursor-pointer transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 bg-[var(--bg-cream)] border-[var(--border-subtle)] shadow-[var(--shadow-card)] rounded-[var(--radius-xl)] p-5 flex flex-col"
                 onClick={() => router.push(`/projects/${project.id}`)}
               >
-                <CardHeader>
-                  <div className="flex items-center gap-2">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-3 w-full">
                     <span
-                      className="inline-block size-3 shrink-0 rounded-full"
+                      className="inline-block size-[14px] shrink-0 rounded-full flex-none mt-[2px]"
                       style={{ backgroundColor: project.color }}
                     />
-                    <span className="truncate font-medium">{project.name}</span>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate font-serif font-semibold text-[18px] text-[var(--text-forest)] leading-tight">{project.name}</h3>
+                      {project.client && (
+                        <p className="text-[13px] text-[var(--text-olive)] truncate mt-1">
+                          {project.client.name}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  {project.client && (
-                    <p className="text-sm text-muted-foreground">
-                      {project.client.name}
-                    </p>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {formatHours(project.totalSeconds)}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(earnings, settings.currencySymbol)}
-                    </span>
+                </div>
+                
+                <div className="mt-auto space-y-4">
+                  <div className="flex items-end justify-between font-sans">
+                    <div className="flex flex-col">
+                      <span className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wider mb-1">Time</span>
+                      <span className="text-[16px] font-semibold text-[var(--text-forest)] leading-none tabular-nums">
+                        {formatHours(project.totalSeconds)}
+                      </span>
+                    </div>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wider mb-1">Earned</span>
+                      <span className="text-[16px] font-semibold text-[var(--accent-teal)] leading-none tabular-nums">
+                        {formatCurrency(earnings, settings.currencySymbol)}
+                      </span>
+                    </div>
                   </div>
+
                   {budgetPercent !== null && project.estimatedHours && (
-                    <div className="mt-3 space-y-1">
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <div className="pt-2 border-t border-[var(--border-subtle)]">
+                      <div className="flex items-center justify-between text-[13px] font-medium text-[var(--text-olive)] mb-2">
                         <span>Budget</span>
                         <span>
                           {totalHours.toFixed(1)} / {project.estimatedHours}h
                         </span>
                       </div>
-                      <div
-                        className={`h-2 w-full overflow-hidden rounded-full ${getBudgetTrackColor(
-                          budgetPercent
-                        )}`}
-                      >
-                        <div
-                          className={`h-full rounded-full transition-all ${getBudgetColor(
-                            budgetPercent
-                          )}`}
-                          style={{
-                            width: `${Math.min(budgetPercent, 100)}%`,
-                          }}
-                        />
-                      </div>
+                      <ProgressBar 
+                        value={budgetPercent} 
+                        className="h-1.5"
+                        style={{"--accent-olive": project.color} as React.CSSProperties}
+                      />
                     </div>
                   )}
-                </CardContent>
+                </div>
               </Card>
             );
           })}

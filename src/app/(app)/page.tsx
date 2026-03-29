@@ -14,6 +14,9 @@ import { Clock, Calendar, TrendingUp, FolderKanban, Play } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TimeEntryRow } from "@/components/ui/time-entry-row";
+import { ProgressBar } from "@/components/ui/progress-bar";
+import { StatCard } from "@/components/ui/stat-card";
 import { formatDuration, formatHours, formatCurrency } from "@/lib/earnings";
 import { useTimerStore } from "@/stores/timer-store";
 import { format } from "date-fns";
@@ -110,7 +113,7 @@ export default function DashboardPage() {
 
   if (!data) {
     return (
-      <div className="flex items-center justify-center h-64 text-muted-foreground">
+      <div className="flex items-center justify-center h-64 text-[var(--text-olive)]">
         Failed to load dashboard data.
       </div>
     );
@@ -122,43 +125,39 @@ export default function DashboardPage() {
       : 1;
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+    <div className="space-y-8 max-w-[1200px] mx-auto">
+      <h1 className="font-serif text-[28px] font-semibold text-[var(--text-forest)]">Dashboard</h1>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          icon={<Clock className="size-5 text-indigo-500" />}
+          icon={<Clock className="size-5" />}
           label="Today"
           hours={data.today.hours}
           earnings={data.today.earnings}
         />
         <SummaryCard
-          icon={<Calendar className="size-5 text-blue-500" />}
+          icon={<Calendar className="size-5" />}
           label="This Week"
           hours={data.thisWeek.hours}
           earnings={data.thisWeek.earnings}
         />
         <SummaryCard
-          icon={<TrendingUp className="size-5 text-emerald-500" />}
+          icon={<TrendingUp className="size-5" />}
           label="This Month"
           hours={data.thisMonth.hours}
           earnings={data.thisMonth.earnings}
         />
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <FolderKanban className="size-5 text-amber-500" />
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Active Projects
-              </CardTitle>
+        <StatCard
+          icon={<FolderKanban className="size-5" />}
+          title="Active Projects"
+          value={
+            <div>
+              <div className="text-3xl font-bold">{data.activeProjects}</div>
+              <p className="text-[13px] font-medium text-[var(--text-olive)] mt-1">projects</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{data.activeProjects}</div>
-            <p className="text-xs text-muted-foreground mt-1">projects</p>
-          </CardContent>
-        </Card>
+          }
+        />
       </div>
 
       {/* Earnings Trend + Top Projects */}
@@ -166,7 +165,7 @@ export default function DashboardPage() {
         {/* Earnings Trend Chart */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Earnings Trend (Last 30 Days)</CardTitle>
+            <CardTitle className="font-sans text-base">Earnings Trend (Last 30 Days)</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
@@ -174,33 +173,38 @@ export default function DashboardPage() {
                 <AreaChart data={data.earningsTrend}>
                   <defs>
                     <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4F46E5" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#4F46E5" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#2D6B5A" stopOpacity={0.15} />
+                      <stop offset="95%" stopColor="#2D6B5A" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(val: string) => format(new Date(val + "T00:00:00"), "MMM d")}
-                    tick={{ fontSize: 12 }}
-                    className="text-muted-foreground"
+                    tick={{ fill: "var(--text-olive)", fontSize: 12, fontFamily: "Inter" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dy={10}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     tickFormatter={(val: number) => `$${val}`}
-                    tick={{ fontSize: 12 }}
-                    className="text-muted-foreground"
+                    tick={{ fill: "var(--text-olive)", fontSize: 12, fontFamily: "Inter" }}
+                    axisLine={false}
+                    tickLine={false}
+                    dx={-10}
                     width={60}
                   />
                   <Tooltip
+                    cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1, strokeDasharray: "4 4" }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       return (
-                        <div className="rounded-lg bg-popover px-3 py-2 shadow-md ring-1 ring-foreground/10">
-                          <p className="text-xs text-muted-foreground">
+                        <div className="rounded-[var(--radius-lg)] bg-[var(--bg-cream)] px-4 py-3 shadow-[var(--shadow-dropdown)] border border-[var(--border-subtle)]">
+                          <p className="text-[13px] font-medium text-[var(--text-olive)] mb-1">
                             {format(new Date(label + "T00:00:00"), "MMM d, yyyy")}
                           </p>
-                          <p className="text-sm font-semibold">
+                          <p className="text-[15px] font-bold text-[var(--accent-teal)]">
                             {formatCurrency(payload[0].value as number)}
                           </p>
                         </div>
@@ -210,9 +214,10 @@ export default function DashboardPage() {
                   <Area
                     type="monotone"
                     dataKey="earnings"
-                    stroke="#4F46E5"
+                    stroke="#2D6B5A"
                     strokeWidth={2}
                     fill="url(#earningsGradient)"
+                    activeDot={{ r: 6, fill: "#2D6B5A", stroke: "var(--bg-cream)", strokeWidth: 2 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -223,41 +228,39 @@ export default function DashboardPage() {
         {/* Top Projects */}
         <Card>
           <CardHeader>
-            <CardTitle>Top Projects</CardTitle>
+            <CardTitle className="font-sans text-base">Top Projects</CardTitle>
           </CardHeader>
           <CardContent>
             {data.topProjects.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No project data yet.</p>
+              <p className="text-sm text-[var(--text-olive)]">No project data yet.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6 mt-2">
                 {data.topProjects.map((project) => (
-                  <div key={project.id} className="space-y-1.5">
+                  <div key={project.id} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <div className="flex items-center gap-2">
                         <span
                           className="size-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: project.color }}
                         />
-                        <span className="font-medium truncate max-w-[120px]">
+                        <span className="font-medium text-[var(--text-forest)] truncate max-w-[120px]">
                           {project.name}
                         </span>
                       </div>
-                      <div className="text-right text-xs text-muted-foreground">
+                      <div className="text-right text-[13px] font-medium text-[var(--text-olive)]">
                         <span>{formatHours(project.hours)}</span>
-                        <span className="ml-2 text-emerald-600 font-medium">
+                        <span className="ml-[6px] text-[var(--accent-teal)]">
                           {formatCurrency(project.earnings)}
                         </span>
                       </div>
                     </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all"
-                        style={{
-                          width: `${Math.max(2, (project.hours / maxProjectHours) * 100)}%`,
-                          backgroundColor: project.color,
-                        }}
-                      />
-                    </div>
+                    <ProgressBar 
+                      value={project.hours} 
+                      max={maxProjectHours} 
+                      className="h-1.5"
+                      indicatorClass=""
+                      style={{"--accent-olive": project.color} as React.CSSProperties}
+                    />
                   </div>
                 ))}
               </div>
@@ -269,56 +272,25 @@ export default function DashboardPage() {
       {/* Recent Entries */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Entries</CardTitle>
+          <CardTitle className="font-sans text-base">Recent Entries</CardTitle>
         </CardHeader>
         <CardContent>
           {data.recentEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No time entries yet. Start tracking!</p>
+            <p className="text-sm text-[var(--text-olive)]">No time entries yet. Start tracking!</p>
           ) : (
-            <div className="divide-y">
+            <div className="flex flex-col">
               {data.recentEntries.map((entry) => {
                 const duration = entry.duration || 0;
-                const rate = entry.project?.hourlyRate ?? 0;
-                const earnings = entry.billable ? (duration / 3600) * rate : 0;
-
+                
                 return (
-                  <div
+                  <TimeEntryRow
                     key={entry.id}
-                    className="flex items-center justify-between py-3 gap-4"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {entry.description || "(no description)"}
-                      </p>
-                      {entry.project && (
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <span
-                            className="size-2 rounded-full shrink-0"
-                            style={{ backgroundColor: entry.project.color }}
-                          />
-                          <span className="text-xs text-muted-foreground truncate">
-                            {entry.project.name}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="text-sm font-mono tabular-nums">
-                        {formatDuration(duration)}
-                      </span>
-                      <span className="text-sm font-medium text-emerald-600 w-20 text-right">
-                        {formatCurrency(earnings)}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => handleResume(entry)}
-                        title="Resume this entry"
-                      >
-                        <Play className="size-3.5" />
-                      </Button>
-                    </div>
-                  </div>
+                    description={entry.description || ""}
+                    projectName={entry.project?.name}
+                    projectColor={entry.project?.color}
+                    duration={formatDuration(duration)}
+                    onPlay={() => handleResume(entry)}
+                  />
                 );
               })}
             </div>
@@ -341,38 +313,34 @@ function SummaryCard({
   earnings: number;
 }) {
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center gap-2">
-          {icon}
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {label}
-          </CardTitle>
+    <StatCard
+      icon={icon}
+      title={label}
+      value={
+        <div>
+          <div className="text-3xl font-bold text-[var(--text-forest)]">{formatHours(hours)}</div>
+          <p className="text-[14px] font-semibold text-[var(--accent-olive)] mt-1">
+            {formatCurrency(earnings)}
+          </p>
         </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{formatHours(hours)}</div>
-        <p className="text-sm font-medium text-emerald-600 mt-1">
-          {formatCurrency(earnings)}
-        </p>
-      </CardContent>
-    </Card>
+      }
+    />
   );
 }
 
 function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
-      <Skeleton className="h-8 w-40" />
+    <div className="space-y-8 max-w-[1200px] mx-auto">
+      <Skeleton className="h-9 w-40 rounded-lg" />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
-              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24 rounded-md" />
             </CardHeader>
             <CardContent>
-              <Skeleton className="h-8 w-16 mb-2" />
-              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-20 mb-3 rounded-md" />
+              <Skeleton className="h-4 w-16 rounded-md" />
             </CardContent>
           </Card>
         ))}
@@ -380,21 +348,21 @@ function DashboardSkeleton() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-5 w-48 rounded-md" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-72 w-full" />
+            <Skeleton className="h-72 w-full rounded-lg" />
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-5 w-32 rounded-md" />
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6 mt-2">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="space-y-2">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-1.5 w-full" />
+                <Skeleton className="h-4 w-full rounded-md" />
+                <Skeleton className="h-1.5 w-full rounded-full" />
               </div>
             ))}
           </CardContent>
@@ -402,11 +370,11 @@ function DashboardSkeleton() {
       </div>
       <Card>
         <CardHeader>
-          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-5 w-32 rounded-md" />
         </CardHeader>
         <CardContent className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Skeleton key={i} className="h-12 w-full" />
+            <Skeleton key={i} className="h-[60px] w-full rounded-xl" />
           ))}
         </CardContent>
       </Card>

@@ -442,17 +442,20 @@ export default function ReportsPage() {
     ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-[1200px] mx-auto py-8 px-4 lg:px-0">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+        <div>
+          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">Reports</h1>
+          <p className="text-[15px] text-[var(--text-olive)]">Analyze your time and track your earnings.</p>
+        </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={exportCSV}>
+          <Button variant="outline" className="rounded-full shadow-sm text-[13px] h-[36px] px-4" onClick={exportCSV}>
             <Download className="size-3.5 mr-1.5" />
-            Export CSV
+            CSV
           </Button>
-          <Button variant="outline" size="sm" onClick={exportPDF}>
+          <Button variant="outline" className="rounded-full shadow-sm text-[13px] h-[36px] px-4" onClick={exportPDF}>
             <Download className="size-3.5 mr-1.5" />
-            Export PDF
+            PDF
           </Button>
         </div>
       </div>
@@ -468,7 +471,7 @@ export default function ReportsPage() {
               </label>
               <Select
                 value={datePreset}
-                onValueChange={(val) => val && setDatePreset(val as DatePreset)}
+                onValueChange={(val: string) => val && setDatePreset(val as DatePreset)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select range" />
@@ -625,7 +628,7 @@ export default function ReportsPage() {
               </label>
               <Select
                 value={billableFilter}
-                onValueChange={(val) =>
+                onValueChange={(val: string) =>
                   val && setBillableFilter(val as BillableFilter)
                 }
               >
@@ -650,7 +653,7 @@ export default function ReportsPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(val) => val && setActiveTab(val as string)}>
+      <Tabs value={activeTab} onValueChange={(val: string) => val && setActiveTab(val)}>
         <TabsList>
           <TabsTrigger value="summary">Summary</TabsTrigger>
           <TabsTrigger value="detailed">Detailed</TabsTrigger>
@@ -669,7 +672,8 @@ export default function ReportsPage() {
                 <Button
                   key={g}
                   variant={groupBy === g ? "default" : "outline"}
-                  size="xs"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
                   onClick={() => setGroupBy(g)}
                 >
                   {g.charAt(0).toUpperCase() + g.slice(1)}

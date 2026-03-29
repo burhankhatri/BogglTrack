@@ -207,15 +207,15 @@ export function GlobalTimerBar() {
   }, [entryId, stopTimer]);
 
   return (
-    <div className="sticky top-0 z-30 bg-background pt-4 pb-2 px-6 md:px-10 border-b border-border/30">
-      <div className="flex flex-col md:flex-row items-center gap-4 py-4 px-6 bg-card rounded-[24px] shadow-sm">
+    <div className="sticky top-0 z-30 bg-transparent pt-4 pb-2 px-4 md:px-6">
+      <div className="flex flex-col md:flex-row items-center gap-4 py-3 md:py-4 px-4 md:px-6 bg-[var(--bg-cream)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--border-subtle)]">
         {/* Description input */}
         <div className="flex-1 w-full relative">
           <Input
             placeholder="What are you working on?"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
+            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
             disabled={isRunning}
           />
         </div>
@@ -224,10 +224,12 @@ export function GlobalTimerBar() {
           {/* Project selector */}
           <Select
             value={projectId || ""}
-            onValueChange={(value) => setProjectId(value || null)}
-            disabled={isRunning}
+            onValueChange={(value: string) => setProjectId(value || null)}
           >
-            <SelectTrigger className="h-10 border-transparent bg-background/50 rounded-full shrink-0 font-medium">
+            <SelectTrigger 
+              className="h-10 border-transparent bg-[var(--bg-muted)]/50 rounded-full shrink-0 font-medium w-auto min-w-[120px]"
+              disabled={isRunning}
+            >
               <SelectValue placeholder="No project" />
             </SelectTrigger>
             <SelectContent>
@@ -253,7 +255,7 @@ export function GlobalTimerBar() {
             disabled={isRunning}
             className={cn(
               "shrink-0 h-10 w-10 p-0 rounded-full transition-colors",
-              billable ? "bg-primary/20 text-primary" : "text-muted-foreground"
+              billable ? "bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]" : "text-[var(--text-olive)]"
             )}
           >
             <DollarSign className="h-4 w-4" />
@@ -261,11 +263,11 @@ export function GlobalTimerBar() {
 
           {/* Elapsed time & earnings */}
           <div className="flex items-center gap-4 shrink-0 px-2 lg:px-6">
-            <span className="tabular-nums text-3xl font-medium tracking-tight">
+            <span className="tabular-nums text-3xl font-semibold tracking-tight text-[var(--text-forest)] font-sans">
               {formatElapsed(elapsedSeconds)}
             </span>
             {hourlyRate > 0 && (
-              <span className="text-xl text-primary font-medium tabular-nums ml-2">
+              <span className="text-xl text-[var(--accent-olive-hover)] font-medium tabular-nums ml-2 font-sans">
                 {formatEarnings(elapsedSeconds, hourlyRate)}
               </span>
             )}
@@ -276,8 +278,8 @@ export function GlobalTimerBar() {
             onClick={isRunning ? handleStop : handleStart}
             disabled={loading}
             className={cn(
-              "h-14 w-14 rounded-full flex items-center justify-center transition-all bg-primary hover:bg-accent text-foreground shadow-sm shrink-0",
-              isRunning && "bg-secondary text-foreground hover:bg-destructive/80"
+              "h-12 w-12 rounded-full flex items-center justify-center transition-all bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] shadow-[var(--shadow-card)] shrink-0",
+              isRunning && "bg-[var(--accent-coral)] text-[var(--text-cream)] hover:opacity-90"
             )}
           >
             {loading ? (
