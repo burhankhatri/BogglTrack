@@ -452,9 +452,18 @@ export default function TimerPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-4xl px-4 py-6 md:pt-6 space-y-8">
+      {/* Mobile Header */}
+      <div className="flex items-center justify-between md:hidden px-2 mb-2">
+        <h1 className="text-3xl font-serif text-foreground tracking-tight">Hello, Budi</h1>
+        <button className="h-10 w-10 flex items-center justify-center text-foreground hover:bg-muted rounded-full transition-colors">
+          {/* We import Bell inline or use Clock if not available, since Bell is not imported above */}
+          <span className="flex h-5 w-5 bg-foreground/20 rounded-full" />
+        </button>
+      </div>
+
       {/* Weekly summary bar */}
-      <Card className="px-6 py-4">
+      <Card className="px-6 py-4 shadow-sm border-transparent bg-card rounded-[20px]">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
             <Clock className="h-4 w-4" />
@@ -464,7 +473,7 @@ export default function TimerPage() {
             <span className="text-lg font-semibold tabular-nums">
               {weeklyHours.toFixed(1)} hrs
             </span>
-            <span className="text-lg font-semibold text-green-600 dark:text-green-400 tabular-nums">
+            <span className="text-lg font-semibold text-foreground tabular-nums">
               {formatCurrency(weeklyEarnings)}
             </span>
           </div>
@@ -472,37 +481,28 @@ export default function TimerPage() {
       </Card>
 
       {/* Timer / Manual tabs */}
-      <Tabs defaultValue="timer">
-        <TabsList className="w-full">
-          <TabsTrigger value="timer" className="flex-1">
-            <Clock className="mr-2 h-4 w-4" />
+      <Tabs defaultValue="timer" className="w-full relative z-10 px-2 lg:px-0">
+        <TabsList className="bg-transparent h-12 p-1 gap-1 border border-border/60 rounded-full w-full max-w-[400px]">
+          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-foreground data-[state=active]:text-card font-medium transition-colors">
             Timer
           </TabsTrigger>
-          <TabsTrigger value="manual" className="flex-1">
-            <Plus className="mr-2 h-4 w-4" />
+          <TabsTrigger value="manual" className="rounded-full w-1/2 text-muted-foreground font-medium hover:text-foreground transition-colors">
             Manual
           </TabsTrigger>
         </TabsList>
 
-        {/* Timer mode — the global timer bar handles this, show a hint */}
         <TabsContent value="timer">
-          <Card className="px-6 py-8 text-center text-muted-foreground">
-            <Clock className="mx-auto h-8 w-8 mb-3 opacity-50" />
-            <p className="text-sm">
-              Use the timer bar at the top of the page to start and stop time
-              tracking.
-            </p>
-          </Card>
+          {/* Hide this on mobile or just leave it */}
         </TabsContent>
 
-        {/* Manual mode */}
-        <TabsContent value="manual">
-          <Card className="px-6 py-5 space-y-4">
+        <TabsContent value="manual" className="mt-4">
+          <Card className="px-6 py-5 space-y-4 shadow-sm border-transparent bg-card rounded-[20px]">
             {/* Description */}
             <Input
               placeholder="What did you work on?"
               value={manualDescription}
               onChange={(e) => setManualDescription(e.target.value)}
+              className="bg-background/50 border-transparent rounded-xl"
             />
 
             {/* Date / Start / End row */}
@@ -515,6 +515,7 @@ export default function TimerPage() {
                   type="date"
                   value={manualDate}
                   onChange={(e) => setManualDate(e.target.value)}
+                  className="bg-background/50 border-transparent rounded-xl"
                 />
               </div>
               <div>
@@ -525,6 +526,7 @@ export default function TimerPage() {
                   type="time"
                   value={manualStartTime}
                   onChange={(e) => setManualStartTime(e.target.value)}
+                  className="bg-background/50 border-transparent rounded-xl"
                 />
               </div>
               <div>
@@ -535,6 +537,7 @@ export default function TimerPage() {
                   type="time"
                   value={manualEndTime}
                   onChange={(e) => setManualEndTime(e.target.value)}
+                  className="bg-background/50 border-transparent rounded-xl"
                 />
               </div>
             </div>
@@ -549,7 +552,7 @@ export default function TimerPage() {
                   value={manualProjectId}
                   onValueChange={(v) => v && setManualProjectId(v)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="bg-background/50 border-transparent rounded-xl">
                     <SelectValue placeholder="No project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -572,7 +575,7 @@ export default function TimerPage() {
               <Button
                 variant={manualBillable ? "default" : "outline"}
                 size="sm"
-                className="shrink-0 gap-1.5"
+                className={`shrink-0 gap-1.5 h-10 rounded-xl ${manualBillable ? "bg-primary text-foreground hover:bg-accent" : "border-border"}`}
                 onClick={() => setManualBillable(!manualBillable)}
               >
                 <DollarSign className="h-3.5 w-3.5" />
@@ -582,7 +585,7 @@ export default function TimerPage() {
 
             {/* Submit */}
             <Button
-              className="w-full"
+              className="w-full h-10 rounded-xl bg-foreground text-card hover:bg-foreground/90"
               onClick={handleManualAdd}
               disabled={manualSubmitting}
             >
@@ -594,219 +597,209 @@ export default function TimerPage() {
       </Tabs>
 
       {/* Time entry list grouped by day */}
-      <div className="space-y-6">
+      <div className="space-y-6 px-2 lg:px-0">
         {dayGroups.length === 0 && (
-          <Card className="px-6 py-12 text-center text-muted-foreground">
-            <p className="text-sm">No time entries yet. Start tracking!</p>
+          <Card className="px-6 py-12 text-center text-muted-foreground border-transparent shadow-sm bg-card rounded-[20px]">
+            <p className="text-sm">No time entries. Start tracking!</p>
           </Card>
         )}
 
         {dayGroups.map((group) => (
-          <div key={group.label}>
+          <div key={group.label} className="space-y-3">
             {/* Day header */}
-            <div className="flex items-center justify-between mb-2 px-1">
-              <h3 className="text-sm font-semibold text-foreground">
-                {group.label}
-              </h3>
-              <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                <span className="tabular-nums">
-                  {formatDurationHM(group.totalSeconds)}
-                </span>
-                <span className="text-green-600 dark:text-green-400 tabular-nums font-medium">
-                  {formatCurrency(group.totalEarnings)}
-                </span>
-              </div>
+            <div className="flex justify-between items-center mb-1">
+              <h2 className="text-lg font-medium text-foreground">{group.label}</h2>
+              <span className="tabular-nums font-mono text-muted-foreground font-medium">
+                {formatDurationHM(group.totalSeconds)}
+              </span>
             </div>
 
             {/* Entries */}
-            <Card className="divide-y">
-              {group.entries.map((entry) => {
-                const isEditing = editingId === entry.id;
-                const isDeleting = deletingId === entry.id;
-                const dur = entry.duration ?? 0;
-                const rate = getApplicableRate(
-                  entry.project?.hourlyRate ?? null,
-                  userDefaultRate
-                );
-                const earnings = calculateEarnings(dur, rate, entry.billable);
+            <Card className="border-transparent shadow-sm bg-card rounded-[20px] overflow-hidden">
+              <div className="flex flex-col">
+                {group.entries.map((entry, index) => {
+                  const isEditing = editingId === entry.id;
+                  const isDeleting = deletingId === entry.id;
+                  const dur = entry.duration ?? 0;
+                  const rate = getApplicableRate(
+                    entry.project?.hourlyRate ?? null,
+                    userDefaultRate
+                  );
+                  const earnings = calculateEarnings(dur, rate, entry.billable);
+                  const isLast = index === group.entries.length - 1;
 
-                return (
-                  <div
-                    key={entry.id}
-                    className="flex items-center gap-3 px-4 py-3 group"
-                  >
-                    {isEditing ? (
-                      /* ---- Inline edit mode ---- */
-                      <div className="flex-1 flex items-center gap-3 flex-wrap">
-                        <Input
-                          className="flex-1 min-w-[180px]"
-                          value={editDescription}
-                          onChange={(e) => setEditDescription(e.target.value)}
-                          placeholder="Description"
-                        />
-                        <Select
-                          value={editProjectId}
-                          onValueChange={(v) => v && setEditProjectId(v)}
-                        >
-                          <SelectTrigger className="w-[160px]">
-                            <SelectValue placeholder="No project" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value={NO_PROJECT}>
-                              No project
-                            </SelectItem>
-                            {projects.map((p) => (
-                              <SelectItem key={p.id} value={p.id}>
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                                    style={{ backgroundColor: p.color }}
-                                  />
-                                  {p.name}
-                                </div>
+                  // Define badge styles dynamically
+                  const defaultBadgeColor = "text-muted-foreground border-border bg-muted/50";
+                  
+                  return (
+                    <div
+                      key={entry.id}
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-5 hover:bg-muted/30 transition-colors group ${!isLast ? 'border-b border-border/50' : ''}`}
+                    >
+                      {isEditing ? (
+                        /* ---- Inline edit mode ---- */
+                        <div className="flex-1 flex items-center gap-3 flex-wrap">
+                          <Input
+                            className="flex-1 min-w-[180px] bg-background/50 border-transparent rounded-xl"
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Description"
+                          />
+                          <Select
+                            value={editProjectId}
+                            onValueChange={(v) => v && setEditProjectId(v)}
+                          >
+                            <SelectTrigger className="w-[160px] bg-background/50 border-transparent rounded-xl">
+                              <SelectValue placeholder="No project" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value={NO_PROJECT}>
+                                No project
                               </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          variant={editBillable ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setEditBillable(!editBillable)}
-                        >
-                          <DollarSign className="h-3.5 w-3.5" />
-                        </Button>
-                        <div className="flex items-center gap-1">
+                              {projects.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>
+                                  <div className="flex items-center gap-2">
+                                    <span
+                                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                                      style={{ backgroundColor: p.color }}
+                                    />
+                                    {p.name}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Button
-                            size="sm"
-                            onClick={() => saveEdit(entry.id)}
+                            variant={editBillable ? "default" : "outline"}
+                            size="icon"
+                            className={`h-9 w-9 rounded-full ${editBillable ? 'bg-primary text-foreground' : ''}`}
+                            onClick={() => setEditBillable(!editBillable)}
                           >
-                            <Check className="h-3.5 w-3.5" />
+                            <DollarSign className="h-4 w-4" />
                           </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={cancelEdit}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      /* ---- Normal display mode ---- */
-                      <>
-                        {/* Description + project + tags */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {entry.description || (
-                              <span className="text-muted-foreground italic">
-                                No description
-                              </span>
-                            )}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            {entry.project && (
-                              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                <span
-                                  className="h-2 w-2 rounded-full shrink-0"
-                                  style={{
-                                    backgroundColor: entry.project.color,
-                                  }}
-                                />
-                                <span>{entry.project.name}</span>
-                              </div>
-                            )}
-                            {entry.tags.map((t) => (
-                              <Badge
-                                key={t.tagId}
-                                variant="secondary"
-                                className="text-[10px] px-1.5 py-0"
-                                style={{
-                                  borderColor: t.tag.color,
-                                  color: t.tag.color,
-                                }}
-                              >
-                                {t.tag.name}
-                              </Badge>
-                            ))}
-                            {!entry.billable && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                Non-billable
-                              </Badge>
-                            )}
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 rounded-full"
+                              onClick={() => saveEdit(entry.id)}
+                            >
+                              <Check className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-9 w-9 text-destructive rounded-full"
+                              onClick={cancelEdit}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-
-                        {/* Duration */}
-                        <span className="text-sm font-mono tabular-nums text-muted-foreground shrink-0">
-                          {formatDuration(dur)}
-                        </span>
-
-                        {/* Earnings */}
-                        <span className="text-sm font-medium tabular-nums text-green-600 dark:text-green-400 w-20 text-right shrink-0">
-                          {formatCurrency(earnings)}
-                        </span>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => startEditing(entry)}
-                            title="Edit"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-
-                          {isDeleting ? (
-                            <div className="flex items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                className="h-7 text-xs"
-                                onClick={() => handleDelete(entry.id)}
-                              >
-                                Confirm
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 text-xs"
-                                onClick={() => setDeletingId(null)}
-                              >
-                                Cancel
-                              </Button>
+                      ) : (
+                        /* ---- Normal display mode ---- */
+                        <>
+                          {/* Left: Description + project + tags */}
+                          <div className="flex flex-col gap-1.5 flex-1 min-w-0 pr-4">
+                            <span className="text-base font-medium text-foreground leading-none truncate">
+                              {entry.description || "No description"}
+                            </span>
+                            
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                              {entry.project && (
+                                <Badge variant="outline" className={`font-medium px-2.5 py-0.5 text-[11px] rounded-full border-border bg-background/50 text-foreground`}>
+                                  <span
+                                    className="h-2 w-2 rounded-full inline-block mr-1.5"
+                                    style={{ backgroundColor: entry.project.color }}
+                                  />
+                                  {entry.project.name}
+                                </Badge>
+                              )}
+                              {entry.tags.map((t) => (
+                                <Badge
+                                  key={t.tagId}
+                                  variant="outline"
+                                  className="font-medium px-2.5 py-0.5 text-[11px] rounded-full border-border bg-background/50 text-foreground"
+                                >
+                                  {t.tag.name}
+                                </Badge>
+                              ))}
                             </div>
-                          ) : (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-destructive"
-                              onClick={() => setDeletingId(entry.id)}
-                              title="Delete"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
+                          </div>
 
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 text-green-600 dark:text-green-400"
-                            onClick={() => handleResume(entry)}
-                            title="Resume timer"
-                          >
-                            <Play className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
+                          {/* Right: Duration + Earnings + Play + Controls */}
+                          <div className="flex items-center justify-between sm:justify-end gap-3 mt-3 sm:mt-0">
+                            <div className="flex flex-col sm:items-end sm:mr-2">
+                              {/* Duration */}
+                              <span className="font-mono text-[15px] font-medium tracking-tight text-foreground/90">
+                                {formatDuration(dur)}
+                              </span>
+                              {/* Earnings */}
+                              {earnings > 0 && (
+                                <span className="text-[13px] font-medium tabular-nums text-muted-foreground mr-1">
+                                  {formatCurrency(earnings)}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {/* Hover actions (edit/delete) */}
+                              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity mr-1">
+                                {isDeleting ? (
+                                  <div className="flex items-center gap-1 bg-background rounded-full p-1 border shadow-sm absolute right-20 z-10">
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      className="h-7 text-xs rounded-full px-3"
+                                      onClick={() => handleDelete(entry.id)}
+                                    >
+                                      Confirm
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-7 text-xs rounded-full px-3"
+                                      onClick={() => setDeletingId(null)}
+                                    >
+                                      Cancel
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <button
+                                      className="h-8 w-8 text-muted-foreground hover:bg-muted hover:text-foreground rounded-full flex items-center justify-center transition-colors shadow-none"
+                                      onClick={() => startEditing(entry)}
+                                      title="Edit"
+                                    >
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </button>
+                                    <button
+                                      className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive rounded-full flex items-center justify-center transition-colors shadow-none"
+                                      onClick={() => setDeletingId(entry.id)}
+                                      title="Delete"
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+
+                              {/* Play Button */}
+                              <button 
+                                onClick={() => handleResume(entry)}
+                                className="h-9 w-9 bg-primary hover:bg-accent text-foreground rounded-full flex items-center justify-center transition-colors shadow-sm cursor-pointer shrink-0"
+                                title="Resume timer"
+                              >
+                                <Play className="h-4 w-4 fill-current ml-0.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </Card>
           </div>
         ))}

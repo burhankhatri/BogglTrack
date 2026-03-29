@@ -207,93 +207,88 @@ export function GlobalTimerBar() {
   }, [entryId, stopTimer]);
 
   return (
-    <div className="sticky top-0 z-30 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="flex items-center gap-3 px-4 py-3">
-        {/* Pulsing indicator */}
-        {isRunning && (
-          <span className="relative flex h-3 w-3 shrink-0">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500" />
-          </span>
-        )}
-
+    <div className="sticky top-0 z-30 bg-background pt-4 pb-2 px-6 md:px-10 border-b border-border/30">
+      <div className="flex flex-col md:flex-row items-center gap-4 py-4 px-6 bg-card rounded-[24px] shadow-sm">
         {/* Description input */}
-        <Input
-          placeholder="What are you working on?"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="flex-1 min-w-0"
-          disabled={isRunning}
-        />
+        <div className="flex-1 w-full relative">
+          <Input
+            placeholder="What are you working on?"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-muted-foreground/60"
+            disabled={isRunning}
+          />
+        </div>
 
-        {/* Project selector */}
-        <Select
-          value={projectId || ""}
-          onValueChange={(value) => setProjectId(value || null)}
-          disabled={isRunning}
-        >
-          <SelectTrigger className="w-[180px] shrink-0">
-            <SelectValue placeholder="No project" />
-          </SelectTrigger>
-          <SelectContent>
-            {projects.map((project) => (
-              <SelectItem key={project.id} value={project.id}>
-                <div className="flex items-center gap-2">
-                  <span
-                    className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ backgroundColor: project.color }}
-                  />
-                  {project.name}
-                </div>
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-3 w-full justify-between md:w-auto overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+          {/* Project selector */}
+          <Select
+            value={projectId || ""}
+            onValueChange={(value) => setProjectId(value || null)}
+            disabled={isRunning}
+          >
+            <SelectTrigger className="h-10 border-transparent bg-background/50 rounded-full shrink-0 font-medium">
+              <SelectValue placeholder="No project" />
+            </SelectTrigger>
+            <SelectContent>
+              {projects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className="h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ backgroundColor: project.color }}
+                    />
+                    {project.name}
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-        {/* Billable toggle */}
-        <Toggle
-          pressed={billable}
-          onPressedChange={setBillable}
-          aria-label="Toggle billable"
-          disabled={isRunning}
-          className={cn(
-            "shrink-0",
-            billable && "text-green-600 dark:text-green-400"
-          )}
-        >
-          <DollarSign className="h-4 w-4" />
-        </Toggle>
+          {/* Billable toggle */}
+          <Toggle
+            pressed={billable}
+            onPressedChange={setBillable}
+            aria-label="Toggle billable"
+            disabled={isRunning}
+            className={cn(
+              "shrink-0 h-10 w-10 p-0 rounded-full transition-colors",
+              billable ? "bg-primary/20 text-primary" : "text-muted-foreground"
+            )}
+          >
+            <DollarSign className="h-4 w-4" />
+          </Toggle>
 
-        {/* Elapsed time & earnings */}
-        {isRunning && (
-          <div className="flex items-center gap-3 shrink-0 font-mono text-sm">
-            <span className="tabular-nums font-semibold">
+          {/* Elapsed time & earnings */}
+          <div className="flex items-center gap-4 shrink-0 px-2 lg:px-6">
+            <span className="tabular-nums text-3xl font-medium tracking-tight">
               {formatElapsed(elapsedSeconds)}
             </span>
             {hourlyRate > 0 && (
-              <span className="text-green-600 dark:text-green-400 tabular-nums">
+              <span className="text-xl text-primary font-medium tabular-nums ml-2">
                 {formatEarnings(elapsedSeconds, hourlyRate)}
               </span>
             )}
           </div>
-        )}
 
-        {/* Start/Stop button */}
-        <Button
-          size="icon"
-          variant={isRunning ? "destructive" : "default"}
-          onClick={isRunning ? handleStop : handleStart}
-          disabled={loading}
-          className="shrink-0"
-        >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : isRunning ? (
-            <Square className="h-4 w-4" />
-          ) : (
-            <Play className="h-4 w-4" />
-          )}
-        </Button>
+          {/* Start/Stop button */}
+          <button
+            onClick={isRunning ? handleStop : handleStart}
+            disabled={loading}
+            className={cn(
+              "h-14 w-14 rounded-full flex items-center justify-center transition-all bg-primary hover:bg-accent text-foreground shadow-sm shrink-0",
+              isRunning && "bg-secondary text-foreground hover:bg-destructive/80"
+            )}
+          >
+            {loading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : isRunning ? (
+              <Square className="h-5 w-5 fill-current" />
+            ) : (
+              <Play className="h-5 w-5 ml-1 fill-current" />
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
