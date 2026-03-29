@@ -127,6 +127,18 @@ export function GlobalTimerBar() {
     };
   }, [isRunning, tick]);
 
+  // Update browser tab title with running timer
+  useEffect(() => {
+    if (isRunning) {
+      document.title = `${formatElapsed(elapsedSeconds)} - BogglTrack`;
+    } else {
+      document.title = "BogglTrack";
+    }
+    return () => {
+      document.title = "BogglTrack";
+    };
+  }, [isRunning, elapsedSeconds]);
+
   // Update hourly rate when project changes
   useEffect(() => {
     if (projectId) {
