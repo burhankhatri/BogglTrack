@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     const clientId = searchParams.get("clientId");
     const tagId = searchParams.get("tagId");
     const billable = searchParams.get("billable");
-    const limit = searchParams.get("limit");
-    const offset = searchParams.get("offset");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50") || 50, 200);
+    const offset = parseInt(searchParams.get("offset") || "0") || 0;
 
     const where: Record<string, unknown> = { userId: user.id };
 
@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: { startTime: "desc" },
-      ...(limit ? { take: parseInt(limit) } : {}),
-      ...(offset ? { skip: parseInt(offset) } : {}),
+      take: limit,
+      skip: offset,
     });
 
     return NextResponse.json(entries);
@@ -76,6 +76,18 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { description, startTime, endTime, projectId, billable, tagIds } = body;
+
+    const startDate = new Date(startTime);
+    if (isNaN(startDate.getTime())) {
+      return NextResponse.json({ error: "Invalid startTime" }, { status: 400 });
+    }
+
+    if (endTime) {
+      const endDate = new Date(endTime);
+      if (isNaN(endDate.getTime())) {
+        return NextResponse.json({ error: "Invalid endTime" }, { status: 400 });
+      }
+    }
 
     let duration: number | null = null;
     if (endTime && startTime) {

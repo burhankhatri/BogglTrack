@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
     const clientIds = searchParams.get("clientIds");
     const tagIds = searchParams.get("tagIds");
     const billable = searchParams.get("billable");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50") || 50, 200);
+    const offset = parseInt(searchParams.get("offset") || "0") || 0;
 
     const where: Record<string, unknown> = {
       userId: user.id,

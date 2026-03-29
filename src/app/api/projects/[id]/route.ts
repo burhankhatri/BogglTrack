@@ -80,9 +80,18 @@ export async function PATCH(
       );
     }
 
+    const { name, color, hourlyRate, estimatedHours, status, clientId } = body;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+    if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate;
+    if (estimatedHours !== undefined) updateData.estimatedHours = estimatedHours;
+    if (status !== undefined) updateData.status = status;
+    if (clientId !== undefined) updateData.clientId = clientId;
+
     const project = await prisma.project.update({
       where: { id },
-      data: body,
+      data: updateData,
       include: {
         client: true,
         _count: {

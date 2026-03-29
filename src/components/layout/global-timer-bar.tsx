@@ -180,30 +180,31 @@ export function GlobalTimerBar() {
       });
   }, [description, projectId, billable, projects, startTimer, setEntryId, stopTimer]);
 
-  const handleStop = useCallback(async () => {
+  const handleStop = useCallback(() => {
     if (!entryId) return;
     if (entryId.startsWith("temp-")) {
       toast.info("Still saving, try again in a moment");
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch(`/api/time-entries/${entryId}/stop`, {
-        method: "POST",
+
+    const stoppedEntryId = entryId;
+
+    // Stop UI immediately (optimistic)
+    stopTimer();
+    toast.success("Time entry saved");
+
+    // Save to server in background
+    fetch(`/api/time-entries/${stoppedEntryId}/stop`, {
+      method: "POST",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to save");
+        // Notify other components to refresh their data
+        window.dispatchEvent(new Event("timer-stopped"));
+      })
+      .catch(() => {
+        toast.error("Failed to save time entry");
       });
-
-      if (!res.ok) {
-        toast.error("Failed to stop timer");
-        return;
-      }
-
-      stopTimer();
-      toast.success("Time entry saved");
-    } catch {
-      toast.error("Failed to stop timer");
-    } finally {
-      setLoading(false);
-    }
   }, [entryId, stopTimer]);
 
   return (

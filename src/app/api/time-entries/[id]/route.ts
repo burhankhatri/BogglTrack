@@ -55,7 +55,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { tagIds, ...updateData } = body;
+    const { tagIds, description, startTime, endTime, billable, projectId } = body;
 
     // Verify ownership
     const existing = await prisma.timeEntry.findFirst({
@@ -69,20 +69,25 @@ export async function PATCH(
       );
     }
 
-    // Recompute duration if endTime is being updated
-    if (updateData.endTime) {
-      const startTime = updateData.startTime
-        ? new Date(updateData.startTime)
-        : existing.startTime;
-      const endTime = new Date(updateData.endTime);
-      updateData.duration = Math.floor(
-        (endTime.getTime() - startTime.getTime()) / 1000
-      );
-    }
+    // Build whitelisted update data
+    const updateData: Record<string, unknown> = {};
+    if (description !== undefined) updateData.description = description;
+    if (billable !== undefined) updateData.billable = billable;
+    if (projectId !== undefined) updateData.projectId = projectId;
 
-    // Convert date strings to Date objects
-    if (updateData.startTime) updateData.startTime = new Date(updateData.startTime);
-    if (updateData.endTime) updateData.endTime = new Date(updateData.endTime);
+    // Handle date fields and recompute duration
+    if (startTime !== undefined) updateData.startTime = new Date(startTime);
+    if (endTime !== undefined) updateData.endTime = new Date(endTime);
+
+    if (startTime !== undefined || endTime !== undefined) {
+      const resolvedStart = startTime ? new Date(startTime) : existing.startTime;
+      const resolvedEnd = endTime ? new Date(endTime) : existing.endTime;
+      if (resolvedEnd) {
+        updateData.duration = Math.floor(
+          (resolvedEnd.getTime() - resolvedStart.getTime()) / 1000
+        );
+      }
+    }
 
     // Handle tag updates
     if (tagIds !== undefined) {

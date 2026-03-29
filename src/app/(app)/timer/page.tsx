@@ -216,7 +216,14 @@ export default function TimerPage() {
       }
     }
     init();
-  }, [fetchEntries, fetchWeeklySummary]);
+
+    const handleTimerStopped = () => {
+      fetchEntries();
+      fetchWeeklySummary(userDefaultRate);
+    };
+    window.addEventListener("timer-stopped", handleTimerStopped);
+    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
+  }, [fetchEntries, fetchWeeklySummary, userDefaultRate]);
 
   // ---------------------------------------------------------------------------
   // Grouping entries by day

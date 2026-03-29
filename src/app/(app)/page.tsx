@@ -76,6 +76,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboard();
+
+    const handleTimerStopped = () => fetchDashboard();
+    window.addEventListener("timer-stopped", handleTimerStopped);
+    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
   }, [fetchDashboard]);
 
   const handleResume = async (entry: RecentEntry) => {

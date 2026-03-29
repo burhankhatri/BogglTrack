@@ -64,9 +64,14 @@ export async function PATCH(
       );
     }
 
+    const { name, color } = body;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (color !== undefined) updateData.color = color;
+
     const tag = await prisma.tag.update({
       where: { id },
-      data: body,
+      data: updateData,
       include: {
         _count: {
           select: { timeEntries: true },

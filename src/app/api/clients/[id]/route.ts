@@ -65,9 +65,15 @@ export async function PATCH(
       );
     }
 
+    const { name, email, notes } = body;
+    const updateData: Record<string, unknown> = {};
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (notes !== undefined) updateData.notes = notes;
+
     const client = await prisma.client.update({
       where: { id },
-      data: body,
+      data: updateData,
       include: {
         _count: {
           select: { projects: true },

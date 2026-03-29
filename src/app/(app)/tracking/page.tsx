@@ -132,6 +132,10 @@ export default function TrackingPage() {
 
   useEffect(() => {
     fetchEntries();
+
+    const handleTimerStopped = () => fetchEntries();
+    window.addEventListener("timer-stopped", handleTimerStopped);
+    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
   }, [fetchEntries]);
 
   if (loading) {
