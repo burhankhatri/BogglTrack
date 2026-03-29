@@ -1,14 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDefaultUser } from "@/lib/user";
+import { getAuthUser } from "@/lib/user";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
-    const user = await getDefaultUser();
 
     const entry = await prisma.timeEntry.findFirst({
       where: { id, userId: user.id },
@@ -43,9 +47,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
-    const user = await getDefaultUser();
     const body = await request.json();
     const { tagIds, ...updateData } = body;
 
@@ -119,9 +127,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const { id } = await params;
-    const user = await getDefaultUser();
 
     const existing = await prisma.timeEntry.findFirst({
       where: { id, userId: user.id },

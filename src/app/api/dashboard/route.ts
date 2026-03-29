@@ -1,12 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDefaultUser } from "@/lib/user";
+import { getAuthUser } from "@/lib/user";
 import { getApplicableRate, calculateEarnings } from "@/lib/earnings";
 import { startOfDay, startOfWeek, startOfMonth, subDays } from "date-fns";
 
 export async function GET() {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const user = await getDefaultUser();
     const now = new Date();
 
     const todayStart = startOfDay(now);

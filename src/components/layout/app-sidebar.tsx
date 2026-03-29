@@ -12,8 +12,11 @@ import {
   Tags,
   BarChart3,
   Settings,
+  LogOut,
 } from "lucide-react";
 
+import { authClient } from "@/lib/auth/client";
+import { useRouter } from "next/navigation";
 import {
   Sidebar,
   SidebarContent,
@@ -38,6 +41,12 @@ const navItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    router.push("/sign-in");
+  };
 
   return (
     <Sidebar className="border-r border-border/50 bg-card">
@@ -91,6 +100,15 @@ export function AppSidebar() {
             >
               <Settings className="h-5 w-5 mr-3" />
               <span>Settings</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={handleSignOut}
+              className="h-11 px-4 text-[15px] font-medium rounded-xl text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+              <LogOut className="h-5 w-5 mr-3" />
+              <span>Sign out</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

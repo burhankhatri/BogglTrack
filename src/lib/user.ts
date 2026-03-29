@@ -1,11 +1,29 @@
 import { prisma } from "./prisma";
+import { auth } from "./auth/server";
 
-export async function getDefaultUser() {
-  let user = await prisma.user.findFirst();
+export async function getAuthUser() {
+  const { data: session } = await auth.getSession();
+
+  if (!session?.user) {
+    return null;
+  }
+
+  const authUser = session.user;
+
+  // Find or create app user linked to the Neon Auth user
+  let user = await prisma.user.findFirst({
+    where: { email: authUser.email },
+  });
+
   if (!user) {
     user = await prisma.user.create({
-      data: { name: "Freelancer", defaultHourlyRate: 50 },
+      data: {
+        name: authUser.name || "Freelancer",
+        email: authUser.email,
+        defaultHourlyRate: 50,
+      },
     });
   }
+
   return user;
 }

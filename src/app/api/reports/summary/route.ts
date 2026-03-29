@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDefaultUser } from "@/lib/user";
+import { getAuthUser } from "@/lib/user";
 import { getApplicableRate, calculateEarnings } from "@/lib/earnings";
 
 export async function GET(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const user = await getDefaultUser();
     const searchParams = request.nextUrl.searchParams;
 
     const from = searchParams.get("from");

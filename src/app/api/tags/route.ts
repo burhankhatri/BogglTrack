@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getDefaultUser } from "@/lib/user";
+import { getAuthUser } from "@/lib/user";
 
 export async function GET() {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const user = await getDefaultUser();
 
     const tags = await prisma.tag.findMany({
       where: { userId: user.id },
@@ -32,8 +36,12 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
-    const user = await getDefaultUser();
     const body = await request.json();
     const { name, color } = body;
 

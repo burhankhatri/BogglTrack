@@ -4,11 +4,6 @@ import "./globals.css";
 
 import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { SidebarProvider } from "@/components/ui/sidebar";
-import { SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/layout/app-sidebar";
-import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
-import { GlobalTimerBar } from "@/components/layout/global-timer-bar";
 import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({
@@ -36,14 +31,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col font-[family-name:var(--font-inter)] bg-background text-foreground">
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <TooltipProvider>
-            <SidebarProvider>
-              <AppSidebar />
-              <SidebarInset>
-                <GlobalTimerBar />
-                <main className="flex-1 p-6 pb-24 md:pb-6">{children}</main>
-                <MobileTabBar />
-              </SidebarInset>
-            </SidebarProvider>
+            {children}
           </TooltipProvider>
           <Toaster />
         </ThemeProvider>
