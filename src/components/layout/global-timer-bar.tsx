@@ -205,13 +205,16 @@ export function GlobalTimerBar() {
     stopTimer();
     toast.success("Time entry saved");
 
+    // Notify other components to refresh their data immediately
+    window.dispatchEvent(new Event("timer-stopped"));
+
     // Save to server in background
     fetch(`/api/time-entries/${stoppedEntryId}/stop`, {
       method: "POST",
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to save");
-        // Notify other components to refresh their data
+        // Refresh again after API confirms endTime is set
         window.dispatchEvent(new Event("timer-stopped"));
       })
       .catch(() => {
@@ -228,6 +231,9 @@ export function GlobalTimerBar() {
             placeholder="What are you working on?"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !isRunning) handleStart();
+            }}
             className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-2 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
             disabled={isRunning}
           />

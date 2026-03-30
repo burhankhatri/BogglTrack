@@ -639,65 +639,76 @@ export default function TimerPage() {
                       className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-[var(--bg-sage)]/30 transition-colors group ${!isLast ? 'border-b border-[var(--border-subtle)]' : ''}`}
                     >
                       {isEditing ? (
-                        /* ---- Inline edit mode ---- */
-                        <div className="flex-1 flex items-center gap-3 flex-wrap">
-                          <Input
-                            className="flex-1 min-w-[180px] bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-[15px]"
-                            value={editDescription}
-                            onChange={(e) => setEditDescription(e.target.value)}
-                            placeholder="Description"
-                          />
-                          <Select
-                            value={editProjectId}
-                            onValueChange={(v: string) => v && setEditProjectId(v)}
-                          >
-                            <SelectTrigger className="w-[180px] bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10">
-                              <SelectValue placeholder="No project" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={NO_PROJECT}>
-                                No project
-                              </SelectItem>
-                              {projects.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  <div className="flex items-center gap-2">
-                                    <span
-                                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                                      style={{ backgroundColor: p.color }}
-                                    />
-                                    {p.name}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Button
-                            variant={editBillable ? "default" : "outline"}
-                            size="icon"
-                            className={`h-[40px] w-[40px] rounded-[var(--radius-lg)] shadow-sm shrink-0 ${editBillable ? 'bg-[var(--accent-olive)] text-[var(--text-forest)]' : 'border-[var(--border-subtle)] text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
-                            onClick={() => setEditBillable(!editBillable)}
-                          >
-                            <DollarSign className="h-[18px] w-[18px]" />
-                          </Button>
-                          <div className="flex items-center gap-1.5 ml-auto">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-[40px] w-[40px] rounded-full hover:bg-[var(--accent-olive)]/30 hover:text-[var(--text-forest)]"
-                              onClick={() => saveEdit(entry.id)}
-                            >
-                              <Check className="h-5 w-5" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-[40px] w-[40px] text-[var(--accent-coral)] rounded-full hover:bg-[var(--accent-coral)]/10"
-                              onClick={cancelEdit}
-                            >
-                              <X className="h-5 w-5" />
-                            </Button>
+                        /* ---- Inline edit mode (matches normal two-column layout) ---- */
+                        <>
+                          {/* Left: Editable description + project + billable */}
+                          <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
+                            <Input
+                              className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-8 font-sans text-[15px] font-medium px-2 -ml-2"
+                              value={editDescription}
+                              onChange={(e) => setEditDescription(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") saveEdit(entry.id);
+                                if (e.key === "Escape") cancelEdit();
+                              }}
+                              placeholder="Description"
+                              autoFocus
+                            />
+                            <div className="flex items-center gap-2 mt-1">
+                              <Select
+                                value={editProjectId}
+                                onValueChange={(v: string) => v && setEditProjectId(v)}
+                              >
+                                <SelectTrigger className="w-[160px] h-7 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[12px]">
+                                  <SelectValue placeholder="No project" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={NO_PROJECT}>No project</SelectItem>
+                                  {projects.map((p) => (
+                                    <SelectItem key={p.id} value={p.id}>
+                                      <div className="flex items-center gap-2">
+                                        <span
+                                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                                          style={{ backgroundColor: p.color }}
+                                        />
+                                        {p.name}
+                                      </div>
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <button
+                                className={`h-7 w-7 rounded-[var(--radius-md)] flex items-center justify-center transition-colors ${editBillable ? 'bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]' : 'text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
+                                onClick={() => setEditBillable(!editBillable)}
+                                title={editBillable ? "Billable" : "Non-billable"}
+                              >
+                                <DollarSign className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
-                        </div>
+
+                          {/* Right: Save/Cancel buttons */}
+                          <div className="flex items-center justify-between sm:justify-end gap-4 mt-3 sm:mt-0">
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9 rounded-full hover:bg-[var(--accent-olive)]/30 hover:text-[var(--text-forest)]"
+                                onClick={() => saveEdit(entry.id)}
+                              >
+                                <Check className="h-5 w-5" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-9 w-9 text-[var(--accent-coral)] rounded-full hover:bg-[var(--accent-coral)]/10"
+                                onClick={cancelEdit}
+                              >
+                                <X className="h-5 w-5" />
+                              </Button>
+                            </div>
+                          </div>
+                        </>
                       ) : (
                         /* ---- Normal display mode ---- */
                         <>
@@ -751,13 +762,13 @@ export default function TimerPage() {
 
                             <div className="flex items-center gap-1.5 ml-2">
                               {/* Hover actions (edit/delete) */}
-                              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <div className={`flex items-center gap-1 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}>
                                 {isDeleting ? (
-                                  <div className="flex items-center gap-1 bg-[var(--bg-cream)] rounded-[var(--radius-lg)] p-1 border border-[var(--border-subtle)] shadow-[var(--shadow-dropdown)] absolute right-24 z-10 transition-all">
+                                  <>
                                     <Button
                                       size="sm"
                                       variant="destructive"
-                                      className="h-8 text-[12px] rounded-[var(--radius-md)] px-3 bg-[var(--accent-coral)] text-[var(--text-cream)] hover:bg-[#d66a6a]"
+                                      className="h-9 text-[12px] rounded-[var(--radius-lg)] px-3 bg-[var(--accent-coral)] text-[var(--text-cream)] hover:bg-[#d66a6a]"
                                       onClick={() => handleDelete(entry.id)}
                                     >
                                       Delete
@@ -765,12 +776,12 @@ export default function TimerPage() {
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      className="h-8 text-[12px] rounded-[var(--radius-md)] px-3 text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
+                                      className="h-9 text-[12px] rounded-[var(--radius-lg)] px-3 text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
                                       onClick={() => setDeletingId(null)}
                                     >
                                       Cancel
                                     </Button>
-                                  </div>
+                                  </>
                                 ) : (
                                   <>
                                     <button
