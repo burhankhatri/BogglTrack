@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 
@@ -37,8 +37,10 @@ function formatCurrency(amount: number): string {
 }
 
 export default function ClientsPage() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const clients = useAppStore((s) => s.pageClients.data);
+  const storeLoading = useAppStore((s) => s.pageClients.loading);
+  const fetchPageClients = useAppStore((s) => s.fetchPageClients);
+  const loading = storeLoading && !clients;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
@@ -49,22 +51,9 @@ export default function ClientsPage() {
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
 
-  const fetchClients = useCallback(async () => {
-    try {
-      const res = await fetch("/api/clients");
-      if (!res.ok) throw new Error("Failed to fetch clients");
-      const data = await res.json();
-      setClients(data);
-    } catch {
-      toast.error("Failed to load clients");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+    fetchPageClients();
+  }, [fetchPageClients]);
 
   function openCreateDialog() {
     setEditingClient(null);
@@ -96,25 +85,56 @@ export default function ClientsPage() {
     setSaving(true);
     try {
       if (editingClient) {
+        // Optimistic update
+        const patch = { name: name.trim(), email: email.trim() || null, notes: notes.trim() || null };
+        useAppStore.getState().optimisticUpdatePageClients((prev) =>
+          prev.map((c) => (c.id === editingClient.id ? { ...c, ...patch } : c))
+        );
+        setDialogOpen(false);
+        toast.success("Client updated");
+
         const res = await fetch(`/api/clients/${editingClient.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), email: email.trim() || null, notes: notes.trim() || null }),
+          body: JSON.stringify(patch),
         });
-        if (!res.ok) throw new Error("Failed to update client");
-        toast.success("Client updated");
+        if (!res.ok) {
+          fetchPageClients(true); // rollback
+          throw new Error("Failed to update client");
+        }
+        useAppStore.getState().invalidate("clients");
       } else {
+        const tempId = "temp-" + Date.now();
+        const tempClient: Client = {
+          id: tempId,
+          name: name.trim(),
+          email: email.trim() || null,
+          notes: notes.trim() || null,
+          projectCount: 0,
+          totalHours: 0,
+          totalEarnings: 0,
+        };
+        useAppStore.getState().optimisticUpdatePageClients((prev) => [tempClient, ...prev]);
+        setDialogOpen(false);
+        toast.success("Client created");
+
         const res = await fetch("/api/clients", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: name.trim(), email: email.trim() || null, notes: notes.trim() || null }),
         });
-        if (!res.ok) throw new Error("Failed to create client");
-        toast.success("Client created");
+        if (!res.ok) {
+          useAppStore.getState().optimisticUpdatePageClients((prev) =>
+            prev.filter((c) => c.id !== tempId)
+          );
+          throw new Error("Failed to create client");
+        }
+        const real = await res.json();
+        useAppStore.getState().optimisticUpdatePageClients((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...real } : c))
+        );
+        useAppStore.getState().invalidate("clients");
       }
-      setDialogOpen(false);
-      fetchClients();
-      useAppStore.getState().invalidate("clients");
     } catch {
       toast.error(editingClient ? "Failed to update client" : "Failed to create client");
     } finally {
@@ -125,19 +145,23 @@ export default function ClientsPage() {
   async function handleDelete() {
     if (!deletingClient) return;
 
-    setSaving(true);
+    // Optimistic delete
+    useAppStore.getState().optimisticUpdatePageClients((prev) =>
+      prev.filter((c) => c.id !== deletingClient.id)
+    );
+    setDeleteDialogOpen(false);
+    setDeletingClient(null);
+    toast.success("Client deleted");
+
     try {
       const res = await fetch(`/api/clients/${deletingClient.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete client");
-      toast.success("Client deleted");
-      setDeleteDialogOpen(false);
-      setDeletingClient(null);
-      fetchClients();
+      if (!res.ok) {
+        fetchPageClients(true); // rollback
+        throw new Error("Failed to delete client");
+      }
       useAppStore.getState().invalidate("clients");
     } catch {
       toast.error("Failed to delete client");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -206,13 +230,21 @@ export default function ClientsPage() {
       </Dialog>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-[15px] text-[var(--text-olive)] flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full border-2 border-[var(--text-olive)] border-t-transparent animate-spin" />
-            Loading clients...
+        <div className="rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] overflow-hidden shadow-[var(--shadow-card)]">
+          <div className="space-y-0">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="flex items-center gap-4 px-6 py-4 border-b border-[var(--border-subtle)] last:border-b-0 animate-pulse">
+                <div className="h-4 w-32 rounded bg-[var(--bg-muted)]" />
+                <div className="h-4 w-40 rounded bg-[var(--bg-muted)]" />
+                <div className="flex-1" />
+                <div className="h-4 w-12 rounded bg-[var(--bg-muted)]" />
+                <div className="h-4 w-16 rounded bg-[var(--bg-muted)]" />
+                <div className="h-4 w-20 rounded bg-[var(--bg-muted)]" />
+              </div>
+            ))}
           </div>
         </div>
-      ) : clients.length === 0 ? (
+      ) : (!clients || clients.length === 0) ? (
         <div className="flex flex-col items-center justify-center rounded-[var(--radius-xl)] border border-[var(--border-subtle)] border-dashed bg-[var(--bg-cream)] py-20 text-center shadow-sm">
           <div className="size-14 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-4">
             <Users className="size-6 text-[var(--accent-olive)]" />
@@ -241,7 +273,7 @@ export default function ClientsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--border-subtle)]">
-                {clients.map((client) => (
+                {(clients ?? []).map((client) => (
                   <tr key={client.id} className="hover:bg-[var(--bg-muted)]/30 transition-colors group">
                     <td className="px-6 py-4 font-medium text-[var(--text-forest)]">{client.name}</td>
                     <td className="px-6 py-4 text-[var(--text-olive)]">

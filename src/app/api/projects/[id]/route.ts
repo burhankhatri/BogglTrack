@@ -97,10 +97,25 @@ export async function PATCH(
         _count: {
           select: { timeEntries: true },
         },
+        timeEntries: {
+          select: { duration: true },
+          where: { duration: { not: null } },
+        },
       },
     });
 
-    return NextResponse.json(project);
+    const totalDuration = project.timeEntries.reduce(
+      (sum, entry) => sum + (entry.duration || 0),
+      0
+    );
+    const entryCount = project._count.timeEntries;
+    const { timeEntries, ...rest } = project;
+
+    return NextResponse.json({
+      ...rest,
+      totalDuration,
+      entryCount,
+    });
   } catch (error) {
     console.error("Failed to update project:", error);
     return NextResponse.json(

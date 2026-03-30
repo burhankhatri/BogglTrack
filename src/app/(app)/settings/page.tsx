@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Settings, Save, User, Clock, CreditCard, Palette } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
@@ -34,25 +34,24 @@ interface UserSettings {
 }
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [loading, setLoading] = useState(true);
+  const storeSettings = useAppStore((s) => s.settings.data);
+  const fetchStoreSettings = useAppStore((s) => s.fetchSettings);
+  const [settings, setSettings] = useState<UserSettings | null>(storeSettings);
+  const [loading, setLoading] = useState(!storeSettings);
   const [saving, setSaving] = useState(false);
   const { setTheme } = useTheme();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [defaultHourlyRate, setDefaultHourlyRate] = useState("");
-  const [currency, setCurrency] = useState("USD");
-  const [dateFormat, setDateFormat] = useState("MM/dd/yyyy");
-  const [timeFormat, setTimeFormat] = useState("24h");
-  const [weekStartDay, setWeekStartDay] = useState("monday");
-  const [themeValue, setThemeValue] = useState("system");
+  const [name, setName] = useState(storeSettings?.name ?? "");
+  const [email, setEmail] = useState(storeSettings?.email ?? "");
+  const [defaultHourlyRate, setDefaultHourlyRate] = useState(String(storeSettings?.defaultHourlyRate ?? ""));
+  const [currency, setCurrency] = useState(storeSettings?.currency ?? "USD");
+  const [dateFormat, setDateFormat] = useState(storeSettings?.dateFormat ?? "MM/dd/yyyy");
+  const [timeFormat, setTimeFormat] = useState(storeSettings?.timeFormat ?? "24h");
+  const [weekStartDay, setWeekStartDay] = useState(storeSettings?.weekStartDay ?? "monday");
+  const [themeValue, setThemeValue] = useState(storeSettings?.theme ?? "system");
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch("/api/settings");
-      if (!res.ok) throw new Error("Failed to fetch settings");
-      const data: UserSettings = await res.json();
+  useEffect(() => {
+    fetchStoreSettings().then((data) => {
       setSettings(data);
       setName(data.name);
       setEmail(data.email || "");
@@ -62,16 +61,12 @@ export default function SettingsPage() {
       setTimeFormat(data.timeFormat);
       setWeekStartDay(data.weekStartDay);
       setThemeValue(data.theme);
-    } catch {
-      toast.error("Failed to load settings");
-    } finally {
       setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    }).catch(() => {
+      toast.error("Failed to load settings");
+      setLoading(false);
+    });
+  }, [fetchStoreSettings]);
 
   function handleCurrencyChange(code: string | null) {
     if (code) setCurrency(code);

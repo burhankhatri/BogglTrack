@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
 import {
   AreaChart,
   Area,
@@ -19,17 +19,8 @@ import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatDuration, formatHours, formatCurrency } from "@/lib/earnings";
 import { useTimerStore } from "@/stores/timer-store";
+import { useAppStore } from "@/stores/app-store";
 import { format } from "date-fns";
-
-interface DashboardData {
-  today: { hours: number; earnings: number };
-  thisWeek: { hours: number; earnings: number };
-  thisMonth: { hours: number; earnings: number };
-  activeProjects: number;
-  recentEntries: RecentEntry[];
-  earningsTrend: { date: string; earnings: number }[];
-  topProjects: TopProject[];
-}
 
 interface RecentEntry {
   id: string;
@@ -57,31 +48,24 @@ interface TopProject {
 }
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const data = useAppStore((s) => s.dashboard.data);
+  const loading = useAppStore((s) => s.dashboard.loading) && !data;
+  const fetchDashboard = useAppStore((s) => s.fetchDashboard);
   const startTimer = useTimerStore((s) => s.startTimer);
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      const res = await fetch("/api/dashboard");
-      if (!res.ok) throw new Error("Failed to fetch");
-      const json = await res.json();
-      setData(json);
-    } catch (err) {
-      console.error("Dashboard fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   useEffect(() => {
     fetchDashboard();
 
     // Refresh dashboard after timer entry is confirmed by API
-    const handleConfirmed = () => fetchDashboard();
+    const handleConfirmed = () => fetchDashboard(true);
+    // Also handle optimistic update for immediate feedback
+    const handleCompleted = () => fetchDashboard(true);
     window.addEventListener("timer-entry-confirmed", handleConfirmed);
-    return () =>
+    window.addEventListener("timer-entry-completed", handleCompleted);
+    return () => {
       window.removeEventListener("timer-entry-confirmed", handleConfirmed);
+      window.removeEventListener("timer-entry-completed", handleCompleted);
+    };
   }, [fetchDashboard]);
 
   const handleResume = async (entry: RecentEntry) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, Tags } from "lucide-react";
 import { toast } from "sonner";
 
@@ -28,8 +28,10 @@ interface Tag {
 }
 
 export default function TagsPage() {
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [loading, setLoading] = useState(true);
+  const tags = useAppStore((s) => s.pageTags.data);
+  const storeLoading = useAppStore((s) => s.pageTags.loading);
+  const fetchPageTags = useAppStore((s) => s.fetchPageTags);
+  const loading = storeLoading && !tags;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
@@ -39,22 +41,9 @@ export default function TagsPage() {
   const [name, setName] = useState("");
   const [color, setColor] = useState(TAG_COLORS[0]);
 
-  const fetchTags = useCallback(async () => {
-    try {
-      const res = await fetch("/api/tags");
-      if (!res.ok) throw new Error("Failed to fetch tags");
-      const data = await res.json();
-      setTags(data);
-    } catch {
-      toast.error("Failed to load tags");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    fetchTags();
-  }, [fetchTags]);
+    fetchPageTags();
+  }, [fetchPageTags]);
 
   function openCreateDialog() {
     setEditingTag(null);
@@ -84,25 +73,47 @@ export default function TagsPage() {
     setSaving(true);
     try {
       if (editingTag) {
+        const patch = { name: name.trim(), color };
+        useAppStore.getState().optimisticUpdatePageTags((prev) =>
+          prev.map((t) => (t.id === editingTag.id ? { ...t, ...patch } : t))
+        );
+        setDialogOpen(false);
+        toast.success("Tag updated");
+
         const res = await fetch(`/api/tags/${editingTag.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim(), color }),
+          body: JSON.stringify(patch),
         });
-        if (!res.ok) throw new Error("Failed to update tag");
-        toast.success("Tag updated");
+        if (!res.ok) {
+          fetchPageTags(true);
+          throw new Error("Failed to update tag");
+        }
+        useAppStore.getState().invalidate("tags");
       } else {
+        const tempId = "temp-" + Date.now();
+        const tempTag: Tag = { id: tempId, name: name.trim(), color, usageCount: 0 };
+        useAppStore.getState().optimisticUpdatePageTags((prev) => [tempTag, ...prev]);
+        setDialogOpen(false);
+        toast.success("Tag created");
+
         const res = await fetch("/api/tags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name: name.trim(), color }),
         });
-        if (!res.ok) throw new Error("Failed to create tag");
-        toast.success("Tag created");
+        if (!res.ok) {
+          useAppStore.getState().optimisticUpdatePageTags((prev) =>
+            prev.filter((t) => t.id !== tempId)
+          );
+          throw new Error("Failed to create tag");
+        }
+        const real = await res.json();
+        useAppStore.getState().optimisticUpdatePageTags((prev) =>
+          prev.map((t) => (t.id === tempId ? { ...real } : t))
+        );
+        useAppStore.getState().invalidate("tags");
       }
-      setDialogOpen(false);
-      fetchTags();
-      useAppStore.getState().invalidate("tags");
     } catch {
       toast.error(editingTag ? "Failed to update tag" : "Failed to create tag");
     } finally {
@@ -113,19 +124,22 @@ export default function TagsPage() {
   async function handleDelete() {
     if (!deletingTag) return;
 
-    setSaving(true);
+    useAppStore.getState().optimisticUpdatePageTags((prev) =>
+      prev.filter((t) => t.id !== deletingTag.id)
+    );
+    setDeleteDialogOpen(false);
+    setDeletingTag(null);
+    toast.success("Tag deleted");
+
     try {
       const res = await fetch(`/api/tags/${deletingTag.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete tag");
-      toast.success("Tag deleted");
-      setDeleteDialogOpen(false);
-      setDeletingTag(null);
-      fetchTags();
+      if (!res.ok) {
+        fetchPageTags(true);
+        throw new Error("Failed to delete tag");
+      }
       useAppStore.getState().invalidate("tags");
     } catch {
       toast.error("Failed to delete tag");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -191,13 +205,16 @@ export default function TagsPage() {
       </Dialog>
 
       {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-[15px] text-[var(--text-olive)] flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full border-2 border-[var(--text-olive)] border-t-transparent animate-spin" />
-            Loading tags...
-          </div>
+        <div className="grid gap-3">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] px-5 py-4 animate-pulse">
+              <div className="h-4 w-4 rounded-full bg-[var(--bg-muted)]" />
+              <div className="h-4 w-24 rounded bg-[var(--bg-muted)]" />
+              <div className="h-5 w-16 rounded bg-[var(--bg-muted)]" />
+            </div>
+          ))}
         </div>
-      ) : tags.length === 0 ? (
+      ) : (!tags || tags.length === 0) ? (
         <div className="flex flex-col items-center justify-center rounded-[var(--radius-xl)] border border-[var(--border-subtle)] border-dashed bg-[var(--bg-cream)] py-20 text-center shadow-sm">
           <div className="size-14 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-4">
             <Tags className="size-6 text-[var(--accent-olive)]" />
@@ -213,7 +230,7 @@ export default function TagsPage() {
         </div>
       ) : (
         <div className="grid gap-3">
-          {tags.map((tag) => (
+          {(tags ?? []).map((tag) => (
             <div
               key={tag.id}
               className="flex items-center justify-between rounded-[var(--radius-xl)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] px-5 py-4 transition-colors hover:bg-[var(--bg-muted)]/30 group shadow-sm"

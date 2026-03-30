@@ -56,3 +56,33 @@
     font-family: var(--font-inter), system-ui, sans-serif;
   }
 }
+
+/* View Transitions — progressive enhancement for smooth page swaps */
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(page-content) {
+  animation: vt-fade-out 120ms ease-out;
+}
+
+::view-transition-new(page-content) {
+  animation: vt-fade-in 120ms ease-in;
+}
+
+@keyframes vt-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes vt-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Route progress bar animation */
+@keyframes route-progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; opacity: 0; }
+}

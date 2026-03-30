@@ -16,7 +16,6 @@ import {
   format,
   parseISO,
   startOfWeek,
-  endOfWeek,
   isSameDay,
   isToday,
   isYesterday,
@@ -109,15 +108,17 @@ const EMPTY_TAGS: Tag[] = [];
 // ---------------------------------------------------------------------------
 
 export default function TimerPage() {
-  // Data state
-  const [entries, setEntries] = useState<TimeEntry[]>([]);
+  // Data state — read from store for instant cached render
+  const storeEntries = useAppStore((s) => s.timerEntries.data);
+  const [entries, setEntries] = useState<TimeEntry[]>(storeEntries ?? []);
   const projects = (useAppStore((s) => s.projects.data) as Project[] | null) ?? EMPTY_PROJECTS;
   const tags = (useAppStore((s) => s.tags.data) as Tag[] | null) ?? EMPTY_TAGS;
   const settingsData = useAppStore((s) => s.settings.data);
   const userDefaultRate = settingsData?.defaultHourlyRate ?? 0;
   const [weeklyHours, setWeeklyHours] = useState(0);
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const storeLoading = useAppStore((s) => s.timerEntries.loading);
+  const [loading, setLoading] = useState(!storeEntries);
 
   // Manual entry form state
   const [manualDate, setManualDate] = useState(
@@ -146,62 +147,51 @@ export default function TimerPage() {
   // Data fetching
   // ---------------------------------------------------------------------------
 
-  const fetchEntries = useCallback(async () => {
-    try {
-      const res = await fetch("/api/time-entries?limit=50");
-      if (res.ok) {
-        const data: TimeEntry[] = await res.json();
-        setEntries(data);
-      }
-    } catch {
-      toast.error("Failed to load time entries");
-    }
-  }, []);
-
-  const fetchWeeklySummary = useCallback(
-    async (rate: number) => {
-      try {
-        const now = new Date();
-        const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-        const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-
-        const res = await fetch(
-          `/api/time-entries?from=${weekStart.toISOString()}&to=${weekEnd.toISOString()}`
-        );
-        if (res.ok) {
-          const data: TimeEntry[] = await res.json();
-          let totalSec = 0;
-          let totalEarn = 0;
-          for (const e of data) {
-            if (e.duration) {
-              totalSec += e.duration;
-              const r = getApplicableRate(e.project?.hourlyRate ?? null, rate);
-              totalEarn += calculateEarnings(e.duration, r, e.billable);
-            }
-          }
-          setWeeklyHours(totalSec / 3600);
-          setWeeklyEarnings(totalEarn);
+  // Compute weekly summary from entries (no separate API call)
+  const computeWeeklySummary = useCallback(
+    (entryList: TimeEntry[], rate: number) => {
+      const now = new Date();
+      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
+      let totalSec = 0;
+      let totalEarn = 0;
+      for (const e of entryList) {
+        if (e.duration && new Date(e.startTime) >= weekStart) {
+          totalSec += e.duration;
+          const r = getApplicableRate(e.project?.hourlyRate ?? null, rate);
+          totalEarn += calculateEarnings(e.duration, r, e.billable);
         }
-      } catch {
-        // Non-critical — fail silently
       }
+      setWeeklyHours(totalSec / 3600);
+      setWeeklyEarnings(totalEarn);
     },
     []
   );
 
+  const fetchEntries = useCallback(async () => {
+    try {
+      const data = await useAppStore.getState().fetchTimerEntries(true);
+      setEntries(data);
+      return data;
+    } catch {
+      toast.error("Failed to load time entries");
+      return [];
+    }
+  }, []);
+
   useEffect(() => {
     const appStore = useAppStore.getState();
     async function init() {
-      setLoading(true);
+      if (!storeEntries) setLoading(true);
       try {
-        const [, , settingsResult] = await Promise.all([
+        const [, , settingsResult, entriesResult] = await Promise.all([
           appStore.fetchProjects(),
           appStore.fetchTags(),
           appStore.fetchSettings(),
-          fetchEntries(),
+          appStore.fetchTimerEntries(),
         ]);
+        setEntries(entriesResult);
         const rate = settingsResult?.defaultHourlyRate ?? 0;
-        await fetchWeeklySummary(rate);
+        computeWeeklySummary(entriesResult, rate);
       } catch {
         toast.error("Failed to load data");
       } finally {
@@ -229,9 +219,13 @@ export default function TimerPage() {
       setEntries((prev) =>
         prev.map((entry) => (entry.id === confirmed.id ? confirmed : entry))
       );
-      fetchWeeklySummary(
-        useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
-      );
+      // Re-fetch entries and recompute weekly summary
+      fetchEntries().then((data) => {
+        computeWeeklySummary(
+          data,
+          useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
+        );
+      });
     };
     const handleFailed = (e: Event) => {
       const { id } = (e as CustomEvent).detail;
@@ -246,7 +240,7 @@ export default function TimerPage() {
       window.removeEventListener("timer-entry-confirmed", handleConfirmed);
       window.removeEventListener("timer-entry-failed", handleFailed);
     };
-  }, [fetchEntries, fetchWeeklySummary]);
+  }, [fetchEntries, computeWeeklySummary]);
 
   // ---------------------------------------------------------------------------
   // Grouping entries by day
@@ -338,7 +332,8 @@ export default function TimerPage() {
       setManualProjectId(NO_PROJECT);
       setManualBillable(true);
 
-      await Promise.all([fetchEntries(), fetchWeeklySummary(userDefaultRate)]);
+      const refreshed = await fetchEntries();
+      computeWeeklySummary(refreshed, userDefaultRate);
     } catch {
       toast.error("Failed to create entry");
     } finally {
@@ -377,7 +372,8 @@ export default function TimerPage() {
 
       toast.success("Entry updated");
       setEditingId(null);
-      await Promise.all([fetchEntries(), fetchWeeklySummary(userDefaultRate)]);
+      const refreshed = await fetchEntries();
+      computeWeeklySummary(refreshed, userDefaultRate);
     } catch {
       toast.error("Failed to update entry");
     }
@@ -404,7 +400,8 @@ export default function TimerPage() {
 
       toast.success("Entry deleted");
       setDeletingId(null);
-      await Promise.all([fetchEntries(), fetchWeeklySummary(userDefaultRate)]);
+      const refreshed = await fetchEntries();
+      computeWeeklySummary(refreshed, userDefaultRate);
     } catch {
       toast.error("Failed to delete entry");
     }
@@ -472,10 +469,20 @@ export default function TimerPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex items-center gap-3 text-[var(--text-olive)]">
-          <Clock className="h-5 w-5 animate-pulse" />
-          <span className="font-sans">Loading timer...</span>
+      <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-10 animate-pulse">
+        <div className="h-10 w-24 rounded-lg bg-[var(--bg-muted)] md:hidden" />
+        <div className="h-[72px] rounded-[var(--radius-xl)] bg-[var(--bg-muted)]" />
+        <div className="h-12 w-[400px] rounded-full bg-[var(--bg-muted)]" />
+        <div className="space-y-8">
+          {[1, 2].map((i) => (
+            <div key={i} className="space-y-4">
+              <div className="flex justify-between">
+                <div className="h-5 w-40 rounded bg-[var(--bg-muted)]" />
+                <div className="h-5 w-16 rounded bg-[var(--bg-muted)]" />
+              </div>
+              <div className="h-32 rounded-[var(--radius-xl)] bg-[var(--bg-muted)]" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -682,7 +689,7 @@ export default function TimerPage() {
                                 value={editProjectId}
                                 onValueChange={(v: string) => v && setEditProjectId(v)}
                               >
-                                <SelectTrigger className="w-[160px] h-7 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[12px]">
+                                <SelectTrigger className="w-[200px] h-8 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[13px]">
                                   <SelectValue placeholder="No project" />
                                 </SelectTrigger>
                                 <SelectContent>

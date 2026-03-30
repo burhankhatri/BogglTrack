@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useMemo } from "react";
 import { parseISO, isSameDay, isToday, isYesterday, format } from "date-fns";
-import { Clock, Loader2 } from "lucide-react";
+import { Clock } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDuration } from "@/lib/earnings";
+import { useAppStore } from "@/stores/app-store";
 
 interface Project {
   id: string;
@@ -114,36 +116,37 @@ function groupEntries(entries: TimeEntry[]): DayGroup[] {
 }
 
 export default function TrackingPage() {
-  const [dayGroups, setDayGroups] = useState<DayGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const entries = useAppStore((s) => s.trackingEntries.data);
+  const storeLoading = useAppStore((s) => s.trackingEntries.loading);
+  const fetchTrackingEntries = useAppStore((s) => s.fetchTrackingEntries);
+  const loading = storeLoading && !entries;
 
-  const fetchEntries = useCallback(async () => {
-    try {
-      const res = await fetch("/api/time-entries?limit=200");
-      if (!res.ok) throw new Error("Failed to fetch");
-      const entries: TimeEntry[] = await res.json();
-      setDayGroups(groupEntries(entries));
-    } catch {
-      // Silently fail
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const dayGroups = useMemo(() => (entries ? groupEntries(entries) : []), [entries]);
 
   useEffect(() => {
-    fetchEntries();
+    fetchTrackingEntries();
 
-    // Listen for confirmed entry (API has set endTime + duration)
-    const handleConfirmed = () => fetchEntries();
+    const handleConfirmed = () => fetchTrackingEntries(true);
     window.addEventListener("timer-entry-confirmed", handleConfirmed);
     return () =>
       window.removeEventListener("timer-entry-confirmed", handleConfirmed);
-  }, [fetchEntries]);
+  }, [fetchTrackingEntries]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-32 rounded-lg" />
+        <div className="space-y-4">
+          {[1, 2, 3].map((i) => (
+            <div key={i}>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-16" />
+              </div>
+              <Skeleton className="h-24 w-full rounded-xl" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   }

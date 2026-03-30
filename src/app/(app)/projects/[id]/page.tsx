@@ -31,8 +31,16 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
+import { PROJECT_COLORS } from "@/lib/constants";
 
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -103,7 +111,14 @@ export default function ProjectDetailPage() {
   // Edit state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editColor, setEditColor] = useState("");
+  const [editClientId, setEditClientId] = useState<string | null>(null);
+  const [editHourlyRate, setEditHourlyRate] = useState("");
+  const [editEstimatedHours, setEditEstimatedHours] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Clients for the edit dropdown
+  const clients = (useAppStore((s) => s.clients.data) ?? []) as { id: string; name: string }[];
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -132,25 +147,20 @@ export default function ProjectDetailPage() {
     }
   }, [projectId]);
 
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch("/api/settings");
-      if (!res.ok) throw new Error("Failed to fetch settings");
-      const data = await res.json();
-      setSettings({
-        defaultHourlyRate: data.defaultHourlyRate,
-        currencySymbol: data.currencySymbol,
-      });
-    } catch {
-      toast.error("Failed to load settings");
-    }
-  }, []);
-
   useEffect(() => {
-    Promise.all([fetchProject(), fetchEntries(), fetchSettings()]).finally(() =>
-      setLoading(false)
-    );
-  }, [fetchProject, fetchEntries, fetchSettings]);
+    const appStore = useAppStore.getState();
+    Promise.all([
+      fetchProject(),
+      fetchEntries(),
+      appStore.fetchSettings().then((data) => {
+        setSettings({
+          defaultHourlyRate: data.defaultHourlyRate,
+          currencySymbol: data.currencySymbol,
+        });
+      }),
+      appStore.fetchClients(),
+    ]).finally(() => setLoading(false));
+  }, [fetchProject, fetchEntries]);
 
   const rate = project
     ? getApplicableRate(project.hourlyRate, settings.defaultHourlyRate)
@@ -189,19 +199,38 @@ export default function ProjectDetailPage() {
     });
   }, [entries]);
 
-  async function handleSaveName() {
+  function openEditDialog() {
+    if (!project) return;
+    setEditName(project.name);
+    setEditColor(project.color);
+    setEditClientId(project.client?.id ?? null);
+    setEditHourlyRate(project.hourlyRate != null ? String(project.hourlyRate) : "");
+    setEditEstimatedHours(project.estimatedHours != null ? String(project.estimatedHours) : "");
+    setEditDialogOpen(true);
+  }
+
+  async function handleSaveProject() {
     if (!editName.trim() || !project) return;
     setSaving(true);
     try {
+      const patch = {
+        name: editName.trim(),
+        color: editColor,
+        clientId: editClientId || null,
+        hourlyRate: editHourlyRate ? parseFloat(editHourlyRate) : null,
+        estimatedHours: editEstimatedHours ? parseFloat(editEstimatedHours) : null,
+      };
       const res = await fetch(`/api/projects/${project.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: editName.trim() }),
+        body: JSON.stringify(patch),
       });
       if (!res.ok) throw new Error("Failed to update");
-      setProject((prev) => (prev ? { ...prev, name: editName.trim() } : prev));
+      const updated = await res.json();
+      setProject(updated);
       setEditDialogOpen(false);
       useAppStore.getState().invalidate("projects");
+      useAppStore.getState().invalidate("pageProjects");
       toast.success("Project updated");
     } catch {
       toast.error("Failed to update project");
@@ -313,10 +342,7 @@ export default function ProjectDetailPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => {
-              setEditName(project.name);
-              setEditDialogOpen(true);
-            }}
+            onClick={openEditDialog}
             className="h-9 rounded-full px-4 text-[13px] border-[var(--border-subtle)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
           >
             <Pencil className="size-3.5 mr-1.5" />
@@ -490,39 +516,102 @@ export default function ProjectDetailPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-serif">Edit Project Name</DialogTitle>
+            <DialogTitle className="font-serif text-xl tracking-tight text-[var(--text-forest)]">Edit Project</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 pt-4">
+          <div className="space-y-5 pt-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-name">Name</Label>
+              <Label htmlFor="edit-name" className="text-[14px]">Name</Label>
               <Input
                 id="edit-name"
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveName();
+                  if (e.key === "Enter") handleSaveProject();
                 }}
                 className="rounded-[var(--radius-lg)] h-11"
               />
             </div>
-            <div className="flex justify-end gap-3">
-              <Button
-                variant="outline"
-                className="rounded-full h-10 px-5"
-                onClick={() => setEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                className="rounded-full h-10 px-5"
-                onClick={handleSaveName}
-                disabled={saving || !editName.trim()}
-              >
-                {saving ? "Saving..." : "Save Changes"}
-              </Button>
+
+            <div className="space-y-2">
+              <Label className="text-[14px]">Color</Label>
+              <div className="grid grid-cols-6 gap-3">
+                {PROJECT_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    className={`size-10 rounded-[var(--radius-md)] transition-all flex items-center justify-center ${
+                      editColor === c
+                        ? "ring-2 ring-offset-2 ring-offset-[var(--bg-cream)] ring-[var(--accent-olive)] scale-110"
+                        : "hover:scale-105"
+                    }`}
+                    style={{ backgroundColor: c }}
+                    onClick={() => setEditColor(c)}
+                    aria-label={`Select color ${c}`}
+                  />
+                ))}
+              </div>
             </div>
+
+            <div className="space-y-2">
+              <Label className="text-[14px]">Client</Label>
+              <Select
+                value={editClientId ?? ""}
+                onValueChange={(val: string) =>
+                  setEditClientId(val === "" ? null : val)
+                }
+              >
+                <SelectTrigger className="w-full rounded-[var(--radius-lg)] h-11">
+                  <SelectValue placeholder="No client" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">No client</SelectItem>
+                  {clients.map((client) => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-rate" className="text-[14px]">Hourly Rate</Label>
+                <Input
+                  id="edit-rate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder={`${settings.currencySymbol}0.00`}
+                  value={editHourlyRate}
+                  onChange={(e) => setEditHourlyRate(e.target.value)}
+                  className="rounded-[var(--radius-lg)] h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-hours" className="text-[14px]">Est. Hours</Label>
+                <Input
+                  id="edit-hours"
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  placeholder="0"
+                  value={editEstimatedHours}
+                  onChange={(e) => setEditEstimatedHours(e.target.value)}
+                  className="rounded-[var(--radius-lg)] h-11"
+                />
+              </div>
+            </div>
+
+            <Button
+              className="w-full rounded-full h-[44px] text-[15px] font-medium mt-2"
+              onClick={handleSaveProject}
+              disabled={saving || !editName.trim()}
+            >
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

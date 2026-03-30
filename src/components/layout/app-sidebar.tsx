@@ -18,6 +18,7 @@ import {
 import { authClient } from "@/lib/auth/client";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/stores/app-store";
 
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -32,6 +33,7 @@ const navItems = [
 export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const prefetchForRoute = useAppStore((s) => s.prefetchForRoute);
 
   const handleSignOut = async () => {
     await authClient.signOut();
@@ -60,10 +62,12 @@ export function AppSidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onMouseEnter={() => prefetchForRoute(item.href)}
+              onFocus={() => prefetchForRoute(item.href)}
               className={cn(
                 "flex items-center gap-3 h-11 px-4 text-[14px] font-medium rounded-xl transition-all",
-                isActive 
-                  ? "bg-[var(--accent-olive)]/20 text-[var(--text-forest)]" 
+                isActive
+                  ? "bg-[var(--accent-olive)]/20 text-[var(--text-forest)]"
                   : "text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)]"
               )}
             >
@@ -77,6 +81,8 @@ export function AppSidebar() {
       <div className="p-4 border-t border-[var(--border-subtle)] space-y-1">
         <Link
           href="/settings"
+          onMouseEnter={() => prefetchForRoute("/settings")}
+          onFocus={() => prefetchForRoute("/settings")}
           className="flex items-center gap-3 h-11 px-4 text-[14px] font-medium rounded-xl text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] transition-all"
         >
           <Settings className="h-5 w-5" />

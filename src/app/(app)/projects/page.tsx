@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Plus, FolderKanban } from "lucide-react";
 import { toast } from "sonner";
 
@@ -57,15 +57,16 @@ interface UserSettings {
 }
 
 export default function ProjectsPage() {
-  const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const projects = useAppStore((s) => s.pageProjects.data);
+  const fetchPageProjects = useAppStore((s) => s.fetchPageProjects);
   const clients = (useAppStore((s) => s.clients.data) ?? []) as Client[];
   const appSettings = useAppStore((s) => s.settings.data);
   const settings: UserSettings = {
     defaultHourlyRate: appSettings?.defaultHourlyRate ?? 0,
     currencySymbol: appSettings?.currencySymbol ?? "$",
   };
-  const [loading, setLoading] = useState(true);
+  const storeLoading = useAppStore((s) => s.pageProjects.loading);
+  const loading = storeLoading && !projects;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -76,25 +77,12 @@ export default function ProjectsPage() {
   const [hourlyRate, setHourlyRate] = useState("");
   const [estimatedHours, setEstimatedHours] = useState("");
 
-  const fetchProjects = useCallback(async () => {
-    try {
-      const res = await fetch("/api/projects");
-      if (!res.ok) throw new Error("Failed to fetch projects");
-      const data = await res.json();
-      setProjects(data);
-    } catch {
-      toast.error("Failed to load projects");
-    }
-  }, []);
-
   useEffect(() => {
     const appStore = useAppStore.getState();
-    Promise.all([
-      fetchProjects(),
-      appStore.fetchClients(),
-      appStore.fetchSettings(),
-    ]).finally(() => setLoading(false));
-  }, [fetchProjects]);
+    appStore.fetchPageProjects();
+    appStore.fetchClients();
+    appStore.fetchSettings();
+  }, []);
 
   function resetForm() {
     setName("");
@@ -110,7 +98,26 @@ export default function ProjectsPage() {
       return;
     }
 
-    setCreating(true);
+    const tempId = "temp-" + Date.now();
+    const matchedClient = clientId ? clients.find((c) => c.id === clientId) : null;
+    const tempProject: Project = {
+      id: tempId,
+      name: name.trim(),
+      color,
+      hourlyRate: hourlyRate ? parseFloat(hourlyRate) : null,
+      estimatedHours: estimatedHours ? parseFloat(estimatedHours) : null,
+      status: "active",
+      client: matchedClient ? { id: matchedClient.id, name: matchedClient.name } : null,
+      totalSeconds: 0,
+      _count: { timeEntries: 0 },
+    };
+
+    // Optimistic: add to store immediately
+    useAppStore.getState().optimisticUpdatePageProjects((prev) => [tempProject, ...prev]);
+    setDialogOpen(false);
+    resetForm();
+    toast.success("Project created");
+
     try {
       const res = await fetch("/api/projects", {
         method: "POST",
@@ -128,16 +135,18 @@ export default function ProjectsPage() {
 
       if (!res.ok) throw new Error("Failed to create project");
 
-      const newProject = await res.json();
-      setProjects((prev) => [newProject, ...prev]);
-      setDialogOpen(false);
-      resetForm();
+      const realProject = await res.json();
+      // Swap temp with real
+      useAppStore.getState().optimisticUpdatePageProjects((prev) =>
+        prev.map((p) => (p.id === tempId ? realProject : p))
+      );
       useAppStore.getState().invalidate("projects");
-      toast.success("Project created");
     } catch {
+      // Rollback
+      useAppStore.getState().optimisticUpdatePageProjects((prev) =>
+        prev.filter((p) => p.id !== tempId)
+      );
       toast.error("Failed to create project");
-    } finally {
-      setCreating(false);
     }
   }
 
@@ -283,7 +292,7 @@ export default function ProjectsPage() {
         </Dialog>
       </div>
 
-      {projects.length === 0 ? (
+      {(!projects || projects.length === 0) ? (
         <div className="flex flex-col items-center justify-center rounded-[var(--radius-xl)] border border-[var(--border-subtle)] border-dashed bg-[var(--bg-cream)] py-20 text-center shadow-sm">
           <div className="size-14 rounded-full bg-[var(--bg-muted)] flex items-center justify-center mb-4">
             <FolderKanban className="size-6 text-[var(--accent-olive)]" />
@@ -295,7 +304,7 @@ export default function ProjectsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => {
+          {(projects ?? []).map((project) => {
             const totalHours = project.totalSeconds / 3600;
             const rate = getApplicableRate(
               project.hourlyRate,
@@ -311,10 +320,9 @@ export default function ProjectsPage() {
               : null;
 
             return (
+              <Link key={project.id} href={`/projects/${project.id}`} className="block">
               <Card
-                key={project.id}
                 className="cursor-pointer transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 bg-[var(--bg-cream)] border-[var(--border-subtle)] shadow-[var(--shadow-card)] rounded-[var(--radius-xl)] p-5 flex flex-col"
-                onClick={() => router.push(`/projects/${project.id}`)}
               >
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3 w-full">
@@ -366,6 +374,7 @@ export default function ProjectsPage() {
                   )}
                 </div>
               </Card>
+              </Link>
             );
           })}
         </div>

@@ -15,29 +15,32 @@ export async function GET(request: NextRequest) {
     const where: Record<string, unknown> = { userId: user.id };
     if (status) where.status = status;
 
-    const projects = await prisma.project.findMany({
-      where,
-      include: {
-        client: true,
-        _count: {
-          select: { timeEntries: true },
+    const [projects, durations] = await Promise.all([
+      prisma.project.findMany({
+        where,
+        include: {
+          client: true,
+          _count: {
+            select: { timeEntries: true },
+          },
         },
-        timeEntries: {
-          select: { duration: true },
-          where: { duration: { not: null } },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.timeEntry.groupBy({
+        by: ["projectId"],
+        where: { userId: user.id, duration: { not: null } },
+        _sum: { duration: true },
+      }),
+    ]);
 
-    const result = projects.map((project) => {
-      const totalSeconds = project.timeEntries.reduce(
-        (sum, entry) => sum + (entry.duration || 0),
-        0
-      );
-      const { timeEntries, ...rest } = project;
-      return { ...rest, totalSeconds };
-    });
+    const durationMap = new Map(
+      durations.map((d) => [d.projectId, d._sum.duration ?? 0])
+    );
+
+    const result = projects.map((project) => ({
+      ...project,
+      totalSeconds: durationMap.get(project.id) ?? 0,
+    }));
 
     return NextResponse.json(result);
   } catch (error) {

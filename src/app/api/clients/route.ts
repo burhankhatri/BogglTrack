@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/user";
-import { getApplicableRate, calculateEarnings } from "@/lib/earnings";
 
 export async function GET() {
   const user = await getAuthUser();
@@ -14,17 +13,6 @@ export async function GET() {
     const clients = await prisma.client.findMany({
       where: { userId: user.id },
       include: {
-        projects: {
-          include: {
-            timeEntries: {
-              select: {
-                duration: true,
-                billable: true,
-              },
-              where: { duration: { not: null } },
-            },
-          },
-        },
         _count: {
           select: { projects: true },
         },
@@ -32,25 +20,36 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    const clientIds = clients.map((c) => c.id);
+
+    // Single SQL aggregation for all clients' time stats
+    const stats =
+      clientIds.length > 0
+        ? await prisma.$queryRaw<
+            { clientId: string; total_hours: number; total_earnings: number }[]
+          >`
+            SELECT p."clientId" as "clientId",
+                   COALESCE(SUM(te.duration), 0) as total_hours,
+                   COALESCE(SUM(CASE WHEN te.billable THEN te.duration * COALESCE(p."hourlyRate", ${user.defaultHourlyRate}) / 3600.0 ELSE 0 END), 0) as total_earnings
+            FROM "TimeEntry" te
+            JOIN "Project" p ON te."projectId" = p.id
+            WHERE p."clientId" = ANY(${clientIds})
+              AND te.duration IS NOT NULL
+            GROUP BY p."clientId"
+          `
+        : [];
+
+    const statsMap = new Map(
+      stats.map((s) => [s.clientId, { totalHours: Number(s.total_hours), totalEarnings: Math.round(Number(s.total_earnings) * 100) / 100 }])
+    );
+
     const result = clients.map((client) => {
-      let totalHours = 0;
-      let totalEarnings = 0;
-
-      client.projects.forEach((project) => {
-        const rate = getApplicableRate(project.hourlyRate, user.defaultHourlyRate);
-        project.timeEntries.forEach((entry) => {
-          const duration = entry.duration || 0;
-          totalHours += duration;
-          totalEarnings += calculateEarnings(duration, rate, entry.billable);
-        });
-      });
-
-      const { projects, ...rest } = client;
+      const s = statsMap.get(client.id);
       return {
-        ...rest,
+        ...client,
         projectCount: client._count.projects,
-        totalHours,
-        totalEarnings,
+        totalHours: s?.totalHours ?? 0,
+        totalEarnings: s?.totalEarnings ?? 0,
       };
     });
 

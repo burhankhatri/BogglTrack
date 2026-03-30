@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Clock, Calendar, LayoutDashboard, User, List } from "lucide-react";
+import { useAppStore } from "@/stores/app-store";
 
 const mobileTabs = [
   { title: "Home", href: "/", icon: LayoutDashboard },
@@ -13,6 +14,7 @@ const mobileTabs = [
 
 export function MobileTabBar() {
   const pathname = usePathname();
+  const prefetchForRoute = useAppStore((s) => s.prefetchForRoute);
 
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--bg-cream)] border-t border-[var(--border-subtle)] pb-safe z-50">
@@ -24,6 +26,8 @@ export function MobileTabBar() {
             <Link
               key={tab.href}
               href={tab.href}
+              onTouchStart={() => prefetchForRoute(tab.href)}
+              onMouseEnter={() => prefetchForRoute(tab.href)}
               className={`flex flex-col items-center justify-center gap-1 w-16 h-full transition-all relative ${
                 isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)] hover:text-[var(--text-forest)]"
               }`}
