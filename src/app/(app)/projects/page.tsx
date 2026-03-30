@@ -59,8 +59,7 @@ interface UserSettings {
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
-  const appClients = useAppStore((s) => s.clients.data) || [];
-  const clients = appClients as Client[];
+  const clients = (useAppStore((s) => s.clients.data) ?? []) as Client[];
   const appSettings = useAppStore((s) => s.settings.data);
   const settings: UserSettings = {
     defaultHourlyRate: appSettings?.defaultHourlyRate ?? 0,

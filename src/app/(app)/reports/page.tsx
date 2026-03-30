@@ -212,8 +212,8 @@ export default function ReportsPage() {
   const [billableFilter, setBillableFilter] = useState<BillableFilter>("all");
 
   // Reference data (from app store)
-  const projects = (useAppStore((s) => s.projects.data) || []) as Project[];
-  const clients = (useAppStore((s) => s.clients.data) || []) as Client[];
+  const projects = (useAppStore((s) => s.projects.data) ?? []) as Project[];
+  const clients = (useAppStore((s) => s.clients.data) ?? []) as Client[];
 
   // Tab data
   const [activeTab, setActiveTab] = useState<string>("summary");

@@ -101,6 +101,8 @@ interface DayGroup {
 // Helper: no-project sentinel value for Select
 // ---------------------------------------------------------------------------
 const NO_PROJECT = "__none__";
+const EMPTY_PROJECTS: Project[] = [];
+const EMPTY_TAGS: Tag[] = [];
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -109,8 +111,8 @@ const NO_PROJECT = "__none__";
 export default function TimerPage() {
   // Data state
   const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const projects = useAppStore((s) => s.projects.data) as Project[] || [];
-  const tags = useAppStore((s) => s.tags.data) as Tag[] || [];
+  const projects = (useAppStore((s) => s.projects.data) as Project[] | null) ?? EMPTY_PROJECTS;
+  const tags = (useAppStore((s) => s.tags.data) as Tag[] | null) ?? EMPTY_TAGS;
   const settingsData = useAppStore((s) => s.settings.data);
   const userDefaultRate = settingsData?.defaultHourlyRate ?? 0;
   const [weeklyHours, setWeeklyHours] = useState(0);

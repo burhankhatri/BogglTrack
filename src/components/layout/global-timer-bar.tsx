@@ -36,8 +36,10 @@ function formatEarnings(seconds: number, hourlyRate: number): string {
   return `$${earnings.toFixed(2)}`;
 }
 
+const EMPTY_PROJECTS: { id: string; name: string; color: string; hourlyRate: number | null }[] = [];
+
 export function GlobalTimerBar() {
-  const projects = useAppStore((s) => s.projects.data) || [];
+  const projects = useAppStore((s) => s.projects.data) ?? EMPTY_PROJECTS;
   const fetchProjects = useAppStore((s) => s.fetchProjects);
   const runningTimerChecked = useAppStore((s) => s.runningTimerChecked);
   const setRunningTimerChecked = useAppStore((s) => s.setRunningTimerChecked);
