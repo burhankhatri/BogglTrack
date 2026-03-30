@@ -32,6 +32,7 @@ import {
   formatCurrency,
   formatHours,
 } from "@/lib/earnings";
+import { useAppStore } from "@/stores/app-store";
 
 interface Client {
   id: string;
@@ -58,11 +59,13 @@ interface UserSettings {
 export default function ProjectsPage() {
   const router = useRouter();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [settings, setSettings] = useState<UserSettings>({
-    defaultHourlyRate: 0,
-    currencySymbol: "$",
-  });
+  const appClients = useAppStore((s) => s.clients.data) || [];
+  const clients = appClients as Client[];
+  const appSettings = useAppStore((s) => s.settings.data);
+  const settings: UserSettings = {
+    defaultHourlyRate: appSettings?.defaultHourlyRate ?? 0,
+    currencySymbol: appSettings?.currencySymbol ?? "$",
+  };
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -85,36 +88,14 @@ export default function ProjectsPage() {
     }
   }, []);
 
-  const fetchClients = useCallback(async () => {
-    try {
-      const res = await fetch("/api/clients");
-      if (!res.ok) throw new Error("Failed to fetch clients");
-      const data = await res.json();
-      setClients(data);
-    } catch {
-      toast.error("Failed to load clients");
-    }
-  }, []);
-
-  const fetchSettings = useCallback(async () => {
-    try {
-      const res = await fetch("/api/settings");
-      if (!res.ok) throw new Error("Failed to fetch settings");
-      const data = await res.json();
-      setSettings({
-        defaultHourlyRate: data.defaultHourlyRate,
-        currencySymbol: data.currencySymbol,
-      });
-    } catch {
-      toast.error("Failed to load settings");
-    }
-  }, []);
-
   useEffect(() => {
-    Promise.all([fetchProjects(), fetchClients(), fetchSettings()]).finally(
-      () => setLoading(false)
-    );
-  }, [fetchProjects, fetchClients, fetchSettings]);
+    const appStore = useAppStore.getState();
+    Promise.all([
+      fetchProjects(),
+      appStore.fetchClients(),
+      appStore.fetchSettings(),
+    ]).finally(() => setLoading(false));
+  }, [fetchProjects]);
 
   function resetForm() {
     setName("");
@@ -152,6 +133,7 @@ export default function ProjectsPage() {
       setProjects((prev) => [newProject, ...prev]);
       setDialogOpen(false);
       resetForm();
+      useAppStore.getState().invalidate("projects");
       toast.success("Project created");
     } catch {
       toast.error("Failed to create project");

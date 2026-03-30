@@ -19,6 +19,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CURRENCIES } from "@/lib/constants";
+import { useAppStore } from "@/stores/app-store";
 
 interface UserSettings {
   name: string;
@@ -106,6 +107,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error("Failed to save settings");
       const updated = await res.json();
       setSettings(updated);
+      useAppStore.getState().invalidate("settings");
       toast.success("Settings saved");
     } catch {
       toast.error("Failed to save settings");

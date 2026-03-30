@@ -133,9 +133,11 @@ export default function TrackingPage() {
   useEffect(() => {
     fetchEntries();
 
-    const handleTimerStopped = () => fetchEntries();
-    window.addEventListener("timer-stopped", handleTimerStopped);
-    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
+    // Listen for confirmed entry (API has set endTime + duration)
+    const handleConfirmed = () => fetchEntries();
+    window.addEventListener("timer-entry-confirmed", handleConfirmed);
+    return () =>
+      window.removeEventListener("timer-entry-confirmed", handleConfirmed);
   }, [fetchEntries]);
 
   if (loading) {

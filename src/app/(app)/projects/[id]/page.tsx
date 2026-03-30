@@ -34,6 +34,7 @@ import { Label } from "@/components/ui/label";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
 
+import { useAppStore } from "@/stores/app-store";
 import {
   getApplicableRate,
   calculateEarnings,
@@ -200,6 +201,7 @@ export default function ProjectDetailPage() {
       if (!res.ok) throw new Error("Failed to update");
       setProject((prev) => (prev ? { ...prev, name: editName.trim() } : prev));
       setEditDialogOpen(false);
+      useAppStore.getState().invalidate("projects");
       toast.success("Project updated");
     } catch {
       toast.error("Failed to update project");
@@ -219,6 +221,7 @@ export default function ProjectDetailPage() {
       });
       if (!res.ok) throw new Error("Failed to update status");
       setProject((prev) => (prev ? { ...prev, status: newStatus } : prev));
+      useAppStore.getState().invalidate("projects");
       toast.success(
         newStatus === "archived" ? "Project archived" : "Project reactivated"
       );
@@ -235,6 +238,7 @@ export default function ProjectDetailPage() {
         method: "DELETE",
       });
       if (!res.ok) throw new Error("Failed to delete");
+      useAppStore.getState().invalidate("projects");
       toast.success("Project deleted");
       router.push("/projects");
     } catch {

@@ -20,14 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Toggle } from "@/components/ui/toggle";
 import { useTimerStore } from "@/stores/timer-store";
+import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
-
-interface Project {
-  id: string;
-  name: string;
-  color: string;
-  hourlyRate: number | null;
-}
 
 function formatElapsed(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
@@ -43,7 +37,10 @@ function formatEarnings(seconds: number, hourlyRate: number): string {
 }
 
 export function GlobalTimerBar() {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const projects = useAppStore((s) => s.projects.data) || [];
+  const fetchProjects = useAppStore((s) => s.fetchProjects);
+  const runningTimerChecked = useAppStore((s) => s.runningTimerChecked);
+  const setRunningTimerChecked = useAppStore((s) => s.setRunningTimerChecked);
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -66,24 +63,14 @@ export function GlobalTimerBar() {
     restoreTimer,
   } = useTimerStore();
 
-  // Fetch projects
+  // Fetch projects via app store (cached / deduplicated)
   useEffect(() => {
-    async function fetchProjects() {
-      try {
-        const res = await fetch("/api/projects");
-        if (res.ok) {
-          const data = await res.json();
-          setProjects(data);
-        }
-      } catch {
-        // Projects fetch failed silently — not critical
-      }
-    }
     fetchProjects();
-  }, []);
+  }, [fetchProjects]);
 
-  // Check for running timer on mount
+  // Check for running timer — only once per session
   useEffect(() => {
+    if (runningTimerChecked) return;
     async function checkRunning() {
       try {
         const res = await fetch("/api/time-entries/running");
@@ -104,9 +91,10 @@ export function GlobalTimerBar() {
       } catch {
         // Running check failed silently
       }
+      setRunningTimerChecked();
     }
     checkRunning();
-  }, [restoreTimer]);
+  }, [runningTimerChecked, restoreTimer, setRunningTimerChecked]);
 
   // Tick interval
   useEffect(() => {
@@ -200,13 +188,35 @@ export function GlobalTimerBar() {
     }
 
     const stoppedEntryId = entryId;
+    const now = new Date();
 
-    // Stop UI immediately (optimistic)
+    // Capture timer state BEFORE clearing it
+    const timerState = useTimerStore.getState();
+    const proj = projects.find((p) => p.id === timerState.projectId) || null;
+
+    // Build a synthetic completed entry for optimistic insertion
+    const syntheticEntry = {
+      id: stoppedEntryId,
+      description: timerState.description,
+      startTime: timerState.startTime?.toISOString() || now.toISOString(),
+      endTime: now.toISOString(),
+      duration: timerState.elapsedSeconds,
+      billable: timerState.billable,
+      projectId: timerState.projectId,
+      project: proj
+        ? { id: proj.id, name: proj.name, color: proj.color, hourlyRate: proj.hourlyRate, client: null }
+        : null,
+      tags: [],
+    };
+
+    // Stop UI immediately
     stopTimer();
     toast.success("Time entry saved");
 
-    // Notify other components to refresh their data immediately
-    window.dispatchEvent(new Event("timer-stopped"));
+    // Dispatch synthetic entry so pages can insert it instantly
+    window.dispatchEvent(
+      new CustomEvent("timer-entry-completed", { detail: syntheticEntry })
+    );
 
     // Save to server in background
     fetch(`/api/time-entries/${stoppedEntryId}/stop`, {
@@ -214,13 +224,24 @@ export function GlobalTimerBar() {
     })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to save");
-        // Refresh again after API confirms endTime is set
-        window.dispatchEvent(new Event("timer-stopped"));
+        return res.json();
+      })
+      .then((confirmedEntry) => {
+        // Dispatch real entry from API to replace the synthetic one
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-confirmed", { detail: confirmedEntry })
+        );
       })
       .catch(() => {
         toast.error("Failed to save time entry");
+        // Remove the optimistic entry
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-failed", {
+            detail: { id: stoppedEntryId },
+          })
+        );
       });
-  }, [entryId, stopTimer]);
+  }, [entryId, stopTimer, projects]);
 
   return (
     <div className="sticky top-0 z-30 bg-transparent pt-4 pb-2 px-4 md:px-6">

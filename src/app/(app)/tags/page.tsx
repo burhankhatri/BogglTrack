@@ -15,6 +15,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { PROJECT_COLORS } from "@/lib/constants";
+import { useAppStore } from "@/stores/app-store";
 
 // Use the same colors we do for projects (or a nice earthy set)
 const TAG_COLORS = PROJECT_COLORS;
@@ -101,6 +102,7 @@ export default function TagsPage() {
       }
       setDialogOpen(false);
       fetchTags();
+      useAppStore.getState().invalidate("tags");
     } catch {
       toast.error(editingTag ? "Failed to update tag" : "Failed to create tag");
     } finally {
@@ -119,6 +121,7 @@ export default function TagsPage() {
       setDeleteDialogOpen(false);
       setDeletingTag(null);
       fetchTags();
+      useAppStore.getState().invalidate("tags");
     } catch {
       toast.error("Failed to delete tag");
     } finally {

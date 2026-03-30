@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAppStore } from "@/stores/app-store";
 
 interface Client {
   id: string;
@@ -113,6 +114,7 @@ export default function ClientsPage() {
       }
       setDialogOpen(false);
       fetchClients();
+      useAppStore.getState().invalidate("clients");
     } catch {
       toast.error(editingClient ? "Failed to update client" : "Failed to create client");
     } finally {
@@ -131,6 +133,7 @@ export default function ClientsPage() {
       setDeleteDialogOpen(false);
       setDeletingClient(null);
       fetchClients();
+      useAppStore.getState().invalidate("clients");
     } catch {
       toast.error("Failed to delete client");
     } finally {

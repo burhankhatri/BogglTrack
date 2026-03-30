@@ -53,6 +53,7 @@ import { Badge } from "@/components/ui/badge";
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { formatHours, formatCurrency, formatDuration } from "@/lib/earnings";
+import { useAppStore } from "@/stores/app-store";
 
 // ---- Types ----
 
@@ -210,9 +211,9 @@ export default function ReportsPage() {
   const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
   const [billableFilter, setBillableFilter] = useState<BillableFilter>("all");
 
-  // Reference data
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
+  // Reference data (from app store)
+  const projects = (useAppStore((s) => s.projects.data) || []) as Project[];
+  const clients = (useAppStore((s) => s.clients.data) || []) as Client[];
 
   // Tab data
   const [activeTab, setActiveTab] = useState<string>("summary");
@@ -230,15 +231,11 @@ export default function ReportsPage() {
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const pageSize = 20;
 
-  // Load reference data
+  // Load reference data via app store (cached / deduplicated)
   useEffect(() => {
-    Promise.all([
-      fetch("/api/projects").then((r) => r.json()),
-      fetch("/api/clients").then((r) => r.json()),
-    ]).then(([p, c]) => {
-      setProjects(Array.isArray(p) ? p : []);
-      setClients(Array.isArray(c) ? c : []);
-    });
+    const appStore = useAppStore.getState();
+    appStore.fetchProjects();
+    appStore.fetchClients();
   }, []);
 
   // Compute active date range

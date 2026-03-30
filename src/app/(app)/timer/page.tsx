@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/popover";
 
 import { useTimerStore } from "@/stores/timer-store";
+import { useAppStore } from "@/stores/app-store";
 import {
   formatDuration,
   formatCurrency,
@@ -108,9 +109,10 @@ const NO_PROJECT = "__none__";
 export default function TimerPage() {
   // Data state
   const [entries, setEntries] = useState<TimeEntry[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [userDefaultRate, setUserDefaultRate] = useState<number>(0);
+  const projects = useAppStore((s) => s.projects.data) as Project[] || [];
+  const tags = useAppStore((s) => s.tags.data) as Tag[] || [];
+  const settingsData = useAppStore((s) => s.settings.data);
+  const userDefaultRate = settingsData?.defaultHourlyRate ?? 0;
   const [weeklyHours, setWeeklyHours] = useState(0);
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -186,29 +188,18 @@ export default function TimerPage() {
   );
 
   useEffect(() => {
+    const appStore = useAppStore.getState();
     async function init() {
       setLoading(true);
       try {
-        const [settingsRes, projectsRes, tagsRes] = await Promise.all([
-          fetch("/api/settings"),
-          fetch("/api/projects"),
-          fetch("/api/tags"),
+        const [, , settingsResult] = await Promise.all([
+          appStore.fetchProjects(),
+          appStore.fetchTags(),
+          appStore.fetchSettings(),
+          fetchEntries(),
         ]);
-
-        let rate = 0;
-        if (settingsRes.ok) {
-          const settings = await settingsRes.json();
-          rate = settings.defaultHourlyRate ?? 0;
-          setUserDefaultRate(rate);
-        }
-        if (projectsRes.ok) {
-          setProjects(await projectsRes.json());
-        }
-        if (tagsRes.ok) {
-          setTags(await tagsRes.json());
-        }
-
-        await Promise.all([fetchEntries(), fetchWeeklySummary(rate)]);
+        const rate = settingsResult?.defaultHourlyRate ?? 0;
+        await fetchWeeklySummary(rate);
       } catch {
         toast.error("Failed to load data");
       } finally {
@@ -217,13 +208,43 @@ export default function TimerPage() {
     }
     init();
 
-    const handleTimerStopped = () => {
-      fetchEntries();
-      fetchWeeklySummary(userDefaultRate);
+    // Optimistic entry listeners
+    const handleCompleted = (e: Event) => {
+      const entry = (e as CustomEvent).detail;
+      setEntries((prev) => [entry, ...prev]);
+      if (entry.duration) {
+        setWeeklyHours((prev) => prev + entry.duration / 3600);
+        const rate = getApplicableRate(
+          entry.project?.hourlyRate ?? null,
+          useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
+        );
+        const earn = calculateEarnings(entry.duration, rate, entry.billable);
+        setWeeklyEarnings((prev) => prev + earn);
+      }
     };
-    window.addEventListener("timer-stopped", handleTimerStopped);
-    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
-  }, [fetchEntries, fetchWeeklySummary, userDefaultRate]);
+    const handleConfirmed = (e: Event) => {
+      const confirmed = (e as CustomEvent).detail;
+      setEntries((prev) =>
+        prev.map((entry) => (entry.id === confirmed.id ? confirmed : entry))
+      );
+      fetchWeeklySummary(
+        useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
+      );
+    };
+    const handleFailed = (e: Event) => {
+      const { id } = (e as CustomEvent).detail;
+      setEntries((prev) => prev.filter((entry) => entry.id !== id));
+    };
+
+    window.addEventListener("timer-entry-completed", handleCompleted);
+    window.addEventListener("timer-entry-confirmed", handleConfirmed);
+    window.addEventListener("timer-entry-failed", handleFailed);
+    return () => {
+      window.removeEventListener("timer-entry-completed", handleCompleted);
+      window.removeEventListener("timer-entry-confirmed", handleConfirmed);
+      window.removeEventListener("timer-entry-failed", handleFailed);
+    };
+  }, [fetchEntries, fetchWeeklySummary]);
 
   // ---------------------------------------------------------------------------
   // Grouping entries by day

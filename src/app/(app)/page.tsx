@@ -77,9 +77,11 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchDashboard();
 
-    const handleTimerStopped = () => fetchDashboard();
-    window.addEventListener("timer-stopped", handleTimerStopped);
-    return () => window.removeEventListener("timer-stopped", handleTimerStopped);
+    // Refresh dashboard after timer entry is confirmed by API
+    const handleConfirmed = () => fetchDashboard();
+    window.addEventListener("timer-entry-confirmed", handleConfirmed);
+    return () =>
+      window.removeEventListener("timer-entry-confirmed", handleConfirmed);
   }, [fetchDashboard]);
 
   const handleResume = async (entry: RecentEntry) => {
