@@ -147,7 +147,7 @@ const SelectItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
       <div
         ref={ref}
         className={cn(
-          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2 pl-8 pr-3 text-sm outline-none hover:bg-[var(--bg-muted)] transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "relative flex w-full cursor-pointer select-none items-center rounded-sm py-2.5 pl-8 pr-4 text-sm outline-none hover:bg-[var(--bg-muted)] transition-colors data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
           isSelected && "text-[var(--text-forest)] font-semibold bg-[var(--bg-muted)]/50",
           className
         )}

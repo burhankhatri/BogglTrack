@@ -848,8 +848,9 @@ export default function ReportsPage() {
                           current={sortField}
                           dir={sortDir}
                           onToggle={toggleSort}
+                          className="hidden md:table-cell"
                         />
-                        <TableHead>Tags</TableHead>
+                        <TableHead className="hidden lg:table-cell">Tags</TableHead>
                         <SortableHead
                           field="duration"
                           label="Duration"
@@ -874,7 +875,7 @@ export default function ReportsPage() {
                           <TableCell>
                             {format(new Date(e.startTime), "MMM d, yyyy")}
                           </TableCell>
-                          <TableCell className="max-w-[200px] truncate">
+                          <TableCell className="max-w-xs truncate">
                             {e.description || "(no description)"}
                           </TableCell>
                           <TableCell>
@@ -886,7 +887,7 @@ export default function ReportsPage() {
                                     backgroundColor: e.project.color,
                                   }}
                                 />
-                                <span className="truncate max-w-[120px]">
+                                <span className="truncate max-w-[200px]">
                                   {e.project.name}
                                 </span>
                               </div>
@@ -894,18 +895,18 @@ export default function ReportsPage() {
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden md:table-cell">
                             {e.project?.client?.name || (
                               <span className="text-muted-foreground">-</span>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden lg:table-cell">
                             <div className="flex flex-wrap gap-1">
                               {e.tags.map((t) => (
                                 <Badge
                                   key={t.tagId}
                                   variant="secondary"
-                                  className="text-[10px]"
+                                  className="text-xs"
                                 >
                                   {t.tag.name}
                                 </Badge>
@@ -1012,7 +1013,7 @@ export default function ReportsPage() {
                                       backgroundColor: row.projectColor,
                                     }}
                                   />
-                                  <span className="font-medium truncate max-w-[120px]">
+                                  <span className="font-medium truncate max-w-[200px]">
                                     {row.projectName}
                                   </span>
                                 </div>

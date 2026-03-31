@@ -262,7 +262,7 @@ export function GlobalTimerBar() {
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full justify-between md:w-auto overflow-x-auto pb-2 md:pb-0 no-scrollbar">
+        <div className="flex items-center gap-3 w-full justify-between md:w-auto flex-wrap">
           {/* Project selector */}
           <Select
             value={projectId || ""}

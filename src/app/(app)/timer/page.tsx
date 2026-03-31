@@ -674,7 +674,7 @@ export default function TimerPage() {
                           {/* Left: Editable description + project + billable */}
                           <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
                             <Input
-                              className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-8 font-sans text-[15px] font-medium px-2 -ml-2"
+                              className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-[15px] font-medium px-2 -ml-2"
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
                               onKeyDown={(e) => {
@@ -689,7 +689,7 @@ export default function TimerPage() {
                                 value={editProjectId}
                                 onValueChange={(v: string) => v && setEditProjectId(v)}
                               >
-                                <SelectTrigger className="w-[200px] h-8 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[13px]">
+                                <SelectTrigger className="w-[200px] h-9 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[13px]">
                                   <SelectValue placeholder="No project" />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -708,11 +708,11 @@ export default function TimerPage() {
                                 </SelectContent>
                               </Select>
                               <button
-                                className={`h-7 w-7 rounded-[var(--radius-md)] flex items-center justify-center transition-colors ${editBillable ? 'bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]' : 'text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
+                                className={`h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition-colors ${editBillable ? 'bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]' : 'text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
                                 onClick={() => setEditBillable(!editBillable)}
                                 title={editBillable ? "Billable" : "Non-billable"}
                               >
-                                <DollarSign className="h-3.5 w-3.5" />
+                                <DollarSign className="h-4 w-4" />
                               </button>
                             </div>
                           </div>
@@ -753,7 +753,7 @@ export default function TimerPage() {
                                 {entry.project && (
                                   <Badge 
                                     variant="outline" 
-                                    className="font-medium px-2.5 py-[2px] text-[12px] rounded-[var(--radius-md)] border-transparent"
+                                    className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-transparent"
                                     style={{ 
                                       color: entry.project.color,
                                       backgroundColor: `${entry.project.color}15`
@@ -766,7 +766,7 @@ export default function TimerPage() {
                                   <Badge
                                     key={t.tagId}
                                     variant="outline"
-                                    className="font-medium px-2.5 py-[2px] text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
+                                    className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
                                   >
                                     {t.tag.name}
                                   </Badge>
@@ -792,7 +792,7 @@ export default function TimerPage() {
 
                             <div className="flex items-center gap-1.5 ml-2">
                               {/* Hover actions (edit/delete) */}
-                              <div className={`flex items-center gap-1 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}>
+                              <div className={`flex items-center gap-1.5 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}>
                                 {isDeleting ? (
                                   <>
                                     <Button

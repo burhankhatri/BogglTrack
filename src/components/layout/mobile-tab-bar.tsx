@@ -28,7 +28,7 @@ export function MobileTabBar() {
               href={tab.href}
               onTouchStart={() => prefetchForRoute(tab.href)}
               onMouseEnter={() => prefetchForRoute(tab.href)}
-              className={`flex flex-col items-center justify-center gap-1 w-16 h-full transition-all relative ${
+              className={`flex flex-col items-center justify-center gap-1.5 w-16 h-full transition-all relative ${
                 isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)] hover:text-[var(--text-forest)]"
               }`}
             >
@@ -38,11 +38,11 @@ export function MobileTabBar() {
                 }`}
               >
                 <tab.icon
-                  className={`h-[22px] w-[22px] ${isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)]"}`}
+                  className={`h-6 w-6 ${isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)]"}`}
                   strokeWidth={isActive ? 2.5 : 2}
                 />
               </div>
-              <span className={`text-[11px] font-medium ${isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)]"}`}>
+              <span className={`text-xs font-medium ${isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)]"}`}>
                 {tab.title}
               </span>
               {isActive && (

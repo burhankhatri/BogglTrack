@@ -245,7 +245,7 @@ export default function TagsPage() {
                   {tag.usageCount} {tag.usageCount === 1 ? "entry" : "entries"}
                 </Badge>
               </div>
-              <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                 <Button
                   variant="ghost"
                   size="icon"

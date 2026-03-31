@@ -90,7 +90,7 @@ const DialogContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
             {children}
             <button
               onClick={() => onOpenChange(false)}
-              className="absolute right-6 top-6 rounded-full opacity-70 ring-offset-[var(--bg-cream)] transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent-olive)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-[var(--accent)] data-[state=open]:text-[var(--muted-foreground)]"
+              className="absolute right-6 top-6 h-8 w-8 flex items-center justify-center rounded-full opacity-70 ring-offset-[var(--bg-cream)] transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-[var(--accent-olive)] focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-[var(--accent)] data-[state=open]:text-[var(--muted-foreground)]"
             >
               <X className="h-4 w-4 text-[var(--text-forest)]" />
               <span className="sr-only">Close</span>

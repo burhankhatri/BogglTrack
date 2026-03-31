@@ -68,7 +68,7 @@ const DropdownMenuItem = React.forwardRef<HTMLDivElement, React.HTMLAttributes<H
           if (onClick) onClick(e)
         }}
         className={cn(
-          "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-[var(--bg-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+          "relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2.5 text-sm outline-none transition-colors hover:bg-[var(--bg-muted)] data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
           inset && "pl-8",
           className
         )}

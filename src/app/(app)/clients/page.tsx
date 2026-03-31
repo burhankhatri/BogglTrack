@@ -265,8 +265,8 @@ export default function ClientsPage() {
               <thead className="bg-[var(--bg-muted)]/50 border-b border-[var(--border-subtle)] text-[var(--text-olive)] font-medium">
                 <tr>
                   <th className="px-6 py-4 font-medium">Name</th>
-                  <th className="px-6 py-4 font-medium">Email</th>
-                  <th className="px-6 py-4 font-medium text-right">Projects</th>
+                  <th className="px-6 py-4 font-medium hidden md:table-cell">Email</th>
+                  <th className="px-6 py-4 font-medium text-right hidden md:table-cell">Projects</th>
                   <th className="px-6 py-4 font-medium text-right">Total Tracked</th>
                   <th className="px-6 py-4 font-medium text-right">Total Earnings</th>
                   <th className="px-6 py-4 font-medium w-[100px]"></th>
@@ -276,16 +276,16 @@ export default function ClientsPage() {
                 {(clients ?? []).map((client) => (
                   <tr key={client.id} className="hover:bg-[var(--bg-muted)]/30 transition-colors group">
                     <td className="px-6 py-4 font-medium text-[var(--text-forest)]">{client.name}</td>
-                    <td className="px-6 py-4 text-[var(--text-olive)]">
+                    <td className="px-6 py-4 text-[var(--text-olive)] hidden md:table-cell">
                       {client.email || "\u2014"}
                     </td>
-                    <td className="px-6 py-4 text-right text-[var(--text-forest)] font-medium">{client.projectCount}</td>
+                    <td className="px-6 py-4 text-right text-[var(--text-forest)] font-medium hidden md:table-cell">{client.projectCount}</td>
                     <td className="px-6 py-4 text-right text-[var(--text-forest)] font-sans">{formatDuration(client.totalHours)}</td>
                     <td className="px-6 py-4 text-right font-medium text-[var(--accent-teal)] font-sans">
                       {formatCurrency(client.totalEarnings)}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"

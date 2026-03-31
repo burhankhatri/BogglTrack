@@ -233,7 +233,7 @@ export default function DashboardPage() {
                           className="size-2.5 rounded-full shrink-0"
                           style={{ backgroundColor: project.color }}
                         />
-                        <span className="font-medium text-[var(--text-forest)] truncate max-w-[120px]">
+                        <span className="font-medium text-[var(--text-forest)] truncate max-w-[200px] sm:max-w-none">
                           {project.name}
                         </span>
                       </div>
