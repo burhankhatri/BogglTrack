@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import {
   Clock,
+  Calendar,
   LayoutDashboard,
   Timer,
   List,
@@ -23,6 +24,7 @@ import { useAppStore } from "@/stores/app-store";
 const navItems = [
   { title: "Dashboard", href: "/", icon: LayoutDashboard },
   { title: "Timer", href: "/timer", icon: Clock },
+  { title: "Calendar", href: "/calendar", icon: Calendar },
   { title: "Tracking", href: "/tracking", icon: List },
   { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Clients", href: "/clients", icon: Users },
