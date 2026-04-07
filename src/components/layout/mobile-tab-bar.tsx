@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Clock, Calendar, LayoutDashboard, User, List } from "lucide-react";
+import { Clock, Calendar, LayoutDashboard, User, List, GitBranchPlus } from "lucide-react";
 import { useAppStore } from "@/stores/app-store";
 
 const mobileTabs = [
   { title: "Home", href: "/", icon: LayoutDashboard },
   { title: "Calendar", href: "/calendar", icon: Calendar },
+  { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
   { title: "Overview", href: "/tracking", icon: List },
   { title: "Profile", href: "/settings", icon: User },
 ];
