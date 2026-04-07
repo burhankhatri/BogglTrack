@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAppStore } from "@/stores/app-store";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
 import { formatDuration, formatCurrency, calculateEarnings, getApplicableRate } from "@/lib/earnings";
-import { getDateRange, filterCompletedEntries } from "./calendar-helpers";
+import { getDateRange, filterCompletedEntries, groupEntriesByDescription, type GroupedEntry } from "./calendar-helpers";
 
 interface TimeEntry {
   id: string;
@@ -72,10 +72,12 @@ export default function CalendarPage() {
     if (date) setSelectedDate(date);
   };
 
-  const totalSeconds = entries.reduce((sum, e) => sum + (e.duration ?? 0), 0);
-  const totalEarnings = entries.reduce((sum, e) => {
-    const rate = getApplicableRate(e.project?.hourlyRate ?? null, userDefaultRate);
-    return sum + calculateEarnings(e.duration ?? 0, rate, e.billable);
+  const grouped = groupEntriesByDescription(entries);
+
+  const totalSeconds = grouped.reduce((sum, g) => sum + g.totalDuration, 0);
+  const totalEarnings = grouped.reduce((sum, g) => {
+    const rate = getApplicableRate(g.project?.hourlyRate ?? null, userDefaultRate);
+    return sum + calculateEarnings(g.totalDuration, rate, g.billable);
   }, 0);
 
   return (
@@ -120,47 +122,51 @@ export default function CalendarPage() {
             <Card className="px-6 py-16 text-center border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <p className="text-[15px] text-[var(--text-olive)] animate-pulse">Loading entries...</p>
             </Card>
-          ) : entries.length === 0 ? (
+          ) : grouped.length === 0 ? (
             <Card className="px-6 py-16 text-center shadow-none border border-[var(--border-subtle)] border-dashed bg-transparent rounded-[var(--radius-xl)]">
               <p className="text-[15px] text-[var(--text-olive)] font-medium">No entries for this day.</p>
             </Card>
           ) : (
             <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] overflow-hidden">
               <div className="flex flex-col">
-                {entries.map((entry, index) => {
-                  const dur = entry.duration ?? 0;
-                  const rate = getApplicableRate(entry.project?.hourlyRate ?? null, userDefaultRate);
-                  const earnings = calculateEarnings(dur, rate, entry.billable);
-                  const isLast = index === entries.length - 1;
+                {grouped.map((group, index) => {
+                  const rate = getApplicableRate(group.project?.hourlyRate ?? null, userDefaultRate);
+                  const earnings = calculateEarnings(group.totalDuration, rate, group.billable);
+                  const isLast = index === grouped.length - 1;
 
                   return (
                     <div
-                      key={entry.id}
+                      key={group.key}
                       className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-[var(--bg-sage)]/30 transition-colors group ${!isLast ? "border-b border-[var(--border-subtle)]" : ""}`}
                     >
-                      {/* Left: description + project + time range */}
+                      {/* Left: description + project + time range + count */}
                       <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
                         <span className="text-[15px] font-medium text-[var(--text-forest)] leading-none truncate font-sans">
-                          {entry.description || "(No description)"}
+                          {group.description || "(No description)"}
                         </span>
                         <div className="flex flex-wrap items-center gap-2 mt-1">
-                          {entry.project && (
+                          {group.project && (
                             <Badge
                               variant="outline"
                               className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-transparent"
                               style={{
-                                color: entry.project.color,
-                                backgroundColor: `${entry.project.color}15`,
+                                color: group.project.color,
+                                backgroundColor: `${group.project.color}15`,
                               }}
                             >
-                              {entry.project.name}
+                              {group.project.name}
                             </Badge>
                           )}
                           <span className="text-[12px] text-[var(--text-olive)]">
-                            {format(new Date(entry.startTime), "HH:mm")}
+                            {format(new Date(group.startTime), "HH:mm")}
                             {" - "}
-                            {entry.endTime ? format(new Date(entry.endTime), "HH:mm") : "running"}
+                            {group.endTime ? format(new Date(group.endTime), "HH:mm") : "running"}
                           </span>
+                          {group.entryCount > 1 && (
+                            <span className="text-[11px] font-medium text-[var(--text-olive)] bg-[var(--bg-muted)] px-2 py-0.5 rounded-full">
+                              {group.entryCount} entries
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -168,7 +174,7 @@ export default function CalendarPage() {
                       <div className="flex items-center justify-between sm:justify-end gap-4 mt-3 sm:mt-0">
                         <div className="flex flex-col sm:items-end">
                           <span className="font-sans text-[16px] font-semibold tracking-tight text-[var(--text-forest)] tabular-nums">
-                            {formatDuration(dur)}
+                            {formatDuration(group.totalDuration)}
                           </span>
                           {earnings > 0 && (
                             <span className="text-[13px] font-medium tabular-nums text-[var(--text-olive)] mt-[2px]">
@@ -177,7 +183,7 @@ export default function CalendarPage() {
                           )}
                         </div>
                         <button
-                          onClick={() => resumeTimerOptimistic(entry, userDefaultRate)}
+                          onClick={() => resumeTimerOptimistic(group, userDefaultRate)}
                           className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                           title="Resume timer"
                         >
