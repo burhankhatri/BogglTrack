@@ -14,6 +14,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  GitBranchPlus,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth/client";
@@ -26,6 +27,7 @@ const navItems = [
   { title: "Timer", href: "/timer", icon: Clock },
   { title: "Calendar", href: "/calendar", icon: Calendar },
   { title: "Tracking", href: "/tracking", icon: List },
+  { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
   { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Tags", href: "/tags", icon: Tags },

@@ -203,6 +203,7 @@ const ROUTE_PREFETCH_MAP: Record<string, string[]> = {
   "/settings": ["settings"],
   "/reports": ["projects", "clients", "tags", "settings"],
   "/calendar": ["projects", "settings"],
+  "/canvas": ["projects", "clients", "timerEntries"],
 };
 
 // ---------------------------------------------------------------------------
