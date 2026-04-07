@@ -31,11 +31,11 @@ function Calendar({
         table: "w-full border-collapse space-y-1",
         head_row: "flex",
         head_cell:
-          "text-[var(--text-olive)] rounded-md w-9 font-normal text-[0.8rem]",
+          "text-[var(--text-olive)] rounded-md w-8 sm:w-9 font-normal text-[0.8rem]",
         row: "flex w-full mt-2",
-        cell: "h-9 w-9 text-center text-sm p-0 m-0",
+        cell: "h-8 w-8 sm:h-9 sm:w-9 text-center text-sm p-0 m-0",
         day: cn(
-          "h-9 w-9 p-0 font-normal aria-selected:opacity-100 rounded-full hover:bg-[var(--bg-muted)] transition-colors flex items-center justify-center m-0"
+          "h-8 w-8 sm:h-9 sm:w-9 p-0 font-normal aria-selected:opacity-100 rounded-full hover:bg-[var(--bg-muted)] transition-colors flex items-center justify-center m-0"
         ),
         day_selected:
           "bg-[var(--accent-olive)] text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] hover:text-[var(--text-forest)] focus:bg-[var(--accent-olive)] focus:text-[var(--text-forest)] font-semibold",

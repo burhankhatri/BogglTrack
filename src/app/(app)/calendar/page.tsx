@@ -87,7 +87,7 @@ export default function CalendarPage() {
 
       {/* Calendar + summary */}
       <div className="grid gap-6 md:grid-cols-[auto_1fr]">
-        <Card className="p-2 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] self-start">
+        <Card className="p-2 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] self-start mx-auto md:mx-0">
           <Calendar
             mode="single"
             selected={selectedDate}
@@ -127,7 +127,7 @@ export default function CalendarPage() {
               <p className="text-[15px] text-[var(--text-olive)] font-medium">No entries for this day.</p>
             </Card>
           ) : (
-            <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] overflow-hidden">
+            <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <div className="flex flex-col">
                 {grouped.map((group, index) => {
                   const rate = getApplicableRate(group.project?.hourlyRate ?? null, userDefaultRate);

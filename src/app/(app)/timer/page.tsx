@@ -643,7 +643,7 @@ export default function TimerPage() {
             </div>
 
             {/* Entries */}
-            <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)] overflow-hidden">
+            <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <div className="flex flex-col">
                 {group.entries.map((entry, index) => {
                   const isEditing = editingId === entry.id;
