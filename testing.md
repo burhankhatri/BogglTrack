@@ -23,7 +23,7 @@ Command: `npx playwright test`
 Setup: `npx playwright install chromium`
 Base URL: `http://localhost:3000`
 Location: `tests/e2e/`
-Note: Playwright is not yet installed — add as needed.
+Framework: @playwright/test with Chromium
 
 ## Debugging Failed Tests
 - Single test: `npx vitest run src/path/to/test.test.ts`
