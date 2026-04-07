@@ -70,7 +70,9 @@ export function GlobalTimerBar() {
     fetchProjects();
   }, [fetchProjects]);
 
-  // Check for running timer — only once per session
+  // Verify running timer with server — only once per session.
+  // With localStorage persistence, the timer is already restored on hydration.
+  // This API check reconciles: corrects stale localStorage or fills in the real entry ID.
   useEffect(() => {
     if (runningTimerChecked) return;
     async function checkRunning() {
@@ -79,24 +81,36 @@ export function GlobalTimerBar() {
         if (res.ok) {
           const data = await res.json();
           if (data && data.id) {
-            restoreTimer({
-              entryId: data.id,
-              startTime: data.startTime,
-              description: data.description || "",
-              projectId: data.projectId || null,
-              billable: data.billable ?? true,
-              tagIds: data.tagIds || [],
-              hourlyRate: data.project?.hourlyRate || 0,
-            });
+            // If localStorage already has this timer running, just ensure the entry ID is correct
+            const current = useTimerStore.getState();
+            if (current.isRunning && current.entryId === data.id) {
+              // Already in sync — nothing to do
+            } else {
+              restoreTimer({
+                entryId: data.id,
+                startTime: data.startTime,
+                description: data.description || "",
+                projectId: data.projectId || null,
+                billable: data.billable ?? true,
+                tagIds: data.tagIds || [],
+                hourlyRate: data.project?.hourlyRate || 0,
+              });
+            }
+          } else {
+            // Server says no running timer — if localStorage thinks one is running, stop it
+            const current = useTimerStore.getState();
+            if (current.isRunning) {
+              stopTimer();
+            }
           }
         }
       } catch {
-        // Running check failed silently
+        // Running check failed silently — trust localStorage state
       }
       setRunningTimerChecked();
     }
     checkRunning();
-  }, [runningTimerChecked, restoreTimer, setRunningTimerChecked]);
+  }, [runningTimerChecked, restoreTimer, stopTimer, setRunningTimerChecked]);
 
   // Tick interval
   useEffect(() => {

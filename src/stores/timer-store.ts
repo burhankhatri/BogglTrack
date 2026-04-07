@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 
 interface StartParams {
   entryId: string;
@@ -33,34 +34,9 @@ interface TimerState {
   restoreTimer: (params: StartParams) => void;
 }
 
-export const useTimerStore = create<TimerState>((set, get) => ({
-  isRunning: false,
-  entryId: null,
-  startTime: null,
-  description: "",
-  projectId: null,
-  billable: true,
-  tagIds: [],
-  elapsedSeconds: 0,
-  hourlyRate: 0,
-
-  startTimer: (params) => {
-    const st = new Date(params.startTime);
-    set({
-      isRunning: true,
-      entryId: params.entryId,
-      startTime: st,
-      description: params.description,
-      projectId: params.projectId,
-      billable: params.billable,
-      tagIds: params.tagIds,
-      hourlyRate: params.hourlyRate,
-      elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
-    });
-  },
-
-  stopTimer: () => {
-    set({
+export const useTimerStore = create<TimerState>()(
+  persist(
+    (set, get) => ({
       isRunning: false,
       entryId: null,
       startTime: null,
@@ -70,35 +46,91 @@ export const useTimerStore = create<TimerState>((set, get) => ({
       tagIds: [],
       elapsedSeconds: 0,
       hourlyRate: 0,
-    });
-  },
 
-  tick: () => {
-    const { startTime } = get();
-    if (startTime) {
-      set({ elapsedSeconds: Math.max(0, Math.floor((Date.now() - startTime.getTime()) / 1000)) });
+      startTimer: (params) => {
+        const st = new Date(params.startTime);
+        set({
+          isRunning: true,
+          entryId: params.entryId,
+          startTime: st,
+          description: params.description,
+          projectId: params.projectId,
+          billable: params.billable,
+          tagIds: params.tagIds,
+          hourlyRate: params.hourlyRate,
+          elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
+        });
+      },
+
+      stopTimer: () => {
+        set({
+          isRunning: false,
+          entryId: null,
+          startTime: null,
+          description: "",
+          projectId: null,
+          billable: true,
+          tagIds: [],
+          elapsedSeconds: 0,
+          hourlyRate: 0,
+        });
+      },
+
+      tick: () => {
+        const { startTime } = get();
+        if (startTime) {
+          set({ elapsedSeconds: Math.max(0, Math.floor((Date.now() - startTime.getTime()) / 1000)) });
+        }
+      },
+
+      setDescription: (description) => set({ description }),
+      setProjectId: (projectId) => set({ projectId }),
+      setBillable: (billable) => set({ billable }),
+      setTagIds: (tagIds) => set({ tagIds }),
+      setHourlyRate: (hourlyRate) => set({ hourlyRate }),
+      setEntryId: (entryId) => set({ entryId }),
+
+      restoreTimer: (params) => {
+        const st = new Date(params.startTime);
+        set({
+          isRunning: true,
+          entryId: params.entryId,
+          startTime: st,
+          description: params.description,
+          projectId: params.projectId,
+          billable: params.billable,
+          tagIds: params.tagIds,
+          hourlyRate: params.hourlyRate,
+          elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
+        });
+      },
+    }),
+    {
+      name: "boggltrack-timer",
+      partialize: (state) => ({
+        isRunning: state.isRunning,
+        entryId: state.entryId,
+        startTime: state.startTime ? state.startTime.toISOString() : null,
+        description: state.description,
+        projectId: state.projectId,
+        billable: state.billable,
+        tagIds: state.tagIds,
+        hourlyRate: state.hourlyRate,
+      }),
+      onRehydrateStorage: () => (state) => {
+        // After rehydration, recompute elapsedSeconds from startTime
+        if (state?.isRunning && state.startTime) {
+          // startTime comes back as string from JSON — convert to Date
+          const st = typeof state.startTime === "string"
+            ? new Date(state.startTime)
+            : state.startTime;
+          state.startTime = st;
+          state.elapsedSeconds = Math.max(
+            0,
+            Math.floor((Date.now() - st.getTime()) / 1000)
+          );
+        }
+      },
     }
-  },
-
-  setDescription: (description) => set({ description }),
-  setProjectId: (projectId) => set({ projectId }),
-  setBillable: (billable) => set({ billable }),
-  setTagIds: (tagIds) => set({ tagIds }),
-  setHourlyRate: (hourlyRate) => set({ hourlyRate }),
-  setEntryId: (entryId) => set({ entryId }),
-
-  restoreTimer: (params) => {
-    const st = new Date(params.startTime);
-    set({
-      isRunning: true,
-      entryId: params.entryId,
-      startTime: st,
-      description: params.description,
-      projectId: params.projectId,
-      billable: params.billable,
-      tagIds: params.tagIds,
-      hourlyRate: params.hourlyRate,
-      elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
-    });
-  },
-}));
+  )
+);
