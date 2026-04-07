@@ -22,10 +22,11 @@ model User {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  timeEntries TimeEntry[]
-  projects    Project[]
-  clients     Client[]
-  tags        Tag[]
+  timeEntries      TimeEntry[]
+  projects         Project[]
+  clients          Client[]
+  tags             Tag[]
+  descriptionRules DescriptionRule[]
 }
 
 model Client {
@@ -53,9 +54,10 @@ model Project {
   user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   clientId       String?
   client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  timeEntries    TimeEntry[]
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  timeEntries      TimeEntry[]
+  descriptionRules DescriptionRule[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   @@index([userId])
   @@index([clientId])
@@ -103,4 +105,17 @@ model TimeEntryTag {
 
   @@id([timeEntryId, tagId])
   @@index([tagId])
+}
+
+model DescriptionRule {
+  id          String   @id @default(cuid())
+  description String
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([description, userId])
+  @@index([userId])
 }
