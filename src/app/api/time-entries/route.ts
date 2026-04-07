@@ -96,13 +96,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Auto-apply description rule if no project specified
+    let resolvedProjectId = projectId || null;
+    if (!resolvedProjectId && description) {
+      const rule = await prisma.descriptionRule.findUnique({
+        where: {
+          description_userId: { description, userId: user.id },
+        },
+      });
+      if (rule) resolvedProjectId = rule.projectId;
+    }
+
     const entry = await prisma.timeEntry.create({
       data: {
         description: description || "",
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : null,
         duration,
-        projectId: projectId || null,
+        projectId: resolvedProjectId,
         billable: billable ?? true,
         userId: user.id,
         ...(tagIds && tagIds.length > 0
