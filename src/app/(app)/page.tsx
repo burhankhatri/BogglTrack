@@ -18,8 +18,8 @@ import { TimeEntryRow } from "@/components/ui/time-entry-row";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatCard } from "@/components/ui/stat-card";
 import { formatDuration, formatHours, formatCurrency } from "@/lib/earnings";
-import { useTimerStore } from "@/stores/timer-store";
 import { useAppStore } from "@/stores/app-store";
+import { resumeTimerOptimistic } from "@/lib/timer-actions";
 import { format } from "date-fns";
 
 interface RecentEntry {
@@ -51,7 +51,6 @@ export default function DashboardPage() {
   const data = useAppStore((s) => s.dashboard.data);
   const loading = useAppStore((s) => s.dashboard.loading) && !data;
   const fetchDashboard = useAppStore((s) => s.fetchDashboard);
-  const startTimer = useTimerStore((s) => s.startTimer);
 
   useEffect(() => {
     fetchDashboard();
@@ -68,33 +67,17 @@ export default function DashboardPage() {
     };
   }, [fetchDashboard]);
 
-  const handleResume = async (entry: RecentEntry) => {
-    try {
-      const body = {
+  const handleResume = (entry: RecentEntry) => {
+    resumeTimerOptimistic(
+      {
         description: entry.description || "",
         projectId: entry.projectId,
         billable: entry.billable,
-        tagIds: entry.tags.map((t) => t.tagId),
-      };
-      const res = await fetch("/api/time-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) throw new Error("Failed to start timer");
-      const newEntry = await res.json();
-      startTimer({
-        entryId: newEntry.id,
-        startTime: newEntry.startTime,
-        description: newEntry.description || "",
-        projectId: newEntry.projectId,
-        billable: newEntry.billable,
-        tagIds: entry.tags.map((t) => t.tagId),
-        hourlyRate: entry.project?.hourlyRate ?? 0,
-      });
-    } catch (err) {
-      console.error("Resume error:", err);
-    }
+        project: entry.project,
+        tags: entry.tags,
+      },
+      0
+    );
   };
 
   if (loading) {

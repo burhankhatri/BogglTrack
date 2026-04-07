@@ -44,7 +44,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 
-import { useTimerStore } from "@/stores/timer-store";
 import { useAppStore } from "@/stores/app-store";
 import {
   formatDuration,
@@ -52,6 +51,8 @@ import {
   calculateEarnings,
   getApplicableRate,
 } from "@/lib/earnings";
+import { resumeTimerOptimistic } from "@/lib/timer-actions";
+import { parseEntryTimestamp, buildTimestampISO, validateTimeRange } from "./timestamp-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -136,12 +137,14 @@ export default function TimerPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editProjectId, setEditProjectId] = useState<string>(NO_PROJECT);
   const [editBillable, setEditBillable] = useState(true);
+  const [editDate, setEditDate] = useState("");
+  const [editStartTime, setEditStartTime] = useState("");
+  const [editEndTime, setEditEndTime] = useState("");
 
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Timer store
-  const { startTimer } = useTimerStore();
+  // Timer store (used by resumeTimerOptimistic internally)
 
   // ---------------------------------------------------------------------------
   // Data fetching
@@ -350,19 +353,46 @@ export default function TimerPage() {
     setEditDescription(entry.description);
     setEditProjectId(entry.projectId ?? NO_PROJECT);
     setEditBillable(entry.billable);
+    const start = parseEntryTimestamp(entry.startTime);
+    setEditDate(start.date);
+    setEditStartTime(start.time);
+    if (entry.endTime) {
+      const end = parseEntryTimestamp(entry.endTime);
+      setEditEndTime(end.time);
+    } else {
+      setEditEndTime("");
+    }
   }
 
   async function saveEdit(entryId: string) {
+    // Validate timestamps if both are present
+    if (editStartTime && editEndTime) {
+      const error = validateTimeRange(editDate, editStartTime, editEndTime);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
+
     try {
+      const body: Record<string, unknown> = {
+        description: editDescription,
+        projectId: editProjectId === NO_PROJECT ? null : editProjectId,
+        billable: editBillable,
+      };
+
+      // Include timestamps if the user edited them
+      if (editDate && editStartTime) {
+        body.startTime = buildTimestampISO(editDate, editStartTime);
+      }
+      if (editDate && editEndTime) {
+        body.endTime = buildTimestampISO(editDate, editEndTime);
+      }
+
       const res = await fetch(`/api/time-entries/${entryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: editDescription,
-          projectId:
-            editProjectId === NO_PROJECT ? null : editProjectId,
-          billable: editBillable,
-        }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -411,45 +441,8 @@ export default function TimerPage() {
   // Resume (start new timer with same details)
   // ---------------------------------------------------------------------------
 
-  async function handleResume(entry: TimeEntry) {
-    try {
-      const res = await fetch("/api/time-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: entry.description,
-          startTime: new Date().toISOString(),
-          projectId: entry.projectId,
-          billable: entry.billable,
-          tagIds: entry.tags.map((t) => t.tagId),
-        }),
-      });
-
-      if (!res.ok) {
-        toast.error("Failed to start timer");
-        return;
-      }
-
-      const newEntry = await res.json();
-      const rate = getApplicableRate(
-        entry.project?.hourlyRate ?? null,
-        userDefaultRate
-      );
-
-      startTimer({
-        entryId: newEntry.id,
-        startTime: newEntry.startTime,
-        description: entry.description,
-        projectId: entry.projectId,
-        billable: entry.billable,
-        tagIds: entry.tags.map((t) => t.tagId),
-        hourlyRate: rate,
-      });
-
-      toast.success("Timer started");
-    } catch {
-      toast.error("Failed to start timer");
-    }
+  function handleResume(entry: TimeEntry) {
+    resumeTimerOptimistic(entry, userDefaultRate);
   }
 
   // ---------------------------------------------------------------------------
@@ -684,6 +677,27 @@ export default function TimerPage() {
                               placeholder="Description"
                               autoFocus
                             />
+                            {/* Timestamp editing row */}
+                            <div className="grid grid-cols-3 gap-3 mt-2">
+                              <Input
+                                type="date"
+                                value={editDate}
+                                onChange={(e) => setEditDate(e.target.value)}
+                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                              />
+                              <Input
+                                type="time"
+                                value={editStartTime}
+                                onChange={(e) => setEditStartTime(e.target.value)}
+                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                              />
+                              <Input
+                                type="time"
+                                value={editEndTime}
+                                onChange={(e) => setEditEndTime(e.target.value)}
+                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                              />
+                            </div>
                             <div className="flex items-center gap-2 mt-1">
                               <Select
                                 value={editProjectId}
