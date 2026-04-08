@@ -89,10 +89,24 @@ interface TimeEntry {
   tags: TimeEntryTag[];
 }
 
+interface GroupedEntry {
+  key: string;
+  description: string;
+  entries: TimeEntry[];
+  totalDuration: number;
+  billable: boolean;
+  projectId: string | null;
+  project: Project | null;
+  tags: TimeEntryTag[];
+  startTime: string;
+  endTime: string | null;
+}
+
 interface DayGroup {
   date: Date;
   label: string;
   entries: TimeEntry[];
+  grouped: GroupedEntry[];
   totalSeconds: number;
   totalEarnings: number;
 }
@@ -249,6 +263,34 @@ export default function TimerPage() {
   // Grouping entries by day
   // ---------------------------------------------------------------------------
 
+  function groupEntriesByDesc(dayEntries: TimeEntry[]): GroupedEntry[] {
+    const map = new Map<string, GroupedEntry>();
+    for (const entry of dayEntries) {
+      const key = entry.description || "";
+      const existing = map.get(key);
+      if (existing) {
+        existing.entries.push(entry);
+        existing.totalDuration += entry.duration ?? 0;
+        if (entry.startTime < existing.startTime) existing.startTime = entry.startTime;
+        if (entry.endTime && (!existing.endTime || entry.endTime > existing.endTime)) existing.endTime = entry.endTime;
+      } else {
+        map.set(key, {
+          key: entry.id,
+          description: entry.description,
+          entries: [entry],
+          totalDuration: entry.duration ?? 0,
+          billable: entry.billable,
+          projectId: entry.projectId,
+          project: entry.project,
+          tags: entry.tags,
+          startTime: entry.startTime,
+          endTime: entry.endTime,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }
+
   function groupByDay(list: TimeEntry[]): DayGroup[] {
     const groups: DayGroup[] = [];
     for (const entry of list) {
@@ -270,6 +312,7 @@ export default function TimerPage() {
           date: entryDate,
           label,
           entries: [],
+          grouped: [],
           totalSeconds: 0,
           totalEarnings: 0,
         };
@@ -283,6 +326,10 @@ export default function TimerPage() {
         userDefaultRate
       );
       group.totalEarnings += calculateEarnings(dur, rate, entry.billable);
+    }
+    // Build grouped entries per day
+    for (const group of groups) {
+      group.grouped = groupEntriesByDesc(group.entries);
     }
     return groups;
   }
@@ -645,20 +692,22 @@ export default function TimerPage() {
             {/* Entries */}
             <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <div className="flex flex-col">
-                {group.entries.map((entry, index) => {
-                  const isEditing = editingId === entry.id;
-                  const isDeleting = deletingId === entry.id;
-                  const dur = entry.duration ?? 0;
+                {group.grouped.map((ge, index) => {
+                  // Use the first entry for editing/deleting
+                  const entry = ge.entries[0];
+                  const isEditing = ge.entries.some((e) => editingId === e.id);
+                  const isDeleting = ge.entries.some((e) => deletingId === e.id);
+                  const dur = ge.totalDuration;
                   const rate = getApplicableRate(
-                    entry.project?.hourlyRate ?? null,
+                    ge.project?.hourlyRate ?? null,
                     userDefaultRate
                   );
-                  const earnings = calculateEarnings(dur, rate, entry.billable);
-                  const isLast = index === group.entries.length - 1;
+                  const earnings = calculateEarnings(dur, rate, ge.billable);
+                  const isLast = index === group.grouped.length - 1;
 
                   return (
                     <div
-                      key={entry.id}
+                      key={ge.key}
                       className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-[var(--bg-sage)]/30 transition-colors group ${!isLast ? 'border-b border-[var(--border-subtle)]' : ''}`}
                     >
                       {isEditing ? (
@@ -756,37 +805,40 @@ export default function TimerPage() {
                       ) : (
                         /* ---- Normal display mode ---- */
                         <>
-                          {/* Left: Description + project + tags */}
+                          {/* Left: Description + project + tags + count */}
                           <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
                             <span className="text-[15px] font-medium text-[var(--text-forest)] leading-none truncate font-sans">
-                              {entry.description || "(No description)"}
+                              {ge.description || "(No description)"}
                             </span>
-                            
-                            {(entry.project || entry.tags.length > 0) && (
-                              <div className="flex flex-wrap items-center gap-2 mt-1">
-                                {entry.project && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-transparent"
-                                    style={{ 
-                                      color: entry.project.color,
-                                      backgroundColor: `${entry.project.color}15`
-                                    }}
-                                  >
-                                    {entry.project.name}
-                                  </Badge>
-                                )}
-                                {entry.tags.map((t) => (
-                                  <Badge
-                                    key={t.tagId}
-                                    variant="outline"
-                                    className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
-                                  >
-                                    {t.tag.name}
-                                  </Badge>
-                                ))}
-                              </div>
-                            )}
+
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                              {ge.project && (
+                                <Badge
+                                  variant="outline"
+                                  className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-transparent"
+                                  style={{
+                                    color: ge.project.color,
+                                    backgroundColor: `${ge.project.color}15`
+                                  }}
+                                >
+                                  {ge.project.name}
+                                </Badge>
+                              )}
+                              {ge.tags.map((t) => (
+                                <Badge
+                                  key={t.tagId}
+                                  variant="outline"
+                                  className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
+                                >
+                                  {t.tag.name}
+                                </Badge>
+                              ))}
+                              {ge.entries.length > 1 && (
+                                <span className="text-[11px] font-medium text-[var(--text-olive)] bg-[var(--bg-muted)] px-2 py-0.5 rounded-full">
+                                  {ge.entries.length} entries
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           {/* Right: Duration + Earnings + Play + Controls */}
@@ -847,10 +899,10 @@ export default function TimerPage() {
                               </div>
 
                               {/* Play Button */}
-                              <button 
+                              <button
                                 onClick={() => handleResume(entry)}
                                 className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 ml-1"
-                                title="Resume timer"
+                                title="Resume timer with same details"
                               >
                                 <Play className="h-[18px] w-[18px] fill-current ml-[2px]" />
                               </button>
