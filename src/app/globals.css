@@ -13,30 +13,30 @@
 
 :root {
   /* Backgrounds */
-  --bg-sage: #C5CEB5;           /* Page background */
-  --bg-cream: #FAF8F2;          /* Cards, surfaces */
-  --bg-cream-hover: #F2EDE4;    /* Card hover state */
-  --bg-muted: #E2E8D5;          /* Muted backgrounds, dividers area */
+  --bg-sage: #E8ECE3;           /* Page background — lighter for card contrast */
+  --bg-cream: #FFFFFF;          /* Cards, surfaces — pure white */
+  --bg-cream-hover: #F5F5F0;    /* Card hover state */
+  --bg-muted: #EAEDE4;          /* Muted backgrounds, dividers area */
 
   /* Text */
-  --text-forest: #1B3A2D;       /* Primary text — dark forest green */
-  --text-olive: #5C7A5E;        /* Secondary text — muted olive */
-  --text-cream: #FAF8F2;        /* Text on dark/accent backgrounds */
+  --text-forest: #1A1A2E;       /* Primary text — near-black */
+  --text-olive: #6B7280;        /* Secondary text — neutral gray */
+  --text-cream: #FFFFFF;        /* Text on dark/accent backgrounds */
 
   /* Accents */
   --accent-olive: #C8D84E;      /* Primary accent — buttons, active states */
   --accent-olive-hover: #B5C438; /* Accent hover */
   --accent-coral: #E8A5A0;      /* Secondary accent — destructive, some calendar blocks */
   --accent-gold: #D4D08E;       /* Tertiary accent — calendar blocks, highlights */
-  --accent-teal: #2D6B5A;       /* Chart bars, dark accent */
+  --accent-teal: #16A34A;       /* Chart bars, dark accent — brighter green */
 
   /* Borders */
-  --border-subtle: rgba(27, 58, 45, 0.08);  /* Very subtle borders */
-  --border-medium: rgba(27, 58, 45, 0.15);  /* Medium borders */
+  --border-subtle: rgba(0, 0, 0, 0.08);  /* Very subtle borders */
+  --border-medium: rgba(0, 0, 0, 0.15);  /* Medium borders */
 
   /* Shadows */
-  --shadow-card: 0 1px 3px rgba(27, 58, 45, 0.06);
-  --shadow-dropdown: 0 4px 16px rgba(27, 58, 45, 0.1);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.12);
 
   /* Radius */
   --radius-sm: 8px;
