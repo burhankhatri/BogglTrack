@@ -496,11 +496,9 @@ export default function ReportsPage() {
             {datePreset === "custom" && (
               <>
                 <Popover>
-                  <PopoverTrigger>
-                    <Button variant="outline" size="sm" className="rounded-full h-9 text-[13px] px-3">
-                      <CalendarIcon className="size-3.5 mr-1.5" />
-                      {customFrom ? format(customFrom, "MMM d") : "From"}
-                    </Button>
+                  <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                    <CalendarIcon className="size-3.5 mr-1.5" />
+                    {customFrom ? format(customFrom, "MMM d") : "From"}
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
@@ -512,11 +510,9 @@ export default function ReportsPage() {
                 </Popover>
                 <span className="text-[var(--text-olive)] text-xs">to</span>
                 <Popover>
-                  <PopoverTrigger>
-                    <Button variant="outline" size="sm" className="rounded-full h-9 text-[13px] px-3">
-                      <CalendarIcon className="size-3.5 mr-1.5" />
-                      {customTo ? format(customTo, "MMM d") : "To"}
-                    </Button>
+                  <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                    <CalendarIcon className="size-3.5 mr-1.5" />
+                    {customTo ? format(customTo, "MMM d") : "To"}
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0" align="start">
                     <Calendar
@@ -532,13 +528,11 @@ export default function ReportsPage() {
             <div className="w-px h-5 bg-[var(--border-medium)]" />
 
             <Popover>
-              <PopoverTrigger>
-                <Button variant="outline" size="sm" className="rounded-full h-9 text-[13px] px-3">
-                  <Filter className="size-3.5 mr-1.5" />
-                  {selectedProjectIds.length === 0
-                    ? "All Projects"
-                    : `${selectedProjectIds.length} project${selectedProjectIds.length > 1 ? "s" : ""}`}
-                </Button>
+              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                <Filter className="size-3.5 mr-1.5" />
+                {selectedProjectIds.length === 0
+                  ? "All Projects"
+                  : `${selectedProjectIds.length} project${selectedProjectIds.length > 1 ? "s" : ""}`}
               </PopoverTrigger>
               <PopoverContent className="w-56">
                 <div className="space-y-1 max-h-48 overflow-y-auto">
@@ -572,13 +566,11 @@ export default function ReportsPage() {
             </Popover>
 
             <Popover>
-              <PopoverTrigger>
-                <Button variant="outline" size="sm" className="rounded-full h-9 text-[13px] px-3">
-                  <Filter className="size-3.5 mr-1.5" />
-                  {selectedClientIds.length === 0
-                    ? "All Clients"
-                    : `${selectedClientIds.length} client${selectedClientIds.length > 1 ? "s" : ""}`}
-                </Button>
+              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                <Filter className="size-3.5 mr-1.5" />
+                {selectedClientIds.length === 0
+                  ? "All Clients"
+                  : `${selectedClientIds.length} client${selectedClientIds.length > 1 ? "s" : ""}`}
               </PopoverTrigger>
               <PopoverContent className="w-56">
                 <div className="space-y-1 max-h-48 overflow-y-auto">
