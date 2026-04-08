@@ -117,6 +117,7 @@ interface WeeklyData {
 }
 
 type DatePreset =
+  | "all-time"
   | "today"
   | "this-week"
   | "this-month"
@@ -152,10 +153,12 @@ const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 // ---- Helpers ----
 
-function getDateRange(preset: DatePreset): { from: Date; to: Date } {
+function getDateRange(preset: DatePreset): { from: Date | null; to: Date | null } {
   const now = new Date();
   const todayEnd = endOfDay(now);
   switch (preset) {
+    case "all-time":
+      return { from: null, to: null };
     case "today":
       return { from: startOfDay(now), to: todayEnd };
     case "this-week":
@@ -177,15 +180,15 @@ function getDateRange(preset: DatePreset): { from: Date; to: Date } {
 }
 
 function buildFilterParams(filters: {
-  from: Date;
-  to: Date;
+  from: Date | null;
+  to: Date | null;
   projectIds: string[];
   clientIds: string[];
   billable: BillableFilter;
 }): URLSearchParams {
   const params = new URLSearchParams();
-  params.set("from", filters.from.toISOString());
-  params.set("to", filters.to.toISOString());
+  if (filters.from) params.set("from", filters.from.toISOString());
+  if (filters.to) params.set("to", filters.to.toISOString());
   if (filters.projectIds.length > 0) {
     params.set("projectIds", filters.projectIds.join(","));
   }
@@ -204,7 +207,7 @@ function buildFilterParams(filters: {
 
 export default function ReportsPage() {
   // Filter state
-  const [datePreset, setDatePreset] = useState<DatePreset>("last-30");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all-time");
   const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
   const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
@@ -241,7 +244,7 @@ export default function ReportsPage() {
   // Compute active date range
   const dateRange = useMemo(() => {
     if (datePreset === "custom" && customFrom && customTo) {
-      return { from: startOfDay(customFrom), to: endOfDay(customTo) };
+      return { from: startOfDay(customFrom) as Date | null, to: endOfDay(customTo) as Date | null };
     }
     return getDateRange(datePreset);
   }, [datePreset, customFrom, customTo]);
@@ -387,7 +390,9 @@ export default function ReportsPage() {
     doc.text("BogglTrack Report", 14, 20);
     doc.setFontSize(10);
     doc.text(
-      `${format(filters.from, "MMM d, yyyy")} - ${format(filters.to, "MMM d, yyyy")}`,
+      filters.from && filters.to
+        ? `${format(filters.from, "MMM d, yyyy")} - ${format(filters.to, "MMM d, yyyy")}`
+        : "All Time",
       14,
       28
     );
@@ -474,6 +479,7 @@ export default function ReportsPage() {
                   <SelectValue placeholder="Select range" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="all-time">All Time</SelectItem>
                   <SelectItem value="today">Today</SelectItem>
                   <SelectItem value="this-week">This Week</SelectItem>
                   <SelectItem value="this-month">This Month</SelectItem>
