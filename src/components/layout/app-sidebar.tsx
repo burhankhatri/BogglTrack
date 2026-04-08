@@ -12,6 +12,7 @@ import {
   Users,
   Tags,
   BarChart3,
+  FileText,
   Settings,
   LogOut,
   GitBranchPlus,
@@ -32,6 +33,7 @@ const navItems = [
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Tags", href: "/tags", icon: Tags },
   { title: "Reports", href: "/reports", icon: BarChart3 },
+  { title: "Invoices", href: "/invoices", icon: FileText },
 ];
 
 export function AppSidebar() {
