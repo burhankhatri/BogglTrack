@@ -37,6 +37,10 @@ interface UserSettings {
   timeFormat: string;
   weekStartDay: string;
   theme: string;
+  senderName: string | null;
+  senderAddress: string | null;
+  senderEmail: string | null;
+  senderTaxId: string | null;
 }
 
 // Page-specific types (richer than the global dropdown versions)

@@ -38,6 +38,10 @@ export async function PATCH(request: NextRequest) {
       "timeFormat",
       "weekStartDay",
       "theme",
+      "senderName",
+      "senderAddress",
+      "senderEmail",
+      "senderTaxId",
     ];
 
     const updateData: Record<string, unknown> = {};

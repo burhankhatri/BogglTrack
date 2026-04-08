@@ -71,13 +71,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { name, email, notes } = body;
+    const { name, email, notes, billingAddress } = body;
 
     const client = await prisma.client.create({
       data: {
         name,
         email: email || null,
         notes: notes || null,
+        billingAddress: billingAddress || null,
         userId: user.id,
       },
       include: {
