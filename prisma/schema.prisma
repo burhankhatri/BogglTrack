@@ -19,6 +19,10 @@ model User {
   timeFormat        String      @default("24h")
   weekStartDay      String      @default("monday")
   theme             String      @default("system")
+  senderName        String?
+  senderAddress     String?
+  senderEmail       String?
+  senderTaxId       String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
@@ -27,6 +31,7 @@ model User {
   clients          Client[]
   tags             Tag[]
   descriptionRules DescriptionRule[]
+  invoices         Invoice[]
 }
 
 model Client {
@@ -34,9 +39,11 @@ model Client {
   name      String
   email     String?
   notes     String?
+  billingAddress String?
   userId    String
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   projects  Project[]
+  invoices  Invoice[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -87,7 +94,10 @@ model TimeEntry {
   project     Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
   userId      String
   user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  invoiceId   String?
+  invoice     Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   tags        TimeEntryTag[]
+  invoiceLineItems InvoiceLineItem[]
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
@@ -95,6 +105,7 @@ model TimeEntry {
   @@index([projectId])
   @@index([startTime])
   @@index([userId, startTime])
+  @@index([invoiceId])
 }
 
 model TimeEntryTag {
@@ -118,4 +129,57 @@ model DescriptionRule {
 
   @@unique([description, userId])
   @@index([userId])
+}
+
+model Invoice {
+  id               String   @id @default(cuid())
+  number           String
+  status           String   @default("draft")
+  issueDate        DateTime
+  dueDate          DateTime
+  currency         String
+  currencySymbol   String
+  subtotal         Float
+  taxRate          Float    @default(0)
+  taxAmount        Float    @default(0)
+  discountPercent  Float    @default(0)
+  discountAmount   Float    @default(0)
+  total            Float
+  notes            String?
+  paymentTerms     String?
+  senderName       String?
+  senderAddress    String?
+  senderEmail      String?
+  senderTaxId      String?
+  recipientName    String?
+  recipientAddress String?
+  recipientEmail   String?
+  clientId         String?
+  client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lineItems        InvoiceLineItem[]
+  timeEntries      TimeEntry[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([number, userId])
+  @@index([userId])
+}
+
+model InvoiceLineItem {
+  id          String    @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Float
+  rate        Float
+  amount      Float
+  sortOrder   Int       @default(0)
+  timeEntryId String?
+  timeEntry   TimeEntry? @relation(fields: [timeEntryId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([invoiceId])
 }
