@@ -123,8 +123,8 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   y = Math.max(senderY, recipientY) + 10;
 
   // --- LINE ITEMS TABLE ---
-  const colWidths = [10, contentWidth - 80, 20, 25, 25];
-  const headers = ["#", "Description", "Qty", "Rate", "Amount"];
+  const colWidths = [10, contentWidth - 85, 20, 27, 28];
+  const headers = ["#", "Description", "Hours", "Rate /hr", "Amount"];
 
   // Table header
   doc.setFillColor(...HEADER_BG);

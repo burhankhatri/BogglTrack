@@ -91,7 +91,7 @@ interface Client {
 }
 
 type DatePreset = "all-time" | "this-week" | "this-month" | "last-month" | "last-30" | "custom";
-type GroupMode = "detailed" | "summary";
+type GroupMode = "individual" | "grouped";
 
 // ---- Helpers ----
 
@@ -139,7 +139,7 @@ export default function InvoicesPage() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [issueDate, setIssueDate] = useState<Date>(new Date());
   const [dueDate, setDueDate] = useState<Date>(addDays(new Date(), 30));
-  const [groupMode, setGroupMode] = useState<GroupMode>("detailed");
+  const [groupMode, setGroupMode] = useState<GroupMode>("individual");
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [taxRate, setTaxRate] = useState(0);
   const [discountPercent, setDiscountPercent] = useState(0);
@@ -252,9 +252,8 @@ export default function InvoicesPage() {
   // Build line items when entering step 2
   const buildLineItems = useCallback(() => {
     const selected = entries.filter((e) => selectedIds.has(e.id));
-    const currSymbol = settings?.currencySymbol || "$";
 
-    if (groupMode === "detailed") {
+    if (groupMode === "individual") {
       return selected.map((e, i) => ({
         id: `li-${i}`,
         description: e.description || "(no description)",
@@ -264,35 +263,34 @@ export default function InvoicesPage() {
         timeEntryId: e.id,
       }));
     } else {
-      // Summary: group by project
-      const byProject = new Map<string, { name: string; hours: number; rate: number; amount: number; color: string }>();
+      // Grouped: merge entries with the same description
+      const byDescription = new Map<string, { description: string; hours: number; rate: number; amount: number }>();
       for (const e of selected) {
-        const projId = e.project?.id || "no-project";
-        const existing = byProject.get(projId);
+        const desc = e.description || "(no description)";
+        const existing = byDescription.get(desc);
         const hours = (e.duration || 0) / 3600;
         if (existing) {
           existing.hours += hours;
           existing.amount += e.earnings;
         } else {
-          byProject.set(projId, {
-            name: e.project?.name || "No Project",
+          byDescription.set(desc, {
+            description: desc,
             hours,
             rate: e.rate,
             amount: e.earnings,
-            color: e.project?.color || "#6B7280",
           });
         }
       }
-      return Array.from(byProject.entries()).map(([, proj], i) => ({
+      return Array.from(byDescription.values()).map((group, i) => ({
         id: `li-${i}`,
-        description: proj.name,
-        quantity: Math.round(proj.hours * 100) / 100,
-        rate: proj.rate,
-        amount: Math.round(proj.amount * 100) / 100,
+        description: group.description,
+        quantity: Math.round(group.hours * 100) / 100,
+        rate: group.rate,
+        amount: Math.round(group.amount * 100) / 100,
         timeEntryId: null,
       }));
     }
-  }, [entries, selectedIds, groupMode, settings]);
+  }, [entries, selectedIds, groupMode]);
 
   // Computed totals
   const subtotal = useMemo(
@@ -513,6 +511,32 @@ export default function InvoicesPage() {
       {/* ========== STEP 1: SELECT ENTRIES ========== */}
       {step === 1 && (
         <div className="space-y-5">
+          {/* Quick project select */}
+          {projects.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant={!selectedProjectId ? "default" : "outline"}
+                size="sm"
+                className="rounded-full h-9 text-[13px]"
+                onClick={() => setSelectedProjectId("")}
+              >
+                All Projects
+              </Button>
+              {projects.map((p) => (
+                <Button
+                  key={p.id}
+                  variant={selectedProjectId === p.id ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-full h-9 text-[13px]"
+                  onClick={() => setSelectedProjectId(p.id)}
+                >
+                  <span className="size-2 rounded-full shrink-0 mr-1.5" style={{ backgroundColor: p.color }} />
+                  {p.name}
+                </Button>
+              ))}
+            </div>
+          )}
+
           {/* Filter bar */}
           <div className="flex flex-wrap items-center gap-2">
             <Select
@@ -776,18 +800,24 @@ export default function InvoicesPage() {
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-sm font-medium text-[var(--text-olive)]">Line Items</span>
                     <div className="flex gap-1">
-                      {(["detailed", "summary"] as GroupMode[]).map((mode) => (
-                        <Button
-                          key={mode}
-                          variant={groupMode === mode ? "default" : "outline"}
-                          size="sm"
-                          className="h-8 px-3 text-xs rounded-full"
-                          onClick={() => setGroupMode(mode)}
-                          data-testid={`group-${mode}`}
-                        >
-                          {mode.charAt(0).toUpperCase() + mode.slice(1)}
-                        </Button>
-                      ))}
+                      <Button
+                        variant={groupMode === "individual" ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 px-3 text-xs rounded-full"
+                        onClick={() => setGroupMode("individual")}
+                        data-testid="group-individual"
+                      >
+                        Individual entries
+                      </Button>
+                      <Button
+                        variant={groupMode === "grouped" ? "default" : "outline"}
+                        size="sm"
+                        className="h-8 px-3 text-xs rounded-full"
+                        onClick={() => setGroupMode("grouped")}
+                        data-testid="group-grouped"
+                      >
+                        Group by description
+                      </Button>
                     </div>
                   </div>
 
@@ -1016,8 +1046,8 @@ export default function InvoicesPage() {
                   <TableRow className="bg-[var(--text-forest)]">
                     <TableHead className="text-white font-semibold w-10">#</TableHead>
                     <TableHead className="text-white font-semibold">Description</TableHead>
-                    <TableHead className="text-white font-semibold text-right">Qty</TableHead>
-                    <TableHead className="text-white font-semibold text-right">Rate</TableHead>
+                    <TableHead className="text-white font-semibold text-right">Hours</TableHead>
+                    <TableHead className="text-white font-semibold text-right">Rate (/hr)</TableHead>
                     <TableHead className="text-white font-semibold text-right">Amount</TableHead>
                   </TableRow>
                 </TableHeader>
