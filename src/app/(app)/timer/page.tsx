@@ -43,6 +43,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { DatePickerField } from "@/components/ui/date-picker-field";
 
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -583,36 +584,35 @@ export default function TimerPage() {
             {/* Date / Start / End row */}
             <div className="grid grid-cols-3 gap-6 pt-2">
               <div>
-                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
+                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
                   Date
                 </label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={manualDate}
-                  onChange={(e) => setManualDate(e.target.value)}
-                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
+                  onChange={setManualDate}
+                  size="md"
                 />
               </div>
               <div>
-                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
+                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
                   Start time
                 </label>
                 <Input
                   type="time"
                   value={manualStartTime}
                   onChange={(e) => setManualStartTime(e.target.value)}
-                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
+                  className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-10 font-sans text-sm tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
                 />
               </div>
               <div>
-                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
+                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
                   End time
                 </label>
                 <Input
                   type="time"
                   value={manualEndTime}
                   onChange={(e) => setManualEndTime(e.target.value)}
-                  className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-sm"
+                  className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-10 font-sans text-sm tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
                 />
               </div>
             </div>
@@ -728,23 +728,23 @@ export default function TimerPage() {
                             />
                             {/* Timestamp editing row */}
                             <div className="grid grid-cols-3 gap-3 mt-2">
-                              <Input
-                                type="date"
+                              <DatePickerField
                                 value={editDate}
-                                onChange={(e) => setEditDate(e.target.value)}
-                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                                onChange={setEditDate}
+                                size="sm"
+                                displayFormat="MMM d"
                               />
                               <Input
                                 type="time"
                                 value={editStartTime}
                                 onChange={(e) => setEditStartTime(e.target.value)}
-                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
                               />
                               <Input
                                 type="time"
                                 value={editEndTime}
                                 onChange={(e) => setEditEndTime(e.target.value)}
-                                className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px]"
+                                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
                               />
                             </div>
                             <div className="flex items-center gap-2 mt-1">

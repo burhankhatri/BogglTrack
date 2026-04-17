@@ -43,66 +43,69 @@ export default function SignUpPage() {
   return (
     <div className="w-full max-w-sm mx-auto px-6">
       <div className="flex flex-col items-center mb-8">
-        <div className="h-12 w-12 rounded-full bg-[var(--accent-olive)] flex items-center justify-center mb-4">
-          <Clock className="h-6 w-6 text-[var(--text-forest)]" />
+        <div className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--text-forest)] flex items-center justify-center mb-4">
+          <Clock className="h-5 w-5 text-[var(--text-cream)]" />
         </div>
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-forest)]">
+        <h1 className="text-[24px] font-semibold tracking-tight text-[var(--text-forest)]">
           Create account
         </h1>
-        <p className="text-sm text-[var(--text-olive)] mt-1">
+        <p className="text-[13px] text-[var(--text-olive)] mt-1">
           Start tracking your time with BogglTrack
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label htmlFor="name" className="text-sm font-medium text-[var(--text-forest)]">
+        <div className="space-y-1.5">
+          <label htmlFor="name" className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wide">
             Name
           </label>
           <input
             id="name"
             type="text"
             required
+            autoComplete="name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Your name"
-            className="flex h-10 w-full rounded-lg border border-[var(--border-medium)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] placeholder:text-[var(--text-olive)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-olive)]"
+            className="flex h-10 w-full rounded-[var(--radius-md)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] shadow-[var(--shadow-card)] placeholder:text-[var(--text-olive)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text-forest)]/20"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="email" className="text-sm font-medium text-[var(--text-forest)]">
+        <div className="space-y-1.5">
+          <label htmlFor="email" className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wide">
             Email
           </label>
           <input
             id="email"
             type="email"
             required
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@example.com"
-            className="flex h-10 w-full rounded-lg border border-[var(--border-medium)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] placeholder:text-[var(--text-olive)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-olive)]"
+            className="flex h-10 w-full rounded-[var(--radius-md)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] shadow-[var(--shadow-card)] placeholder:text-[var(--text-olive)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text-forest)]/20"
           />
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="password" className="text-sm font-medium text-[var(--text-forest)]">
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wide">
             Password
           </label>
           <input
             id="password"
             type="password"
             required
+            autoComplete="new-password"
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Min 8 characters"
-            minLength={8}
-            className="flex h-10 w-full rounded-lg border border-[var(--border-medium)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] placeholder:text-[var(--text-olive)]/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-olive)]"
+            className="flex h-10 w-full rounded-[var(--radius-md)] bg-[var(--bg-cream)] px-3 py-2 text-sm text-[var(--text-forest)] shadow-[var(--shadow-card)] placeholder:text-[var(--text-olive)]/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--text-forest)]/20"
           />
         </div>
 
         {error && (
-          <p className="text-sm text-[var(--accent-coral)] bg-[var(--accent-coral)]/10 rounded-lg px-3 py-2">
+          <p className="text-[13px] text-[var(--accent-coral)] bg-[var(--accent-coral)]/8 rounded-[var(--radius-md)] px-3 py-2">
             {error}
           </p>
         )}
@@ -110,17 +113,13 @@ export default function SignUpPage() {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex h-10 w-full items-center justify-center rounded-lg bg-[var(--accent-olive)] px-4 text-sm font-medium text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] disabled:opacity-50 transition-colors"
+          className="inline-flex h-10 w-full items-center justify-center rounded-[var(--radius-md)] bg-[var(--text-forest)] px-4 text-sm font-medium text-[var(--text-cream)] hover:opacity-90 disabled:opacity-50 transition-opacity"
         >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            "Create account"
-          )}
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
         </button>
       </form>
 
-      <p className="mt-6 text-center text-sm text-[var(--text-olive)]">
+      <p className="mt-6 text-center text-[13px] text-[var(--text-olive)]">
         Already have an account?{" "}
         <Link
           href="/sign-in"

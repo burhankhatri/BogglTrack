@@ -83,7 +83,14 @@ export default function CalendarPage() {
   return (
     <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-8">
       {/* Header */}
-      <h1 className="font-serif text-[28px] font-semibold text-[var(--text-forest)]">Calendar</h1>
+      <header className="space-y-1">
+        <h1 className="font-sans text-[32px] md:text-[36px] font-semibold tracking-tight text-[var(--text-forest)] leading-none">
+          Calendar
+        </h1>
+        <p className="text-[14px] text-[var(--text-olive)]">
+          Browse and review time entries by day.
+        </p>
+      </header>
 
       {/* Calendar + summary */}
       <div className="grid gap-6 md:grid-cols-[auto_1fr]">

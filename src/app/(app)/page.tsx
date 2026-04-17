@@ -2,17 +2,16 @@
 
 import { useEffect } from "react";
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Clock, Calendar, TrendingUp, FolderKanban, Play } from "lucide-react";
+import { Clock, Calendar, TrendingUp, FolderKanban } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
 import { ProgressBar } from "@/components/ui/progress-bar";
@@ -37,14 +36,6 @@ interface RecentEntry {
     client: { id: string; name: string } | null;
   } | null;
   tags: { tagId: string; tag: { id: string; name: string; color: string } }[];
-}
-
-interface TopProject {
-  id: string;
-  name: string;
-  color: string;
-  hours: number;
-  earnings: number;
 }
 
 export default function DashboardPage() {
@@ -99,35 +90,46 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 max-w-[1200px] mx-auto">
-      <h1 className="font-serif text-[28px] font-semibold text-[var(--text-forest)]">Dashboard</h1>
+      {/* Page header — clear hierarchy */}
+      <header className="space-y-1">
+        <h1 className="font-sans text-[32px] md:text-[36px] font-semibold tracking-tight text-[var(--text-forest)] leading-none">
+          Dashboard
+        </h1>
+        <p className="text-[14px] text-[var(--text-olive)]">
+          An overview of your time and earnings.
+        </p>
+      </header>
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <SummaryCard
-          icon={<Clock className="size-5" />}
+          icon={<Clock className="size-4" />}
           label="Today"
           hours={data.today.hours}
           earnings={data.today.earnings}
         />
         <SummaryCard
-          icon={<Calendar className="size-5" />}
+          icon={<Calendar className="size-4" />}
           label="This Week"
           hours={data.thisWeek.hours}
           earnings={data.thisWeek.earnings}
         />
         <SummaryCard
-          icon={<TrendingUp className="size-5" />}
+          icon={<TrendingUp className="size-4" />}
           label="This Month"
           hours={data.thisMonth.hours}
           earnings={data.thisMonth.earnings}
         />
         <StatCard
-          icon={<FolderKanban className="size-5" />}
+          icon={<FolderKanban className="size-4" />}
           title="Active Projects"
+          muted={data.activeProjects === 0}
           value={
-            <div>
-              <div className="text-3xl font-bold">{data.activeProjects}</div>
-              <p className="text-[13px] font-medium text-[var(--text-olive)] mt-1">projects</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-[32px] font-semibold">{data.activeProjects}</span>
+              <span className="text-[12px] font-medium text-[var(--text-olive)] tracking-normal normal-case">
+                active
+              </span>
             </div>
           }
         />
@@ -135,64 +137,59 @@ export default function DashboardPage() {
 
       {/* Earnings Trend + Top Projects */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Earnings Trend Chart */}
+        {/* Earnings — bar chart (honest about sparse data) */}
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle className="font-sans text-base">Earnings Trend (Last 30 Days)</CardTitle>
+            <CardTitle className="font-sans text-[15px] font-semibold text-[var(--text-forest)]">
+              Earnings — last 30 days
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.earningsTrend}>
-                  <defs>
-                    <linearGradient id="earningsGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2D6B5A" stopOpacity={0.15} />
-                      <stop offset="95%" stopColor="#2D6B5A" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-subtle)" />
+                <BarChart data={data.earningsTrend} barCategoryGap={2}>
+                  <CartesianGrid strokeDasharray="2 4" vertical={false} stroke="var(--border-subtle)" />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(val: string) => format(new Date(val + "T00:00:00"), "MMM d")}
-                    tick={{ fill: "var(--text-olive)", fontSize: 12, fontFamily: "Inter" }}
+                    tick={{ fill: "var(--text-olive)", fontSize: 11, fontFamily: "Inter" }}
                     axisLine={false}
                     tickLine={false}
-                    dy={10}
+                    dy={8}
                     interval="preserveStartEnd"
+                    minTickGap={24}
                   />
                   <YAxis
                     tickFormatter={(val: number) => `$${val}`}
-                    tick={{ fill: "var(--text-olive)", fontSize: 12, fontFamily: "Inter" }}
+                    tick={{ fill: "var(--text-olive)", fontSize: 11, fontFamily: "Inter" }}
                     axisLine={false}
                     tickLine={false}
-                    dx={-10}
-                    width={60}
+                    dx={-6}
+                    width={48}
                   />
                   <Tooltip
-                    cursor={{ stroke: "var(--border-subtle)", strokeWidth: 1, strokeDasharray: "4 4" }}
+                    cursor={{ fill: "var(--bg-muted)", opacity: 0.6 }}
                     content={({ active, payload, label }) => {
                       if (!active || !payload?.length) return null;
                       return (
-                        <div className="rounded-[var(--radius-lg)] bg-[var(--bg-cream)] px-4 py-3 shadow-[var(--shadow-dropdown)] border border-[var(--border-subtle)]">
-                          <p className="text-[13px] font-medium text-[var(--text-olive)] mb-1">
+                        <div className="rounded-[var(--radius-md)] bg-[var(--bg-cream)] px-3 py-2 shadow-[var(--shadow-dropdown)]">
+                          <p className="text-[11px] font-medium text-[var(--text-olive)] mb-0.5">
                             {format(new Date(label + "T00:00:00"), "MMM d, yyyy")}
                           </p>
-                          <p className="text-[15px] font-bold text-[var(--accent-teal)]">
+                          <p className="text-[14px] font-semibold text-[var(--text-forest)] tabular-nums">
                             {formatCurrency(payload[0].value as number)}
                           </p>
                         </div>
                       );
                     }}
                   />
-                  <Area
-                    type="monotone"
+                  <Bar
                     dataKey="earnings"
-                    stroke="#2D6B5A"
-                    strokeWidth={2}
-                    fill="url(#earningsGradient)"
-                    activeDot={{ r: 6, fill: "#2D6B5A", stroke: "var(--bg-cream)", strokeWidth: 2 }}
+                    fill="var(--accent-olive)"
+                    radius={[2, 2, 0, 0]}
+                    maxBarSize={14}
                   />
-                </AreaChart>
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
@@ -201,38 +198,40 @@ export default function DashboardPage() {
         {/* Top Projects */}
         <Card>
           <CardHeader>
-            <CardTitle className="font-sans text-base">Top Projects</CardTitle>
+            <CardTitle className="font-sans text-[15px] font-semibold text-[var(--text-forest)]">
+              Top projects
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {data.topProjects.length === 0 ? (
               <p className="text-sm text-[var(--text-olive)]">No project data yet.</p>
             ) : (
-              <div className="space-y-6 mt-2">
+              <div className="space-y-5 mt-1">
                 {data.topProjects.map((project) => (
                   <div key={project.id} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <span
-                          className="size-2.5 rounded-full shrink-0"
+                          className="size-2 rounded-full shrink-0"
                           style={{ backgroundColor: project.color }}
                         />
-                        <span className="font-medium text-[var(--text-forest)] truncate max-w-[200px] sm:max-w-none">
+                        <span className="font-medium text-[var(--text-forest)] truncate">
                           {project.name}
                         </span>
                       </div>
-                      <div className="text-right text-[13px] font-medium text-[var(--text-olive)]">
+                      <div className="text-right text-[12px] font-medium text-[var(--text-olive)] tabular-nums shrink-0 ml-3">
                         <span>{formatHours(project.hours)}</span>
-                        <span className="ml-[6px] text-[var(--accent-teal)]">
+                        <span className="ml-2 text-[var(--text-forest)]">
                           {formatCurrency(project.earnings)}
                         </span>
                       </div>
                     </div>
-                    <ProgressBar 
-                      value={project.hours} 
-                      max={maxProjectHours} 
-                      className="h-1.5"
+                    <ProgressBar
+                      value={project.hours}
+                      max={maxProjectHours}
+                      className="h-1"
                       indicatorClass=""
-                      style={{"--accent-olive": project.color} as React.CSSProperties}
+                      style={{ "--accent-olive": project.color } as React.CSSProperties}
                     />
                   </div>
                 ))}
@@ -245,7 +244,9 @@ export default function DashboardPage() {
       {/* Recent Entries */}
       <Card>
         <CardHeader>
-          <CardTitle className="font-sans text-base">Recent Entries</CardTitle>
+          <CardTitle className="font-sans text-[15px] font-semibold text-[var(--text-forest)]">
+            Recent entries
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {data.recentEntries.length === 0 ? (
@@ -285,14 +286,30 @@ function SummaryCard({
   hours: number;
   earnings: number;
 }) {
+  const isEmpty = hours === 0 && earnings === 0;
   return (
     <StatCard
       icon={icon}
       title={label}
+      muted={isEmpty}
       value={
         <div>
-          <div className="text-3xl font-bold text-[var(--text-forest)]">{formatHours(hours)}</div>
-          <p className="text-[14px] font-semibold text-[var(--accent-olive)] mt-1">
+          <div
+            className={
+              isEmpty
+                ? "text-[28px] font-semibold text-[var(--text-muted)]"
+                : "text-[28px] font-semibold text-[var(--text-forest)]"
+            }
+          >
+            {formatHours(hours)}
+          </div>
+          <p
+            className={
+              isEmpty
+                ? "text-[12px] font-medium text-[var(--text-muted)] mt-1 tabular-nums tracking-normal normal-case"
+                : "text-[12px] font-medium text-[var(--text-olive)] mt-1 tabular-nums tracking-normal normal-case"
+            }
+          >
             {formatCurrency(earnings)}
           </p>
         </div>

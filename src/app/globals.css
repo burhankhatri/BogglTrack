@@ -12,39 +12,54 @@
 }
 
 :root {
-  /* Backgrounds */
-  --bg-sage: #E8ECE3;           /* Page background — lighter for card contrast */
+  /* Backgrounds — neutral grayscale, enterprise-grade */
+  --bg-sage: #FAFAFA;           /* Page canvas — warm near-white */
   --bg-cream: #FFFFFF;          /* Cards, surfaces — pure white */
-  --bg-cream-hover: #F5F5F0;    /* Card hover state */
-  --bg-muted: #EAEDE4;          /* Muted backgrounds, dividers area */
+  --bg-cream-hover: #F5F5F5;    /* Card hover state */
+  --bg-muted: #F4F4F5;          /* Muted backgrounds, chips, dividers */
 
-  /* Text */
-  --text-forest: #1A1A2E;       /* Primary text — near-black */
-  --text-olive: #6B7280;        /* Secondary text — neutral gray */
-  --text-cream: #FFFFFF;        /* Text on dark/accent backgrounds */
+  /* Text — Cal-inspired neutrals */
+  --text-forest: #18181B;       /* Primary — near-black charcoal */
+  --text-olive: #71717A;        /* Secondary — neutral gray */
+  --text-cream: #FFFFFF;        /* Text on dark/accent */
+  --text-muted: #A1A1AA;        /* Tertiary — zero-state, tertiary labels */
 
-  /* Accents */
-  --accent-olive: #C8D84E;      /* Primary accent — buttons, active states */
-  --accent-olive-hover: #B5C438; /* Accent hover */
-  --accent-coral: #E8A5A0;      /* Secondary accent — destructive, some calendar blocks */
-  --accent-gold: #D4D08E;       /* Tertiary accent — calendar blocks, highlights */
-  --accent-teal: #16A34A;       /* Chart bars, dark accent — brighter green */
+  /* Accent — single restrained brand color (emerald), used sparingly */
+  --accent-olive: #059669;          /* Primary accent — running state, positive deltas */
+  --accent-olive-hover: #047857;    /* Accent hover / active */
+  --accent-olive-soft: #ECFDF5;     /* Accent background tint */
+  --accent-coral: #B91C1C;          /* Destructive — reserved for delete confirmations only */
+  --accent-gold: #D4D08E;           /* (legacy; kept for calendar blocks) */
+  --accent-teal: #059669;           /* Chart line (same as primary accent) */
 
-  /* Borders */
-  --border-subtle: rgba(0, 0, 0, 0.08);  /* Very subtle borders */
-  --border-medium: rgba(0, 0, 0, 0.15);  /* Medium borders */
+  /* Borders — hairline shadow-rings */
+  --border-subtle: rgba(24, 24, 27, 0.06);
+  --border-medium: rgba(24, 24, 27, 0.12);
 
-  /* Shadows */
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08);
-  --shadow-dropdown: 0 4px 16px rgba(0, 0, 0, 0.12);
+  /* Shadows — Cal-inspired layered depth */
+  --shadow-card:
+    0 0 0 1px rgba(24, 24, 27, 0.05),
+    0 1px 2px rgba(24, 24, 27, 0.04),
+    0 1px 3px rgba(24, 24, 27, 0.03);
+  --shadow-dropdown:
+    0 0 0 1px rgba(24, 24, 27, 0.06),
+    0 8px 24px rgba(24, 24, 27, 0.08),
+    0 2px 4px rgba(24, 24, 27, 0.04);
 
   /* Radius */
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
   --radius-full: 9999px;
 }
+
+/* Pulsing indicator used for running timer */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+.pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
 
 @layer base {
   * {

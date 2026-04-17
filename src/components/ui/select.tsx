@@ -82,7 +82,7 @@ const SelectValue = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLS
     const displayLabel = value ? labelMap.get(value) : null
     return (
       <span ref={ref} className={cn("truncate block", !value && "text-[var(--text-olive)] opacity-50", className)} {...props}>
-        {displayLabel ?? (value ? value : placeholder)}
+        {displayLabel ?? placeholder}
       </span>
     )
   }

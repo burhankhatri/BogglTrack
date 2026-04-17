@@ -6,19 +6,12 @@ import {
   Square,
   DollarSign,
   Loader2,
+  ChevronDown,
+  Check,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Toggle } from "@/components/ui/toggle";
 import { useTimerStore } from "@/stores/timer-store";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
@@ -43,7 +36,9 @@ export function GlobalTimerBar() {
   const fetchProjects = useAppStore((s) => s.fetchProjects);
   const runningTimerChecked = useAppStore((s) => s.runningTimerChecked);
   const setRunningTimerChecked = useAppStore((s) => s.setRunningTimerChecked);
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
+  const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const projectMenuRef = useRef<HTMLDivElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const {
@@ -71,8 +66,6 @@ export function GlobalTimerBar() {
   }, [fetchProjects]);
 
   // Verify running timer with server — only once per session.
-  // With localStorage persistence, the timer is already restored on hydration.
-  // This API check reconciles: corrects stale localStorage or fills in the real entry ID.
   useEffect(() => {
     if (runningTimerChecked) return;
     async function checkRunning() {
@@ -81,10 +74,9 @@ export function GlobalTimerBar() {
         if (res.ok) {
           const data = await res.json();
           if (data && data.id) {
-            // If localStorage already has this timer running, just ensure the entry ID is correct
             const current = useTimerStore.getState();
             if (current.isRunning && current.entryId === data.id) {
-              // Already in sync — nothing to do
+              // Already in sync
             } else {
               restoreTimer({
                 entryId: data.id,
@@ -97,7 +89,6 @@ export function GlobalTimerBar() {
               });
             }
           } else {
-            // Server says no running timer — if localStorage thinks one is running, stop it
             const current = useTimerStore.getState();
             if (current.isRunning) {
               stopTimer();
@@ -105,7 +96,7 @@ export function GlobalTimerBar() {
           }
         }
       } catch {
-        // Running check failed silently — trust localStorage state
+        // Silent — trust localStorage
       }
       setRunningTimerChecked();
     }
@@ -115,26 +106,20 @@ export function GlobalTimerBar() {
   // Tick interval
   useEffect(() => {
     if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        tick();
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      intervalRef.current = setInterval(() => tick(), 1000);
+    } else if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
     }
     return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
+      if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning, tick]);
 
-  // Update browser tab title with running timer
+  // Browser tab title
   useEffect(() => {
     if (isRunning) {
-      document.title = `${formatElapsed(elapsedSeconds)} - BogglTrack`;
+      document.title = `${formatElapsed(elapsedSeconds)} — BogglTrack`;
     } else {
       document.title = "BogglTrack";
     }
@@ -143,24 +128,35 @@ export function GlobalTimerBar() {
     };
   }, [isRunning, elapsedSeconds]);
 
-  // Update hourly rate when project changes
+  // Sync hourly rate with selected project
   useEffect(() => {
     if (projectId) {
       const project = projects.find((p) => p.id === projectId);
-      if (project?.hourlyRate) {
-        setHourlyRate(project.hourlyRate);
-      }
+      if (project?.hourlyRate) setHourlyRate(project.hourlyRate);
     } else {
       setHourlyRate(0);
     }
   }, [projectId, projects, setHourlyRate]);
+
+  // Close project dropdown on outside click
+  useEffect(() => {
+    if (!projectMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!projectMenuRef.current?.contains(e.target as Node)) {
+        setProjectMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [projectMenuOpen]);
+
+  const selectedProject = projects.find((p) => p.id === projectId) || null;
 
   const handleStart = useCallback(() => {
     const now = new Date().toISOString();
     const tempId = "temp-" + Date.now();
     const project = projects.find((p) => p.id === projectId);
 
-    // Start timer instantly (optimistic)
     startTimer({
       entryId: tempId,
       startTime: now,
@@ -171,7 +167,6 @@ export function GlobalTimerBar() {
       hourlyRate: project?.hourlyRate || 0,
     });
 
-    // Save to server in background
     fetch("/api/time-entries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,9 +182,7 @@ export function GlobalTimerBar() {
         if (!res.ok) throw new Error("Failed to save");
         return res.json();
       })
-      .then((entry) => {
-        setEntryId(entry.id);
-      })
+      .then((entry) => setEntryId(entry.id))
       .catch(() => {
         stopTimer();
         toast.error("Failed to start timer");
@@ -206,11 +199,9 @@ export function GlobalTimerBar() {
     const stoppedEntryId = entryId;
     const now = new Date();
 
-    // Capture timer state BEFORE clearing it
     const timerState = useTimerStore.getState();
     const proj = projects.find((p) => p.id === timerState.projectId) || null;
 
-    // Build a synthetic completed entry for optimistic insertion
     const syntheticEntry = {
       id: stoppedEntryId,
       description: timerState.description,
@@ -225,45 +216,107 @@ export function GlobalTimerBar() {
       tags: [],
     };
 
-    // Stop UI immediately
     stopTimer();
     toast.success("Time entry saved");
 
-    // Dispatch synthetic entry so pages can insert it instantly
     window.dispatchEvent(
       new CustomEvent("timer-entry-completed", { detail: syntheticEntry })
     );
 
-    // Save to server in background
-    fetch(`/api/time-entries/${stoppedEntryId}/stop`, {
-      method: "POST",
-    })
+    fetch(`/api/time-entries/${stoppedEntryId}/stop`, { method: "POST" })
       .then((res) => {
         if (!res.ok) throw new Error("Failed to save");
         return res.json();
       })
       .then((confirmedEntry) => {
-        // Dispatch real entry from API to replace the synthetic one
         window.dispatchEvent(
           new CustomEvent("timer-entry-confirmed", { detail: confirmedEntry })
         );
       })
       .catch(() => {
         toast.error("Failed to save time entry");
-        // Remove the optimistic entry
         window.dispatchEvent(
-          new CustomEvent("timer-entry-failed", {
-            detail: { id: stoppedEntryId },
-          })
+          new CustomEvent("timer-entry-failed", { detail: { id: stoppedEntryId } })
         );
       });
   }, [entryId, stopTimer, projects]);
 
   return (
-    <div className="sticky top-0 z-30 bg-transparent pt-4 pb-2 px-4 md:px-6">
-      <div className="flex flex-col md:flex-row items-center gap-4 py-3 md:py-4 px-4 md:px-6 bg-[var(--bg-cream)] rounded-[var(--radius-xl)] shadow-[var(--shadow-card)] border border-[var(--border-subtle)]">
-        {/* Description input */}
-        <div className="flex-1 w-full relative">
+    <div className="sticky top-0 z-30 bg-[var(--bg-sage)] pt-4 pb-3 px-4 md:px-6">
+      <div
+        className={cn(
+          "flex flex-col md:flex-row items-stretch md:items-center gap-3 py-2.5 md:py-3 px-3 md:px-4 bg-[var(--bg-cream)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-card)] transition-colors",
+          isRunning && "ring-1 ring-[var(--accent-olive)]/30"
+        )}
+      >
+        {/* LEFT — Project selector (name, not ID) */}
+        <div className="relative shrink-0 order-2 md:order-1" ref={projectMenuRef}>
+          <button
+            type="button"
+            onClick={() => !isRunning && setProjectMenuOpen((o) => !o)}
+            disabled={isRunning}
+            className={cn(
+              "h-9 inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--bg-muted)] px-3 text-sm font-medium text-[var(--text-forest)] transition-colors hover:bg-[var(--bg-cream-hover)] disabled:opacity-70 disabled:cursor-not-allowed",
+              "max-w-[200px]"
+            )}
+            aria-haspopup="listbox"
+            aria-expanded={projectMenuOpen}
+          >
+            {selectedProject ? (
+              <>
+                <span
+                  className="h-2 w-2 rounded-full shrink-0"
+                  style={{ backgroundColor: selectedProject.color }}
+                />
+                <span className="truncate">{selectedProject.name}</span>
+              </>
+            ) : (
+              <span className="text-[var(--text-olive)]">No project</span>
+            )}
+            <ChevronDown className={cn("h-3.5 w-3.5 opacity-50 transition-transform shrink-0", projectMenuOpen && "rotate-180")} />
+          </button>
+
+          {projectMenuOpen && (
+            <div
+              role="listbox"
+              className="absolute left-0 top-[calc(100%+6px)] z-50 w-56 max-h-[320px] overflow-y-auto rounded-[var(--radius-md)] bg-[var(--bg-cream)] p-1 shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100"
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setProjectId(null);
+                  setProjectMenuOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-olive)] hover:bg-[var(--bg-muted)] transition-colors text-left"
+              >
+                <span className="h-2 w-2 rounded-full border border-[var(--border-medium)] shrink-0" />
+                <span>No project</span>
+                {!projectId && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
+              </button>
+              {projects.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    setProjectId(p.id);
+                    setProjectMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-forest)] hover:bg-[var(--bg-muted)] transition-colors text-left"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full shrink-0"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  <span className="truncate">{p.name}</span>
+                  {projectId === p.id && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* MIDDLE — Description input */}
+        <div className="flex-1 order-1 md:order-2 min-w-0">
           <Input
             placeholder="What are you working on?"
             value={description}
@@ -271,79 +324,76 @@ export function GlobalTimerBar() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !isRunning) handleStart();
             }}
-            className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-2 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
+            className="w-full h-10 bg-transparent border-transparent shadow-none text-[15px] px-2 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/70 text-[var(--text-forest)]"
             disabled={isRunning}
           />
         </div>
 
-        <div className="flex items-center gap-3 w-full justify-between md:w-auto flex-wrap">
-          {/* Project selector */}
-          <Select
-            value={projectId || ""}
-            onValueChange={(value: string) => setProjectId(value || null)}
-          >
-            <SelectTrigger 
-              className="h-10 border-transparent bg-[var(--bg-muted)]/50 rounded-full shrink-0 font-medium w-auto min-w-[120px]"
-              disabled={isRunning}
-            >
-              <SelectValue placeholder="No project" />
-            </SelectTrigger>
-            <SelectContent>
-              {projects.map((project) => (
-                <SelectItem key={project.id} value={project.id}>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className="h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ backgroundColor: project.color }}
-                    />
-                    {project.name}
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Billable toggle */}
-          <Toggle
-            pressed={billable}
-            onPressedChange={setBillable}
-            aria-label="Toggle billable"
+        {/* RIGHT — Billable toggle + Timer module + Stop */}
+        <div className="flex items-center gap-3 shrink-0 order-3 md:order-3 justify-end md:justify-start">
+          {/* Billable — subtle text toggle, not a floating icon */}
+          <button
+            type="button"
+            onClick={() => !isRunning && setBillable(!billable)}
             disabled={isRunning}
+            aria-label={billable ? "Billable — on" : "Billable — off"}
+            aria-pressed={billable}
             className={cn(
-              "shrink-0 h-10 w-10 p-0 rounded-full transition-colors",
-              billable ? "bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]" : "text-[var(--text-olive)]"
+              "h-9 w-9 inline-flex items-center justify-center rounded-[var(--radius-md)] transition-colors shrink-0",
+              billable
+                ? "bg-[var(--accent-olive-soft)] text-[var(--accent-olive-hover)]"
+                : "text-[var(--text-muted)] hover:bg-[var(--bg-muted)]",
+              isRunning && "opacity-80 cursor-not-allowed"
             )}
+            title={billable ? "Billable" : "Non-billable"}
           >
             <DollarSign className="h-4 w-4" />
-          </Toggle>
+          </button>
 
-          {/* Elapsed time & earnings */}
-          <div className="flex items-center gap-4 shrink-0 px-2 lg:px-6">
-            <span className="tabular-nums text-3xl font-semibold tracking-tight text-[var(--text-forest)] font-sans">
-              {formatElapsed(elapsedSeconds)}
-            </span>
-            {hourlyRate > 0 && (
-              <span className="text-xl text-[var(--accent-olive-hover)] font-medium tabular-nums ml-2 font-sans">
-                {formatEarnings(elapsedSeconds, hourlyRate)}
-              </span>
+          {/* Centered timer module: big time + small earnings + live dot */}
+          <div className="flex items-center gap-2.5 px-2 md:px-3 border-l border-[var(--border-subtle)] pl-3 md:pl-4">
+            {isRunning && (
+              <span
+                aria-hidden
+                className="pulse-dot h-2 w-2 rounded-full bg-[var(--accent-olive)] shrink-0"
+              />
             )}
+            <div className="flex flex-col items-end leading-none">
+              <span
+                className={cn(
+                  "tabular-nums text-[22px] md:text-[26px] font-semibold tracking-tight",
+                  isRunning ? "text-[var(--accent-olive-hover)]" : "text-[var(--text-forest)]"
+                )}
+              >
+                {formatElapsed(elapsedSeconds)}
+              </span>
+              {hourlyRate > 0 && (
+                <span className="mt-1 text-[11px] tabular-nums text-[var(--text-olive)]">
+                  {formatEarnings(elapsedSeconds, hourlyRate)}
+                </span>
+              )}
+            </div>
           </div>
 
-          {/* Start/Stop button */}
+          {/* Start / Stop button — neutral, not alarming */}
           <button
+            type="button"
             onClick={isRunning ? handleStop : handleStart}
             disabled={loading}
+            aria-label={isRunning ? "Stop timer" : "Start timer"}
             className={cn(
-              "h-12 w-12 rounded-full flex items-center justify-center transition-all bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] shadow-[var(--shadow-card)] shrink-0",
-              isRunning && "bg-[var(--accent-coral)] text-[var(--text-cream)] hover:opacity-90"
+              "h-10 w-10 rounded-full inline-flex items-center justify-center transition-all shrink-0",
+              isRunning
+                ? "bg-[var(--bg-muted)] text-[var(--text-forest)] hover:bg-[var(--bg-cream-hover)] border border-[var(--border-medium)]"
+                : "bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90"
             )}
           >
             {loading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : isRunning ? (
-              <Square className="h-5 w-5 fill-current" />
+              <Square className="h-3.5 w-3.5 fill-current" />
             ) : (
-              <Play className="h-5 w-5 ml-1 fill-current" />
+              <Play className="h-4 w-4 ml-[1px] fill-current" />
             )}
           </button>
         </div>
