@@ -127,18 +127,31 @@ export function UntrackedCommitsBanner({ onEntryCreated }: Props) {
             </button>
           </div>
 
-          <ul className="mt-3 space-y-1.5">
+          <ul className="mt-3 space-y-2">
             {visibleClusters.slice(0, 5).map((cl) => {
               const key = clusterKey(cl);
               const isCreating = creating === key;
               const isDone = created.has(key);
+
+              // Tally commits per repo and strip owner/ to save horizontal space
+              // (GitHub account is the same for everything here).
+              const repoTally = new Map<string, number>();
+              for (const c of cl.commits) {
+                repoTally.set(c.repo, (repoTally.get(c.repo) ?? 0) + 1);
+              }
+              const repoChips = Array.from(repoTally.entries()).sort(
+                (a, b) => b[1] - a[1]
+              );
+              const shortRepo = (r: string) => r.split("/").slice(-1)[0];
+
               return (
                 <li
                   key={key}
-                  className="flex items-center gap-3 p-2 rounded-[var(--radius-md)] bg-[var(--bg-cream)]"
+                  className="flex items-start gap-3 p-2.5 rounded-[var(--radius-md)] bg-[var(--bg-cream)]"
                 >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 text-[12px] text-[var(--text-forest)] tabular-nums font-medium">
+                  <div className="min-w-0 flex-1 space-y-1.5">
+                    {/* Header: time range + duration + commit count */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px] text-[var(--text-forest)] tabular-nums font-medium">
                       <span>{format(new Date(cl.start), "EEE, MMM d · HH:mm")}</span>
                       <span className="text-[var(--text-olive)]">→</span>
                       <span>{format(new Date(cl.end), "HH:mm")}</span>
@@ -149,19 +162,57 @@ export function UntrackedCommitsBanner({ onEntryCreated }: Props) {
                         {cl.commits.length} commit{cl.commits.length === 1 ? "" : "s"}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[var(--text-olive)] truncate mt-0.5">
-                      {cl.commits
-                        .slice(0, 2)
-                        .map((c) => c.message)
-                        .join(" · ")}
-                      {cl.commits.length > 2 && ` · +${cl.commits.length - 2} more`}
-                    </p>
+
+                    {/* Repo chips — one per distinct repo with its count.
+                        Makes mixed-repo clusters immediately legible. */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {repoChips.map(([repo, count]) => (
+                        <a
+                          key={repo}
+                          href={`https://github.com/${repo}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={repo}
+                          className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] text-[10px] font-mono text-[var(--text-forest)] transition-colors"
+                        >
+                          <GitCommit className="h-2.5 w-2.5 text-[var(--text-olive)]" />
+                          <span className="truncate max-w-[160px]">{shortRepo(repo)}</span>
+                          {repoChips.length > 1 && (
+                            <span className="text-[var(--text-olive)] tabular-nums">· {count}</span>
+                          )}
+                        </a>
+                      ))}
+                    </div>
+
+                    {/* Commits, each prefixed with its repo's short name so
+                        the user always knows what belongs where. */}
+                    <ul className="space-y-0.5">
+                      {cl.commits.slice(0, 3).map((c) => (
+                        <li
+                          key={c.sha}
+                          className="text-[11px] text-[var(--text-olive)] truncate"
+                          title={`${c.repo} · ${c.message}`}
+                        >
+                          {repoChips.length > 1 && (
+                            <span className="font-mono text-[var(--text-muted)] mr-1.5">
+                              [{shortRepo(c.repo)}]
+                            </span>
+                          )}
+                          {c.message.split("\n")[0]}
+                        </li>
+                      ))}
+                      {cl.commits.length > 3 && (
+                        <li className="text-[11px] text-[var(--text-muted)] italic">
+                          + {cl.commits.length - 3} more
+                        </li>
+                      )}
+                    </ul>
                   </div>
                   <button
                     type="button"
                     disabled={isCreating || isDone}
                     onClick={() => createEntry(cl)}
-                    className="inline-flex items-center gap-1 h-8 px-3 rounded-[var(--radius-md)] text-[12px] font-medium bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 disabled:opacity-60 transition-opacity shrink-0"
+                    className="inline-flex items-center gap-1 h-8 px-3 rounded-[var(--radius-md)] text-[12px] font-medium bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 disabled:opacity-60 transition-opacity shrink-0 self-start"
                   >
                     {isCreating ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
