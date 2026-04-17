@@ -910,31 +910,42 @@ export default function InvoicesPage() {
                               {formatCurrency(li.amount, currSymbol)}
                             </TableCell>
                           </TableRow>
-                          {li.commits && li.commits.length > 0 && (
-                            <TableRow>
-                              <TableCell colSpan={4} className="!py-2 !pl-4 bg-[var(--bg-muted)]/40">
-                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-olive)]">
-                                  <span className="font-medium">Work detail:</span>
-                                  {li.commits.slice(0, 6).map((c) => (
-                                    <a
-                                      key={c.sha}
-                                      href={c.url}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--bg-cream)] hover:text-[var(--text-forest)] transition-colors"
-                                      title={c.message}
-                                    >
-                                      <code className="font-mono text-[10px] text-[var(--text-forest)]">{c.sha.slice(0, 7)}</code>
-                                      <span className="truncate max-w-[160px]">{c.message}</span>
-                                    </a>
-                                  ))}
-                                  {li.commits.length > 6 && (
-                                    <span>+{li.commits.length - 6} more</span>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          )}
+                          {li.commits && li.commits.length > 0 && (() => {
+                            const commits = li.commits;
+                            const repos = new Set(commits.map((c) => c.repo));
+                            const multi = repos.size > 1;
+                            const shortRepo = (r: string) => r.split("/").slice(-1)[0];
+                            return (
+                              <TableRow>
+                                <TableCell colSpan={4} className="!py-2 !pl-4 bg-[var(--bg-muted)]/40">
+                                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-olive)]">
+                                    <span className="font-medium">Work detail:</span>
+                                    {commits.slice(0, 6).map((c) => (
+                                      <a
+                                        key={c.sha}
+                                        href={c.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--bg-cream)] hover:text-[var(--text-forest)] transition-colors"
+                                        title={`${c.repo} · ${c.message}`}
+                                      >
+                                        <code className="font-mono text-[10px] text-[var(--text-forest)]">{c.sha.slice(0, 7)}</code>
+                                        {multi && (
+                                          <span className="font-mono text-[10px] text-[var(--text-muted)]">
+                                            {shortRepo(c.repo)}
+                                          </span>
+                                        )}
+                                        <span className="truncate max-w-[160px]">{c.message}</span>
+                                      </a>
+                                    ))}
+                                    {commits.length > 6 && (
+                                      <span>+{commits.length - 6} more</span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })()}
                         </React.Fragment>
                       ))}
                     </TableBody>

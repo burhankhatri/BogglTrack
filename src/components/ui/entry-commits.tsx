@@ -25,6 +25,10 @@ interface Props {
  * Merges + dedupes commits across all entries in a group (same-description
  * entries can be grouped on the timer page). Renders nothing when there
  * are no commits.
+ *
+ * When commits span more than one repo we prefix each chip with the repo's
+ * short name (`name` from `owner/name`) so multi-repo entries are legible
+ * at a glance. Single-repo entries stay clean (no prefix).
  */
 export function EntryCommits({ entries, maxInline = 3 }: Props) {
   const seen = new Set<string>();
@@ -43,6 +47,11 @@ export function EntryCommits({ entries, maxInline = 3 }: Props) {
     (a, b) => new Date(b.committedAt).getTime() - new Date(a.committedAt).getTime()
   );
 
+  const repos = new Set<string>();
+  for (const c of commits) repos.add(c.repo);
+  const multiRepo = repos.size > 1;
+  const shortRepo = (r: string) => r.split("/").slice(-1)[0];
+
   const shown = commits.slice(0, maxInline);
   const extra = commits.length - shown.length;
 
@@ -56,12 +65,17 @@ export function EntryCommits({ entries, maxInline = 3 }: Props) {
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="group inline-flex items-center gap-1 max-w-[320px] px-2 py-0.5 rounded-full bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] text-[11px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
+          className="group inline-flex items-center gap-1 max-w-[360px] px-2 py-0.5 rounded-full bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] text-[11px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
           title={`${c.repo} · ${c.message}`}
         >
           <code className="text-[10px] text-[var(--text-forest)] font-mono shrink-0">
             {c.sha.slice(0, 7)}
           </code>
+          {multiRepo && (
+            <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0">
+              {shortRepo(c.repo)}
+            </span>
+          )}
           <span className="truncate max-w-[200px]">{c.message}</span>
           <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
         </a>

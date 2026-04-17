@@ -196,6 +196,14 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
       const textStart = margin + 2 + colWidths[0] + 4; // indent under description column
       const maxWidth = colWidths[1] - 6;
       const shown = item.commits.slice(0, 8);
+
+      // Only show repo prefix when this line item spans multiple repos; a
+      // single-repo line keeps the repo name out of every row and surfaces
+      // it as a single "repo: name" footer instead.
+      const repoSet = new Set(shown.map((c) => c.repo).filter(Boolean));
+      const multiRepo = repoSet.size > 1;
+      const shortRepo = (r: string) => r.split("/").slice(-1)[0];
+
       for (const c of shown) {
         if (y > 270) {
           doc.addPage();
@@ -203,10 +211,22 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
         }
         const sha = c.sha.slice(0, 7);
         const msg = c.message.length > 70 ? c.message.slice(0, 67) + "..." : c.message;
-        const label = `  ${sha}  ${msg}${c.repo ? `  [${c.repo}]` : ""}`;
+        const prefix = multiRepo && c.repo ? `[${shortRepo(c.repo)}] ` : "";
+        const label = `  ${sha}  ${prefix}${msg}`;
         doc.text(label, textStart, y, { maxWidth });
         y += 4.2;
       }
+
+      // Single-repo items: add a small footer so the repo is still visible
+      // somewhere on the invoice without cluttering every row.
+      if (!multiRepo && repoSet.size === 1) {
+        const only = Array.from(repoSet)[0];
+        if (only) {
+          doc.text(`  repo: ${only}`, textStart, y);
+          y += 4.2;
+        }
+      }
+
       const extra = item.commits.length - shown.length;
       if (extra > 0) {
         doc.text(`  + ${extra} more commits`, textStart, y);
