@@ -127,12 +127,13 @@ export async function POST(request: NextRequest) {
       try {
         const account = await prisma.gitHubAccount.findUnique({
           where: { userId: user.id },
-          select: { accessToken: true },
+          select: { accessToken: true, githubLogin: true },
         });
         if (account) {
           fetchedCommits = await withTimeout(
             fetchCommitsInWindow({
               encryptedAccessToken: account.accessToken,
+              login: account.githubLogin,
               from: new Date(startTime),
               to: new Date(endTime),
             }),

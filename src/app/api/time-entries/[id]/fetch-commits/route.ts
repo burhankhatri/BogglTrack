@@ -30,7 +30,7 @@ export async function POST(
 
   const account = await prisma.gitHubAccount.findUnique({
     where: { userId: user.id },
-    select: { accessToken: true },
+    select: { accessToken: true, githubLogin: true },
   });
   if (!account) {
     return NextResponse.json({ error: "not-connected" }, { status: 400 });
@@ -39,6 +39,7 @@ export async function POST(
   try {
     const commits = await fetchCommitsInWindow({
       encryptedAccessToken: account.accessToken,
+      login: account.githubLogin,
       from: entry.startTime,
       to: entry.endTime,
     });

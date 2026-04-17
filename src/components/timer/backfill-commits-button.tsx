@@ -44,16 +44,35 @@ export function BackfillCommitsButton({ onComplete }: Props) {
         scanned: number;
         updated: number;
         commitsAttached: number;
+        skippedAlreadyAttached?: number;
+        emptyFetch?: number;
+        failed?: number;
       };
-      if (json.updated === 0) {
-        toast.success("Everything already has commits attached");
-      } else {
+      if (json.updated > 0) {
         toast.success(
           `Attached ${json.commitsAttached} commits to ${json.updated} ${
             json.updated === 1 ? "entry" : "entries"
           }`
         );
         onComplete?.();
+        return;
+      }
+      // Nothing was updated — tell the user why so "it doesn't do anything"
+      // becomes actionable feedback instead of silent success.
+      if (json.scanned === 0) {
+        toast.info("No completed entries this week to attach commits to");
+      } else if ((json.emptyFetch ?? 0) > 0) {
+        toast.info(
+          `Checked ${json.emptyFetch} ${
+            json.emptyFetch === 1 ? "entry" : "entries"
+          } — GitHub returned no commits in those windows`
+        );
+      } else if ((json.skippedAlreadyAttached ?? 0) > 0) {
+        toast.success("Everything already has commits attached");
+      } else if ((json.failed ?? 0) > 0) {
+        toast.error(`GitHub call failed for ${json.failed} entries`);
+      } else {
+        toast.info("No commits found for this week's entries");
       }
     } finally {
       setLoading(false);

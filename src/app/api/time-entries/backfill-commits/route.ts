@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   const account = await prisma.gitHubAccount.findUnique({
     where: { userId: user.id },
-    select: { accessToken: true },
+    select: { accessToken: true, githubLogin: true },
   });
   if (!account) {
     return NextResponse.json({ error: "not-connected" }, { status: 400 });
@@ -50,19 +50,26 @@ export async function POST(req: NextRequest) {
   let totalCommits = 0;
   let projectsMatched = 0;
   let failed = 0;
+  let skippedAlreadyAttached = 0;
+  let emptyFetch = 0;
 
   for (const entry of entries) {
     if (!entry.endTime) continue;
     if (onlyMissing && Array.isArray(entry.commits) && (entry.commits as unknown[]).length > 0) {
+      skippedAlreadyAttached += 1;
       continue;
     }
     try {
       const commits = await fetchCommitsInWindow({
         encryptedAccessToken: account.accessToken,
+        login: account.githubLogin,
         from: entry.startTime,
         to: entry.endTime,
       });
-      if (commits.length === 0) continue;
+      if (commits.length === 0) {
+        emptyFetch += 1;
+        continue;
+      }
 
       let matched: string | null = null;
       if (!entry.projectId) {
@@ -98,5 +105,7 @@ export async function POST(req: NextRequest) {
     commitsAttached: totalCommits,
     projectsMatched,
     failed,
+    skippedAlreadyAttached,
+    emptyFetch,
   });
 }

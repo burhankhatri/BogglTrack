@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
   const account = await prisma.gitHubAccount.findUnique({
     where: { userId: user.id },
-    select: { accessToken: true },
+    select: { accessToken: true, githubLogin: true },
   });
   if (!account) {
     return NextResponse.json({ error: "not-connected" }, { status: 400 });
@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
   // 1. Fetch all the user's commits in the window (we already have the helper)
   const commits = await fetchCommitsInWindow({
     encryptedAccessToken: account.accessToken,
+    login: account.githubLogin,
     from,
     to,
     maxCommits: 200,
