@@ -90,9 +90,10 @@ function Calendar({
       }}
       components={{
         Chevron: ({ orientation, className: cls, ...rest }) => {
-          if (orientation === "left") return <ChevronLeft className={cn("h-4 w-4", cls)} {...rest} />;
           if (orientation === "right") return <ChevronRight className={cn("h-4 w-4", cls)} {...rest} />;
-          return null;
+          // Default (including "left", "up", "down") → left chevron. The type
+          // requires a non-null return, and we only ever render left/right nav.
+          return <ChevronLeft className={cn("h-4 w-4", cls)} {...rest} />;
         },
       }}
       {...props}
