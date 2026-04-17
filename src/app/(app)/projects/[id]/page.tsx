@@ -40,6 +40,7 @@ import {
 } from "@/components/ui/select";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
+import { ProjectReposCard } from "@/components/projects/project-repos-card";
 import { PROJECT_COLORS } from "@/lib/constants";
 
 import { useAppStore } from "@/stores/app-store";
@@ -418,6 +419,9 @@ export default function ProjectDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* GitHub Repos */}
+      <ProjectReposCard projectId={project.id} />
 
       {/* Weekly Chart */}
       <Card className="shadow-[var(--shadow-card)] border-[var(--border-subtle)]">

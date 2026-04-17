@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { EntryCommits } from "@/components/ui/entry-commits";
+import { BackfillCommitsButton } from "@/components/timer/backfill-commits-button";
 
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -550,6 +551,9 @@ export default function TimerPage() {
           <p className="mt-1.5 text-[13px] text-[var(--text-olive)]">
             Track time as you work. Entries are saved automatically.
           </p>
+          <div className="mt-3">
+            <BackfillCommitsButton onComplete={() => fetchEntries()} />
+          </div>
         </div>
         <div className="flex items-baseline gap-5 tabular-nums shrink-0">
           <div className="text-right">
