@@ -593,15 +593,17 @@ export default function TimerPage() {
 
         <TabsContent value="manual" className="mt-6">
           <Card className="px-6 py-6 space-y-5 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
-            {/* Description */}
-            <div className="relative">
+            {/* Description — big, but padded properly so text doesn't kiss the focus border */}
+            <div>
+              <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
+                What did you work on?
+              </label>
               <Input
-                placeholder="What did you work on?"
+                placeholder="Describe the work…"
                 value={manualDescription}
                 onChange={(e) => setManualDescription(e.target.value)}
-                className="w-full h-12 bg-transparent border-transparent shadow-none text-lg px-0 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
+                className="w-full h-12 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[15px] font-medium px-4 focus-visible:bg-[var(--bg-cream)] focus-visible:border-[var(--accent-olive)]"
               />
-              <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-[var(--border-subtle)]" />
             </div>
 
             {/* Date / Start / End row */}
