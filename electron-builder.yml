@@ -1,0 +1,47 @@
+appId: app.boggltrack.desktop
+productName: BogglTrack
+copyright: © 2026 BogglTrack
+
+directories:
+  output: dist
+  buildResources: electron/assets
+
+# We wrap a hosted web app — only ship Electron shell code + icons.
+# No Next.js, no Prisma, no node_modules from the web app. Tiny DMG.
+files:
+  - "electron/**/*"
+  - "!electron/assets/source/**"
+  - "package.json"
+  - "!**/*.map"
+
+# Do NOT bundle the Next.js project inside — the shell hits the hosted URL.
+asar: true
+
+mac:
+  category: public.app-category.productivity
+  icon: electron/assets/icon.icns
+  target:
+    - target: dmg
+      arch:
+        - arm64
+        - x64
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  # Identity null means: don't try to sign. Produces an unsigned .app/.dmg.
+  identity: null
+
+dmg:
+  title: "Install BogglTrack"
+  background: electron/assets/dmg-background.png
+  window:
+    width: 660
+    height: 400
+  iconSize: 96
+  contents:
+    - x: 180
+      y: 260
+      type: file
+    - x: 480
+      y: 260
+      type: link
+      path: /Applications

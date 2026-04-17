@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- BogglTrack logo — stopwatch with upward arrow, B inside -->
+  <defs>
+    <!-- We'll render everything in solid black -->
+  </defs>
+
+  <!-- Stopwatch circle (stroked) -->
+  <circle cx="512" cy="548" r="280"
+          fill="none" stroke="#000000" stroke-width="60" />
+
+  <!-- Top stem -->
+  <rect x="480" y="208" width="64" height="64" rx="10" fill="#000000" />
+  <!-- Stem button on top -->
+  <rect x="494" y="178" width="36" height="38" rx="8" fill="#000000" />
+  <!-- Stem connector -->
+  <rect x="488" y="258" width="48" height="28" fill="#000000" />
+
+  <!-- Minute hand pointing up-right -->
+  <line x1="512" y1="548" x2="620" y2="415"
+        stroke="#000000" stroke-width="34" stroke-linecap="round" />
+  <!-- Tick mark at 12 o'clock -->
+  <line x1="512" y1="306" x2="512" y2="338"
+        stroke="#000000" stroke-width="28" stroke-linecap="round" />
+  <!-- Pivot dot -->
+  <circle cx="512" cy="548" r="14" fill="#000000" />
+
+  <!-- Upward arrow sweeping from inside bottom of watch, up and out the upper-right,
+       conveying progress/growth. Drawn as a thick stroked curve + triangular head. -->
+  <path d="M 340 780
+           C 380 640, 500 500, 760 360"
+        fill="none"
+        stroke="#000000"
+        stroke-width="66"
+        stroke-linecap="round"
+        stroke-linejoin="round" />
+  <!-- Arrowhead -->
+  <polygon points="780,320 870,340 840,430" fill="#000000" />
+
+  <!-- Letter B inside the watch face (lower-left) -->
+  <g fill="#000000">
+    <path d="
+      M 340 610
+      L 340 820
+      L 410 820
+      Q 470 820 470 772
+      Q 470 738 440 722
+      Q 465 705 465 680
+      Q 465 640 410 640
+      L 365 640
+      L 365 610 Z
+
+      M 365 675
+      L 410 675
+      Q 438 675 438 695
+      Q 438 715 410 715
+      L 365 715 Z
+
+      M 365 750
+      L 410 750
+      Q 442 750 442 772
+      Q 442 793 410 793
+      L 365 793 Z
+    " fill-rule="evenodd" />
+  </g>
+</svg>

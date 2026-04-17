@@ -2,6 +2,10 @@
   "name": "boggltrack",
   "version": "0.1.0",
   "private": true,
+  "description": "Time tracking & earnings for freelancers.",
+  "author": "Burhan Khatri",
+  "homepage": "https://boggl-track.vercel.app",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
@@ -9,7 +13,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "test:run": "vitest run"
+    "test:run": "vitest run",
+    "electron": "electron .",
+    "electron:dev": "ELECTRON_IS_DEV=1 BOGGLTRACK_URL=http://localhost:3000 electron .",
+    "dmg": "electron-builder --mac dmg --publish never"
   },
   "dependencies": {
     "@neondatabase/auth": "^0.2.0-beta.1",
@@ -39,9 +46,13 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "electron": "^32.3.3",
+    "electron-builder": "^25.1.8",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "jsdom": "^29.0.2",
+    "png2icons": "^2.0.1",
+    "sharp": "^0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.3"

@@ -5,5 +5,5 @@ export default auth.middleware({
 });
 
 export const config = {
-  matcher: ["/((?!sign-in|sign-up|forgot-password|reset-password|api|_next|favicon|.*\\..*).*)"],
+  matcher: ["/((?!sign-in|sign-up|forgot-password|reset-password|download|api|_next|favicon|.*\\..*).*)"],
 };
