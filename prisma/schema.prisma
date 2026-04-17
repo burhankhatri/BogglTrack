@@ -70,6 +70,22 @@ model Client {
   @@index([userId])
 }
 
+// Project ↔ GitHub repo links. Many-to-many — a project can track multiple
+// repos (e.g. frontend + backend + mobile), and the same repo could (rarely)
+// feed into two projects. Used to auto-assign projectId when we attach a
+// commit whose repo matches a linked project.
+model ProjectRepo {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  // "owner/name" as GitHub reports it
+  repoFullName String
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, repoFullName])
+  @@index([repoFullName])
+}
+
 model Project {
   id             String      @id @default(cuid())
   name           String
@@ -83,6 +99,7 @@ model Project {
   client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   timeEntries      TimeEntry[]
   descriptionRules DescriptionRule[]
+  repos            ProjectRepo[]
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 

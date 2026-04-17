@@ -4,13 +4,13 @@
 export const GITHUB_SCOPES = ["read:user", "user:email", "repo"] as const;
 
 export function getClientId(): string {
-  const id = process.env.GITHUB_OAUTH_CLIENT_ID;
+  const id = process.env.GITHUB_OAUTH_CLIENT_ID?.trim();
   if (!id) throw new Error("GITHUB_OAUTH_CLIENT_ID is not set");
   return id;
 }
 
 function getClientSecret(): string {
-  const s = process.env.GITHUB_OAUTH_CLIENT_SECRET;
+  const s = process.env.GITHUB_OAUTH_CLIENT_SECRET?.trim();
   if (!s) throw new Error("GITHUB_OAUTH_CLIENT_SECRET is not set");
   return s;
 }

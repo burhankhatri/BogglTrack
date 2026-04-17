@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/user";
 import { fetchCommitsInWindow, type AttachedCommit } from "@/lib/github/commits";
+import { matchProjectIdForCommits } from "@/lib/github/match-project";
 
 export async function POST(
   request: NextRequest,
@@ -70,12 +71,24 @@ export async function POST(
       // Leave commits = null — the entry still stops cleanly.
     }
 
+    // If we have commits and the entry has no project yet, auto-assign
+    // based on ProjectRepo links. Never overwrite an existing projectId —
+    // the user's explicit choice beats our heuristic.
+    let matchedProjectId: string | null = null;
+    if (commits && commits.length > 0 && !existing.projectId) {
+      matchedProjectId = await matchProjectIdForCommits({
+        userId: user.id,
+        commits,
+      });
+    }
+
     const entry = await prisma.timeEntry.update({
       where: { id },
       data: {
         endTime,
         duration,
         ...(commits && commits.length > 0 ? { commits: commits as object } : {}),
+        ...(matchedProjectId ? { projectId: matchedProjectId } : {}),
       },
       include: {
         project: {
