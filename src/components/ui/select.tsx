@@ -1,8 +1,10 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { Check, ChevronDown } from "lucide-react"
+import { useAnchoredPosition } from "@/hooks/use-anchored-position"
 
 interface SelectContextValue {
   open: boolean
@@ -12,6 +14,7 @@ interface SelectContextValue {
   // Track display label for the selected value
   labelMap: Map<string, React.ReactNode>
   registerLabel: (value: string, label: React.ReactNode) => void
+  triggerRef: React.MutableRefObject<HTMLButtonElement | null>
 }
 
 const SelectContext = React.createContext<SelectContextValue>({
@@ -19,12 +22,14 @@ const SelectContext = React.createContext<SelectContextValue>({
   onOpenChange: () => {},
   labelMap: new Map(),
   registerLabel: () => {},
+  triggerRef: { current: null } as React.MutableRefObject<HTMLButtonElement | null>,
 })
 
 const Select = ({ children, value, onValueChange, defaultValue }: { children: React.ReactNode, value?: string, onValueChange?: (value: string) => void, defaultValue?: string }) => {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState(defaultValue || value)
   const labelMapRef = React.useRef(new Map<string, React.ReactNode>())
+  const triggerRef = React.useRef<HTMLButtonElement | null>(null)
   // Force re-render when labels register
   const [, setLabelVersion] = React.useState(0)
 
@@ -44,7 +49,7 @@ const Select = ({ children, value, onValueChange, defaultValue }: { children: Re
   }, [])
 
   return (
-    <SelectContext.Provider value={{ open: internalOpen, onOpenChange: setInternalOpen, value: internalValue, onValueChange: handleValueChange, labelMap: labelMapRef.current, registerLabel }}>
+    <SelectContext.Provider value={{ open: internalOpen, onOpenChange: setInternalOpen, value: internalValue, onValueChange: handleValueChange, labelMap: labelMapRef.current, registerLabel, triggerRef }}>
       <div className="relative w-full">
         {children}
       </div>
@@ -54,10 +59,14 @@ const Select = ({ children, value, onValueChange, defaultValue }: { children: Re
 
 const SelectTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ className, children, ...props }, ref) => {
-    const { open, onOpenChange } = React.useContext(SelectContext)
+    const { open, onOpenChange, triggerRef } = React.useContext(SelectContext)
     return (
       <button
-        ref={ref}
+        ref={(node) => {
+          triggerRef.current = node
+          if (typeof ref === "function") ref(node)
+          else if (ref) (ref as React.MutableRefObject<HTMLButtonElement | null>).current = node
+        }}
         type="button"
         onClick={() => onOpenChange(!open)}
         className={cn(
@@ -90,36 +99,57 @@ const SelectValue = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLS
 SelectValue.displayName = "SelectValue"
 
 const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
-  ({ className, children, ...props }, ref) => {
-    const { open, onOpenChange } = React.useContext(SelectContext)
+  ({ className, children, style, ...props }, ref) => {
+    const { open, onOpenChange, triggerRef } = React.useContext(SelectContext)
     const contentRef = React.useRef<HTMLDivElement>(null)
+    const position = useAnchoredPosition({
+      triggerRef,
+      open,
+      align: "start",
+      matchWidth: true,
+      estimatedHeight: 300,
+    })
 
-    // Close on click outside
+    // Close on click outside and Escape
     React.useEffect(() => {
       if (!open) return
-      const handleClick = (e: MouseEvent) => {
+      const onDocClick = (e: MouseEvent) => {
         const target = e.target as Node
-        // Don't close if clicking inside the content or on the trigger
         if (contentRef.current?.contains(target)) return
-        const trigger = contentRef.current?.parentElement?.querySelector('button')
-        if (trigger?.contains(target)) return
+        if (triggerRef.current?.contains(target)) return
         onOpenChange(false)
       }
-      document.addEventListener("mousedown", handleClick)
-      return () => document.removeEventListener("mousedown", handleClick)
-    }, [open, onOpenChange])
+      const onKey = (e: KeyboardEvent) => {
+        if (e.key === "Escape") onOpenChange(false)
+      }
+      document.addEventListener("mousedown", onDocClick)
+      document.addEventListener("keydown", onKey)
+      return () => {
+        document.removeEventListener("mousedown", onDocClick)
+        document.removeEventListener("keydown", onKey)
+      }
+    }, [open, onOpenChange, triggerRef])
 
     if (!open) return null
+    if (typeof document === "undefined") return null
 
-    return (
+    const content = (
       <div
         ref={(node) => {
           (contentRef as React.MutableRefObject<HTMLDivElement | null>).current = node
-          if (typeof ref === 'function') ref(node)
-          else if (ref) ref.current = node
+          if (typeof ref === "function") ref(node)
+          else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node
+        }}
+        style={{
+          position: "fixed",
+          top: position?.top ?? -9999,
+          left: position?.left ?? -9999,
+          width: position?.width ? Math.max(position.width, 200) : undefined,
+          visibility: position ? "visible" : "hidden",
+          ...style,
         }}
         className={cn(
-          "absolute top-[calc(100%+4px)] z-50 w-full min-w-[200px] rounded-[var(--radius-md)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] text-[var(--text-forest)] shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden max-h-[300px] overflow-y-auto",
+          "z-50 rounded-[var(--radius-md)] bg-[var(--bg-cream)] text-[var(--text-forest)] shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100 max-h-[300px] overflow-y-auto",
           className
         )}
         {...props}
@@ -129,6 +159,8 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
         </div>
       </div>
     )
+
+    return createPortal(content, document.body)
   }
 )
 SelectContent.displayName = "SelectContent"
