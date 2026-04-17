@@ -104,8 +104,10 @@ export default function DashboardPage() {
       </header>
 
       {/* Untracked commits banner — shown only when GitHub is connected and
-          there are commits in the last 7 days not covered by any entry. */}
-      <UntrackedCommitsBanner onEntryCreated={() => fetchDashboard(true)} />
+          there are commits in the last 7 days not covered by any entry.
+          The banner is summary-only now; the /untracked page is where clusters
+          actually get actioned, so there's no onEntryCreated refetch here. */}
+      <UntrackedCommitsBanner />
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
