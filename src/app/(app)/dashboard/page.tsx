@@ -13,6 +13,9 @@ import {
 import { Clock, Calendar, TrendingUp, FolderKanban, GitCommit } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UntrackedCommitsBanner } from "@/components/dashboard/untracked-commits-banner";
+import { WeeklyRecapCard } from "@/components/dashboard/weekly-recap-card";
+import { ContributionGraph } from "@/components/dashboard/contribution-graph";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { StatCard } from "@/components/ui/stat-card";
@@ -99,6 +102,10 @@ export default function DashboardPage() {
           An overview of your time and earnings.
         </p>
       </header>
+
+      {/* Untracked commits banner — shown only when GitHub is connected and
+          there are commits in the last 7 days not covered by any entry. */}
+      <UntrackedCommitsBanner onEntryCreated={() => fetchDashboard(true)} />
 
       {/* Summary Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -250,6 +257,12 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* Contribution graph + Weekly recap — GitHub-connected users only. */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <ContributionGraph />
+        <WeeklyRecapCard />
       </div>
 
       {/* Recent Entries */}

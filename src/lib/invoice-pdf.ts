@@ -18,6 +18,8 @@ export interface InvoicePDFData {
     quantity: number;
     rate: number;
     amount: number;
+    /** Optional per-line commits rendered as indented sub-rows under the item. */
+    commits?: { sha: string; message: string; repo: string; url?: string }[];
   }[];
   subtotal: number;
   discountPercent: number;
@@ -185,6 +187,35 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     doc.text(`${data.currencySymbol}${item.amount.toFixed(2)}`, x + colWidths[4] - 2, y, { align: "right" });
 
     y += 7;
+
+    // Commit sub-rows — small, indented.
+    // Provides verifiable work detail directly on the invoice PDF.
+    if (item.commits && item.commits.length > 0) {
+      doc.setFontSize(7.5);
+      doc.setTextColor(...TEXT_SECONDARY);
+      const textStart = margin + 2 + colWidths[0] + 4; // indent under description column
+      const maxWidth = colWidths[1] - 6;
+      const shown = item.commits.slice(0, 8);
+      for (const c of shown) {
+        if (y > 270) {
+          doc.addPage();
+          y = margin;
+        }
+        const sha = c.sha.slice(0, 7);
+        const msg = c.message.length > 70 ? c.message.slice(0, 67) + "..." : c.message;
+        const label = `  ${sha}  ${msg}${c.repo ? `  [${c.repo}]` : ""}`;
+        doc.text(label, textStart, y, { maxWidth });
+        y += 4.2;
+      }
+      const extra = item.commits.length - shown.length;
+      if (extra > 0) {
+        doc.text(`  + ${extra} more commits`, textStart, y);
+        y += 4.2;
+      }
+      y += 1;
+      doc.setFontSize(9);
+      doc.setTextColor(...TEXT_PRIMARY);
+    }
   });
 
   y += 5;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   CalendarIcon,
   Filter,
@@ -53,6 +53,14 @@ import { useAppStore } from "@/stores/app-store";
 
 // ---- Types ----
 
+export interface InvoiceCommit {
+  sha: string;
+  message: string;
+  repo: string;
+  url: string;
+  committedAt: string;
+}
+
 interface PreviewEntry {
   id: string;
   description: string;
@@ -61,6 +69,7 @@ interface PreviewEntry {
   billable: boolean;
   earnings: number;
   rate: number;
+  commits?: InvoiceCommit[] | null;
   project: {
     id: string;
     name: string;
@@ -77,6 +86,8 @@ interface LineItem {
   rate: number;
   amount: number;
   timeEntryId: string | null;
+  /** Commits derived from the entry/entries backing this line item. */
+  commits?: InvoiceCommit[];
 }
 
 interface Project {
@@ -249,7 +260,10 @@ export default function InvoicesPage() {
     }
   };
 
-  // Build line items when entering step 2
+  // Build line items when entering step 2.
+  // We also surface commits: in "individual" mode the entry's commits flow
+  // straight onto the line; in "grouped" mode we union all commits across
+  // entries sharing a description, deduped by sha.
   const buildLineItems = useCallback(() => {
     const selected = entries.filter((e) => selectedIds.has(e.id));
 
@@ -261,23 +275,42 @@ export default function InvoicesPage() {
         rate: e.rate,
         amount: e.earnings,
         timeEntryId: e.id,
+        commits: (e.commits ?? []).slice(),
       }));
     } else {
-      // Grouped: merge entries with the same description
-      const byDescription = new Map<string, { description: string; hours: number; rate: number; amount: number }>();
+      // Grouped: merge entries with the same description, union commits
+      const byDescription = new Map<
+        string,
+        { description: string; hours: number; rate: number; amount: number; commits: InvoiceCommit[]; seen: Set<string> }
+      >();
       for (const e of selected) {
         const desc = e.description || "(no description)";
         const existing = byDescription.get(desc);
         const hours = (e.duration || 0) / 3600;
+        const commits = e.commits ?? [];
         if (existing) {
           existing.hours += hours;
           existing.amount += e.earnings;
+          for (const c of commits) {
+            if (existing.seen.has(c.sha)) continue;
+            existing.seen.add(c.sha);
+            existing.commits.push(c);
+          }
         } else {
+          const seen = new Set<string>();
+          const starting: InvoiceCommit[] = [];
+          for (const c of commits) {
+            if (seen.has(c.sha)) continue;
+            seen.add(c.sha);
+            starting.push(c);
+          }
           byDescription.set(desc, {
             description: desc,
             hours,
             rate: e.rate,
             amount: e.earnings,
+            commits: starting,
+            seen,
           });
         }
       }
@@ -288,6 +321,7 @@ export default function InvoicesPage() {
         rate: group.rate,
         amount: Math.round(group.amount * 100) / 100,
         timeEntryId: null,
+        commits: group.commits,
       }));
     }
   }, [entries, selectedIds, groupMode]);
@@ -448,6 +482,14 @@ export default function InvoicesPage() {
           quantity: li.quantity,
           rate: li.rate,
           amount: li.amount,
+          commits: li.commits && li.commits.length > 0
+            ? li.commits.map((c) => ({
+                sha: c.sha,
+                message: c.message,
+                repo: c.repo,
+                url: c.url,
+              }))
+            : undefined,
         })),
         subtotal,
         discountPercent,
@@ -832,41 +874,68 @@ export default function InvoicesPage() {
                     </TableHeader>
                     <TableBody>
                       {lineItems.map((li) => (
-                        <TableRow key={li.id}>
-                          <TableCell>
-                            <Input
-                              value={li.description}
-                              onChange={(e) => updateLineItem(li.id, "description", e.target.value)}
-                              className="h-8 text-sm"
-                              data-testid="line-item-description"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              step="0.25"
-                              min="0"
-                              value={li.quantity}
-                              onChange={(e) => updateLineItem(li.id, "quantity", parseFloat(e.target.value) || 0)}
-                              className="h-8 text-sm text-right w-20 ml-auto"
-                              data-testid="line-item-hours"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={li.rate}
-                              onChange={(e) => updateLineItem(li.id, "rate", parseFloat(e.target.value) || 0)}
-                              className="h-8 text-sm text-right w-24 ml-auto"
-                              data-testid="line-item-rate"
-                            />
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-[var(--accent-teal)]">
-                            {formatCurrency(li.amount, currSymbol)}
-                          </TableCell>
-                        </TableRow>
+                        <React.Fragment key={li.id}>
+                          <TableRow>
+                            <TableCell>
+                              <Input
+                                value={li.description}
+                                onChange={(e) => updateLineItem(li.id, "description", e.target.value)}
+                                className="h-8 text-sm"
+                                data-testid="line-item-description"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                value={li.quantity}
+                                onChange={(e) => updateLineItem(li.id, "quantity", parseFloat(e.target.value) || 0)}
+                                className="h-8 text-sm text-right w-20 ml-auto"
+                                data-testid="line-item-hours"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={li.rate}
+                                onChange={(e) => updateLineItem(li.id, "rate", parseFloat(e.target.value) || 0)}
+                                className="h-8 text-sm text-right w-24 ml-auto"
+                                data-testid="line-item-rate"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-[var(--accent-teal)]">
+                              {formatCurrency(li.amount, currSymbol)}
+                            </TableCell>
+                          </TableRow>
+                          {li.commits && li.commits.length > 0 && (
+                            <TableRow>
+                              <TableCell colSpan={4} className="!py-2 !pl-4 bg-[var(--bg-muted)]/40">
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-olive)]">
+                                  <span className="font-medium">Work detail:</span>
+                                  {li.commits.slice(0, 6).map((c) => (
+                                    <a
+                                      key={c.sha}
+                                      href={c.url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-[var(--bg-cream)] hover:text-[var(--text-forest)] transition-colors"
+                                      title={c.message}
+                                    >
+                                      <code className="font-mono text-[10px] text-[var(--text-forest)]">{c.sha.slice(0, 7)}</code>
+                                      <span className="truncate max-w-[160px]">{c.message}</span>
+                                    </a>
+                                  ))}
+                                  {li.commits.length > 6 && (
+                                    <span>+{li.commits.length - 6} more</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </React.Fragment>
                       ))}
                     </TableBody>
                     <TableFooter>
