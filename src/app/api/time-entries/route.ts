@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/user";
+import { fetchCommitsInWindow, type AttachedCommit } from "@/lib/github/commits";
+import { matchProjectIdForCommits } from "@/lib/github/match-project";
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+    ),
+  ]);
+}
 
 export async function GET(request: NextRequest) {
   const user = await getAuthUser();
@@ -107,15 +118,50 @@ export async function POST(request: NextRequest) {
       if (rule) resolvedProjectId = rule.projectId;
     }
 
+    // If this is a completed manual entry (endTime set) and the user has
+    // GitHub connected, pull commits for the window. Same path as /stop.
+    // Running timers (no endTime yet) skip this — commits fetch when they stop.
+    let fetchedCommits: AttachedCommit[] | null = null;
+    let autoMatchedProjectId: string | null = null;
+    if (endTime) {
+      try {
+        const account = await prisma.gitHubAccount.findUnique({
+          where: { userId: user.id },
+          select: { accessToken: true },
+        });
+        if (account) {
+          fetchedCommits = await withTimeout(
+            fetchCommitsInWindow({
+              encryptedAccessToken: account.accessToken,
+              from: new Date(startTime),
+              to: new Date(endTime),
+            }),
+            8_000
+          );
+          if (fetchedCommits.length > 0 && !resolvedProjectId) {
+            autoMatchedProjectId = await matchProjectIdForCommits({
+              userId: user.id,
+              commits: fetchedCommits,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("[time-entries POST] commit fetch failed:", e);
+      }
+    }
+
     const entry = await prisma.timeEntry.create({
       data: {
         description: description || "",
         startTime: new Date(startTime),
         endTime: endTime ? new Date(endTime) : null,
         duration,
-        projectId: resolvedProjectId,
+        projectId: autoMatchedProjectId ?? resolvedProjectId,
         billable: billable ?? true,
         userId: user.id,
+        ...(fetchedCommits && fetchedCommits.length > 0
+          ? { commits: fetchedCommits as object }
+          : {}),
         ...(tagIds && tagIds.length > 0
           ? {
               tags: {
