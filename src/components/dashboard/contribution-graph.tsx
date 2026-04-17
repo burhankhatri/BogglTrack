@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { format, startOfWeek, getDay } from "date-fns";
+import Link from "next/link";
+import { format, getDay } from "date-fns";
+import { ArrowRight } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 interface DayCell {
@@ -132,6 +134,19 @@ export function ContributionGraph() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Persistent entry point to the untracked-work page — the commits
+            the graph is showing are the same ones that page lets you turn
+            into time entries, so it's a natural follow-through. */}
+        <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
+          <Link
+            href="/untracked"
+            className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
+          >
+            Find untracked commits
+            <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       </CardContent>
     </Card>
