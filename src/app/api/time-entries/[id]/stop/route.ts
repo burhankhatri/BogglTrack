@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/user";
+import { fetchCommitsInWindow, type AttachedCommit } from "@/lib/github/commits";
 
 export async function POST(
   request: NextRequest,
@@ -37,9 +38,45 @@ export async function POST(
       (endTime.getTime() - existing.startTime.getTime()) / 1000
     );
 
+    // ---- GitHub commit auto-attach ----
+    // If the user has linked GitHub, try to grab commits they authored
+    // between start and end. Wrapped in a try+timeout so a GitHub outage
+    // never blocks stopping a timer.
+    let commits: AttachedCommit[] | null = null;
+    try {
+      const account = await prisma.gitHubAccount.findUnique({
+        where: { userId: user.id },
+        select: { accessToken: true },
+      });
+      if (account) {
+        commits = await withTimeout(
+          fetchCommitsInWindow({
+            encryptedAccessToken: account.accessToken,
+            from: existing.startTime,
+            to: endTime,
+          }),
+          8_000
+        );
+        // Best-effort bookkeeping; don't fail on this
+        await prisma.gitHubAccount
+          .update({
+            where: { userId: user.id },
+            data: { lastSyncedAt: new Date() },
+          })
+          .catch(() => undefined);
+      }
+    } catch (e) {
+      console.warn("[stop] commit fetch failed:", e);
+      // Leave commits = null — the entry still stops cleanly.
+    }
+
     const entry = await prisma.timeEntry.update({
       where: { id },
-      data: { endTime, duration },
+      data: {
+        endTime,
+        duration,
+        ...(commits && commits.length > 0 ? { commits: commits as object } : {}),
+      },
       include: {
         project: {
           include: { client: true },
@@ -58,4 +95,14 @@ export async function POST(
       { status: 500 }
     );
   }
+}
+
+/** Resolves with the promise's value or rejects after `ms`. */
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timed out after ${ms}ms`)), ms)
+    ),
+  ]);
 }

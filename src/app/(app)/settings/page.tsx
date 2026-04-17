@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GitHubConnectCard } from "@/components/settings/github-connect-card";
 import { CURRENCIES } from "@/lib/constants";
 import { useAppStore } from "@/stores/app-store";
 
@@ -272,6 +273,9 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Integrations */}
+        <GitHubConnectCard />
 
         {/* Appearance */}
         <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">

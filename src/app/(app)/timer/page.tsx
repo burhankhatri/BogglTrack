@@ -44,6 +44,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
+import { EntryCommits } from "@/components/ui/entry-commits";
 
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -78,6 +79,14 @@ interface Project {
   client?: { id: string; name: string } | null;
 }
 
+export interface AttachedCommit {
+  sha: string;
+  message: string;
+  repo: string;
+  url: string;
+  committedAt: string;
+}
+
 interface TimeEntry {
   id: string;
   description: string;
@@ -88,6 +97,7 @@ interface TimeEntry {
   projectId: string | null;
   project: Project | null;
   tags: TimeEntryTag[];
+  commits?: AttachedCommit[] | null;
 }
 
 interface GroupedEntry {
@@ -531,37 +541,46 @@ export default function TimerPage() {
 
   return (
     <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-10">
-      {/* Mobile Header */}
-      <div className="flex items-center justify-between md:hidden px-2 mb-4">
-        <h1 className="text-[32px] font-serif font-semibold text-[var(--text-forest)] tracking-tight">Today</h1>
-      </div>
-
-      {/* Weekly summary bar */}
-      <Card className="px-6 py-5 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-[15px] font-medium text-[var(--text-olive)]">
-            <Clock className="h-[18px] w-[18px]" />
-            <span>This week</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-[18px] font-semibold tabular-nums text-[var(--text-forest)] font-sans">
-              {weeklyHours.toFixed(1)} hrs
-            </span>
-            <span className="text-[18px] font-semibold text-[var(--accent-teal)] tabular-nums font-sans">
-              {formatCurrency(weeklyEarnings)}
-            </span>
-          </div>
-        </div>
-      </Card>
-
-      {/* Timer / Manual tabs */}
-      <Tabs defaultValue="timer" className="w-full relative z-10 lg:px-0">
-        <TabsList className="bg-[var(--bg-muted)] h-12 p-1 gap-1 border border-transparent rounded-full w-full max-w-[400px]">
-          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:shadow-sm font-medium transition-colors">
+      {/* Page header — acts as a real page header, not a twin of the entry rows */}
+      <header className="flex items-end justify-between gap-6 px-1">
+        <div>
+          <h1 className="font-sans text-[28px] md:text-[32px] font-semibold tracking-tight text-[var(--text-forest)] leading-none">
             Timer
+          </h1>
+          <p className="mt-1.5 text-[13px] text-[var(--text-olive)]">
+            Track time as you work. Entries are saved automatically.
+          </p>
+        </div>
+        <div className="flex items-baseline gap-5 tabular-nums shrink-0">
+          <div className="text-right">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-olive)]">
+              This week
+            </p>
+            <p className="mt-0.5 text-[20px] md:text-[22px] font-semibold text-[var(--text-forest)]">
+              {weeklyHours.toFixed(1)}h
+            </p>
+          </div>
+          {weeklyEarnings > 0 && (
+            <div className="text-right">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-olive)]">
+                Earned
+              </p>
+              <p className="mt-0.5 text-[20px] md:text-[22px] font-semibold text-[var(--text-forest)]">
+                {formatCurrency(weeklyEarnings)}
+              </p>
+            </div>
+          )}
+        </div>
+      </header>
+
+      {/* Track / Add-entry tabs — clearer verbs than "Timer / Manual" */}
+      <Tabs defaultValue="timer" className="w-full relative z-10 lg:px-0">
+        <TabsList className="bg-[var(--bg-muted)] h-10 p-1 gap-1 border border-transparent rounded-full w-full max-w-[360px]">
+          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:shadow-sm font-medium text-[13px] transition-colors">
+            Track
           </TabsTrigger>
-          <TabsTrigger value="manual" className="rounded-full w-1/2 text-[var(--text-olive)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:shadow-sm font-medium transition-colors">
-            Manual
+          <TabsTrigger value="manual" className="rounded-full w-1/2 text-[var(--text-olive)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:shadow-sm font-medium text-[13px] transition-colors">
+            Add entry
           </TabsTrigger>
         </TabsList>
 
@@ -708,100 +727,154 @@ export default function TimerPage() {
                   return (
                     <div
                       key={ge.key}
-                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 hover:bg-[var(--bg-sage)]/30 transition-colors group ${!isLast ? 'border-b border-[var(--border-subtle)]' : ''}`}
+                      className={`relative flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 transition-colors group ${
+                        isEditing
+                          ? "bg-[var(--bg-muted)]/40"
+                          : isDeleting
+                          ? "bg-[var(--accent-coral)]/6"
+                          : "hover:bg-[var(--bg-sage)]/30"
+                      } ${!isLast ? "border-b border-[var(--border-subtle)]" : ""}`}
                     >
+                      {/* Left accent strip — tells the user the row is in a special state */}
+                      {(isEditing || isDeleting) && (
+                        <span
+                          aria-hidden
+                          className={`absolute left-0 top-2 bottom-2 w-[3px] rounded-full ${
+                            isDeleting ? "bg-[var(--accent-coral)]" : "bg-[var(--text-forest)]"
+                          }`}
+                        />
+                      )}
+
                       {isEditing ? (
-                        /* ---- Inline edit mode (matches normal two-column layout) ---- */
-                        <>
-                          {/* Left: Editable description + project + billable */}
-                          <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
+                        /* ---- Inline edit mode ---- */
+                        <div className="flex flex-col gap-3 flex-1 min-w-0">
+                          <div>
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-[var(--text-olive)] mb-1.5">
+                              Editing entry
+                            </p>
                             <Input
-                              className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10 font-sans text-[15px] font-medium px-2 -ml-2"
+                              className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-10 font-sans text-[15px] font-medium px-3 shadow-[var(--shadow-card)]"
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
                               onKeyDown={(e) => {
                                 if (e.key === "Enter") saveEdit(entry.id);
                                 if (e.key === "Escape") cancelEdit();
                               }}
-                              placeholder="Description"
+                              placeholder="What did you work on?"
                               autoFocus
                             />
-                            {/* Timestamp editing row */}
-                            <div className="grid grid-cols-3 gap-3 mt-2">
-                              <DatePickerField
-                                value={editDate}
-                                onChange={setEditDate}
-                                size="sm"
-                                displayFormat="MMM d"
-                              />
-                              <Input
-                                type="time"
-                                value={editStartTime}
-                                onChange={(e) => setEditStartTime(e.target.value)}
-                                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
-                              />
-                              <Input
-                                type="time"
-                                value={editEndTime}
-                                onChange={(e) => setEditEndTime(e.target.value)}
-                                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
-                              />
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Select
-                                value={editProjectId}
-                                onValueChange={(v: string) => v && setEditProjectId(v)}
-                              >
-                                <SelectTrigger className="w-[200px] h-9 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[13px]">
-                                  <SelectValue placeholder="No project" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value={NO_PROJECT}>No project</SelectItem>
-                                  {projects.map((p) => (
-                                    <SelectItem key={p.id} value={p.id}>
-                                      <div className="flex items-center gap-2">
-                                        <span
-                                          className="h-2.5 w-2.5 rounded-full shrink-0"
-                                          style={{ backgroundColor: p.color }}
-                                        />
-                                        {p.name}
-                                      </div>
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <button
-                                className={`h-9 w-9 rounded-[var(--radius-md)] flex items-center justify-center transition-colors ${editBillable ? 'bg-[var(--accent-olive)]/20 text-[var(--accent-olive-hover)]' : 'text-[var(--text-olive)] hover:bg-[var(--bg-muted)]'}`}
-                                onClick={() => setEditBillable(!editBillable)}
-                                title={editBillable ? "Billable" : "Non-billable"}
-                              >
-                                <DollarSign className="h-4 w-4" />
-                              </button>
-                            </div>
                           </div>
 
-                          {/* Right: Save/Cancel buttons */}
-                          <div className="flex items-center justify-between sm:justify-end gap-4 mt-3 sm:mt-0">
-                            <div className="flex items-center gap-1.5">
+                          <div className="grid grid-cols-3 gap-3">
+                            <DatePickerField
+                              value={editDate}
+                              onChange={setEditDate}
+                              size="sm"
+                              displayFormat="MMM d"
+                            />
+                            <Input
+                              type="time"
+                              value={editStartTime}
+                              onChange={(e) => setEditStartTime(e.target.value)}
+                              className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
+                            />
+                            <Input
+                              type="time"
+                              value={editEndTime}
+                              onChange={(e) => setEditEndTime(e.target.value)}
+                              className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
+                            />
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                            <Select
+                              value={editProjectId}
+                              onValueChange={(v: string) => v && setEditProjectId(v)}
+                            >
+                              <SelectTrigger className="flex-1 sm:max-w-[260px] h-9 bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] text-[13px] shadow-[var(--shadow-card)]">
+                                <SelectValue placeholder="No project" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={NO_PROJECT}>No project</SelectItem>
+                                {projects.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    <div className="flex items-center gap-2">
+                                      <span
+                                        className="h-2.5 w-2.5 rounded-full shrink-0"
+                                        style={{ backgroundColor: p.color }}
+                                      />
+                                      {p.name}
+                                    </div>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <button
+                              type="button"
+                              className={`h-9 inline-flex items-center justify-center gap-1.5 px-3 rounded-[var(--radius-md)] text-[12px] font-medium transition-colors shrink-0 ${
+                                editBillable
+                                  ? "bg-[var(--accent-olive-soft)] text-[var(--accent-olive-hover)]"
+                                  : "bg-[var(--bg-cream)] text-[var(--text-olive)] shadow-[var(--shadow-card)] hover:text-[var(--text-forest)]"
+                              }`}
+                              onClick={() => setEditBillable(!editBillable)}
+                            >
+                              <DollarSign className="h-3.5 w-3.5" />
+                              {editBillable ? "Billable" : "Non-billable"}
+                            </button>
+
+                            <div className="flex items-center gap-2 sm:ml-auto">
                               <Button
-                                size="icon"
                                 variant="ghost"
-                                className="h-9 w-9 rounded-full hover:bg-[var(--accent-olive)]/30 hover:text-[var(--text-forest)]"
-                                onClick={() => saveEdit(entry.id)}
-                              >
-                                <Check className="h-5 w-5" />
-                              </Button>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="h-9 w-9 text-[var(--accent-coral)] rounded-full hover:bg-[var(--accent-coral)]/10"
+                                className="h-9 px-3 text-[13px] rounded-[var(--radius-md)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-cream-hover)]"
                                 onClick={cancelEdit}
                               >
-                                <X className="h-5 w-5" />
+                                Cancel
+                              </Button>
+                              <Button
+                                className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90"
+                                onClick={() => saveEdit(entry.id)}
+                              >
+                                <Check className="h-3.5 w-3.5 mr-1" />
+                                Save
                               </Button>
                             </div>
                           </div>
-                        </>
+                        </div>
+                      ) : isDeleting ? (
+                        /* ---- Delete confirmation mode — row fills with a prompt ---- */
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-1 min-w-0">
+                          <div className="flex items-start gap-3 min-w-0">
+                            <div className="h-9 w-9 rounded-full bg-[var(--accent-coral)]/10 flex items-center justify-center shrink-0">
+                              <Trash2 className="h-4 w-4 text-[var(--accent-coral)]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-semibold text-[var(--text-forest)]">
+                                Delete this time entry?
+                              </p>
+                              <p className="text-[12px] text-[var(--text-olive)] truncate max-w-[500px]">
+                                {ge.description || "(No description)"} · {formatDuration(dur)}
+                                {earnings > 0 && ` · ${formatCurrency(earnings)}`}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 justify-end">
+                            <Button
+                              variant="ghost"
+                              className="h-9 px-3 text-[13px] rounded-[var(--radius-md)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-cream-hover)]"
+                              onClick={() => setDeletingId(null)}
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--accent-coral)] text-white hover:opacity-90"
+                              onClick={() => handleDelete(entry.id)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                              Delete entry
+                            </Button>
+                          </div>
+                        </div>
                       ) : (
                         /* ---- Normal display mode ---- */
                         <>
@@ -839,6 +912,9 @@ export default function TimerPage() {
                                 </span>
                               )}
                             </div>
+
+                            {/* Attached GitHub commits (if any) */}
+                            <EntryCommits entries={ge.entries} />
                           </div>
 
                           {/* Right: Duration + Earnings + Play + Controls */}
@@ -858,44 +934,21 @@ export default function TimerPage() {
 
                             <div className="flex items-center gap-1.5 ml-2">
                               {/* Hover actions (edit/delete) */}
-                              <div className={`flex items-center gap-1.5 transition-opacity ${isDeleting ? 'opacity-100' : 'opacity-100 sm:opacity-0 sm:group-hover:opacity-100'}`}>
-                                {isDeleting ? (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="destructive"
-                                      className="h-9 text-[12px] rounded-[var(--radius-lg)] px-3 bg-[var(--accent-coral)] text-[var(--text-cream)] hover:bg-[#d66a6a]"
-                                      onClick={() => handleDelete(entry.id)}
-                                    >
-                                      Delete
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-9 text-[12px] rounded-[var(--radius-lg)] px-3 text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
-                                      onClick={() => setDeletingId(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-lg)] flex items-center justify-center transition-colors shadow-none"
-                                      onClick={() => startEditing(entry)}
-                                      title="Edit"
-                                    >
-                                      <Pencil className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                      className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-lg)] flex items-center justify-center transition-colors shadow-none"
-                                      onClick={() => setDeletingId(entry.id)}
-                                      title="Delete"
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </button>
-                                  </>
-                                )}
+                              <div className="flex items-center gap-1.5 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                                <button
+                                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
+                                  onClick={() => startEditing(entry)}
+                                  title="Edit"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </button>
+                                <button
+                                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
+                                  onClick={() => setDeletingId(entry.id)}
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
                               </div>
 
                               {/* Play Button */}

@@ -17,6 +17,14 @@ export function filterCompletedEntries<T extends EntryWithEndTime>(
   return entries.filter((e) => e.endTime !== null);
 }
 
+export interface AttachedCommit {
+  sha: string;
+  message: string;
+  repo: string;
+  url: string;
+  committedAt: string;
+}
+
 interface GroupableEntry {
   id: string;
   description: string;
@@ -27,6 +35,7 @@ interface GroupableEntry {
   projectId: string | null;
   project: { id: string; name: string; color: string; hourlyRate: number | null; client: { id: string; name: string } | null } | null;
   tags: { tagId: string; tag: { id: string; name: string; color: string } }[];
+  commits?: AttachedCommit[] | null;
 }
 
 export interface GroupedEntry {
@@ -41,6 +50,7 @@ export interface GroupedEntry {
   project: GroupableEntry["project"];
   tags: GroupableEntry["tags"];
   entryIds: string[];
+  commits: AttachedCommit[];
 }
 
 export function groupEntriesByDescription(entries: GroupableEntry[]): GroupedEntry[] {
@@ -62,6 +72,15 @@ export function groupEntriesByDescription(entries: GroupableEntry[]): GroupedEnt
       if (entry.endTime && (!existing.endTime || entry.endTime > existing.endTime)) {
         existing.endTime = entry.endTime;
       }
+      if (Array.isArray(entry.commits)) {
+        const seen = new Set(existing.commits.map((c) => c.sha));
+        for (const c of entry.commits) {
+          if (!seen.has(c.sha)) {
+            existing.commits.push(c);
+            seen.add(c.sha);
+          }
+        }
+      }
     } else {
       groups.set(key, {
         key: entry.id,
@@ -75,6 +94,7 @@ export function groupEntriesByDescription(entries: GroupableEntry[]): GroupedEnt
         project: entry.project,
         tags: entry.tags,
         entryIds: [entry.id],
+        commits: Array.isArray(entry.commits) ? [...entry.commits] : [],
       });
     }
   }

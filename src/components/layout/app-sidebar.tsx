@@ -24,8 +24,8 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
 const navItems = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Timer", href: "/timer", icon: Clock },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendar", href: "/calendar", icon: Calendar },
   { title: "Tracking", href: "/tracking", icon: List },
   { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
@@ -88,7 +88,7 @@ export function AppSidebar() {
   return (
     <aside className="hidden md:flex w-[232px] flex-col bg-[var(--bg-cream)] border-r border-[var(--border-subtle)] h-screen z-10 shrink-0 relative">
       <div className="h-16 flex items-center px-5 border-b border-[var(--border-subtle)]">
-        <Link href="/dashboard" className="flex items-center gap-2.5 decoration-transparent">
+        <Link href="/timer" className="flex items-center gap-2.5 decoration-transparent">
           <div className="h-7 w-7 rounded-md bg-[var(--text-forest)] flex items-center justify-center">
             <Clock className="h-3.5 w-3.5 text-[var(--text-cream)]" />
           </div>

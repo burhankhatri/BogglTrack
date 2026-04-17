@@ -32,7 +32,7 @@ export default function SignUpPage() {
         return;
       }
 
-      router.push("/dashboard");
+      router.push("/timer");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

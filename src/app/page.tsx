@@ -44,8 +44,9 @@ export default async function LandingPage() {
     isSignedIn = false;
   }
 
-  // Signed-in visitors jump straight to the app; strangers go to sign-up.
-  const webAppHref = isSignedIn ? "/dashboard" : "/sign-up";
+  // Signed-in visitors jump straight to the timer (the home of the app);
+  // strangers go to sign-up.
+  const webAppHref = isSignedIn ? "/timer" : "/sign-up";
   const webAppLabel = isSignedIn ? "Open app" : "Use on the web";
   return (
     <div className="min-h-screen bg-[var(--bg-sage)] text-[var(--text-forest)]">
@@ -63,7 +64,7 @@ export default async function LandingPage() {
           <a href="#platforms" className="hover:text-[var(--text-forest)] transition-colors">Platforms</a>
           {isSignedIn ? (
             <Link
-              href="/dashboard"
+              href="/timer"
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 transition-opacity"
             >
               <LayoutDashboard className="h-3.5 w-3.5" />
@@ -416,8 +417,8 @@ export default async function LandingPage() {
           </div>
           <nav className="flex items-center gap-5">
             {isSignedIn ? (
-              <Link href="/dashboard" className="hover:text-[var(--text-forest)] transition-colors">
-                Dashboard
+              <Link href="/timer" className="hover:text-[var(--text-forest)] transition-colors">
+                Open app
               </Link>
             ) : (
               <>

@@ -10,6 +10,7 @@ import { useAppStore } from "@/stores/app-store";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
 import { formatDuration, formatCurrency, calculateEarnings, getApplicableRate } from "@/lib/earnings";
 import { getDateRange, filterCompletedEntries, groupEntriesByDescription, type GroupedEntry } from "./calendar-helpers";
+import { EntryCommits } from "@/components/ui/entry-commits";
 
 interface TimeEntry {
   id: string;
@@ -27,6 +28,13 @@ interface TimeEntry {
     client: { id: string; name: string } | null;
   } | null;
   tags: { tagId: string; tag: { id: string; name: string; color: string } }[];
+  commits?: {
+    sha: string;
+    message: string;
+    repo: string;
+    url: string;
+    committedAt: string;
+  }[] | null;
 }
 
 export default function CalendarPage() {
@@ -175,6 +183,9 @@ export default function CalendarPage() {
                             </span>
                           )}
                         </div>
+                        {group.commits.length > 0 && (
+                          <EntryCommits entries={[{ commits: group.commits }]} />
+                        )}
                       </div>
 
                       {/* Right: duration + earnings + play */}

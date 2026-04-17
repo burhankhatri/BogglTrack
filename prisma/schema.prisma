@@ -32,6 +32,26 @@ model User {
   tags             Tag[]
   descriptionRules DescriptionRule[]
   invoices         Invoice[]
+  githubAccount    GitHubAccount?
+}
+
+// GitHub OAuth link per user. accessToken is encrypted at rest using
+// GITHUB_TOKEN_ENCRYPTION_KEY (see src/lib/github/crypto.ts).
+// One row per user; dropping this row disconnects GitHub.
+model GitHubAccount {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  githubUserId   String   // numeric GitHub user id
+  githubLogin    String   // username
+  githubName     String?
+  githubAvatarUrl String?
+  accessToken    String   // encrypted blob, base64 (iv.tag.ciphertext)
+  scope          String   // scopes granted (e.g. "read:user,user:email,repo")
+  connectedAt    DateTime @default(now())
+  lastSyncedAt   DateTime?
+
+  @@index([githubLogin])
 }
 
 model Client {
@@ -98,6 +118,10 @@ model TimeEntry {
   invoice     Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   tags        TimeEntryTag[]
   invoiceLineItems InvoiceLineItem[]
+  // GitHub commits attributed to this entry. Snapshot of the commit metadata
+  // at the moment of attribution — we don't re-query GitHub to render these.
+  // Shape: Array<{ sha, message, repo, url, committedAt }>
+  commits     Json?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
 
