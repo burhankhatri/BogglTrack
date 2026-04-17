@@ -17,13 +17,22 @@ import {
   LogOut,
   GitBranchPlus,
   ChevronUp,
+  GitCommit,
 } from "lucide-react";
 
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 
-const navItems = [
+type NavItem = {
+  title: string;
+  href: string;
+  icon: typeof Clock;
+  /** When set, a small count chip renders to the right of the title. */
+  badgeKey?: "untracked";
+};
+
+const navItems: NavItem[] = [
   { title: "Timer", href: "/timer", icon: Clock },
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendar", href: "/calendar", icon: Calendar },
@@ -32,6 +41,7 @@ const navItems = [
   { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Clients", href: "/clients", icon: Users },
   { title: "Tags", href: "/tags", icon: Tags },
+  { title: "Untracked", href: "/untracked", icon: GitCommit, badgeKey: "untracked" },
   { title: "Reports", href: "/reports", icon: BarChart3 },
   { title: "Invoices", href: "/invoices", icon: FileText },
 ];
@@ -70,6 +80,27 @@ export function AppSidebar() {
 
   const displayName = prettifyName(settings?.name);
   const initials = initialsFor(displayName);
+
+  // Untracked-commits badge. One probe on mount — the /untracked page itself
+  // is where the detail lives; the sidebar just needs the count.
+  const [untrackedCount, setUntrackedCount] = useState<number | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await fetch("/api/github/untracked-commits?days=7");
+        if (cancelled || !r.ok) return;
+        const clusters = (await r.json()) as { commits: unknown[] }[];
+        const n = clusters.reduce((s, c) => s + c.commits.length, 0);
+        setUntrackedCount(n);
+      } catch {
+        // silent: no GitHub connection or network blip — don't show a badge
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -127,7 +158,15 @@ export function AppSidebar() {
                   isActive ? "text-[var(--text-forest)]" : "text-[var(--text-olive)]"
                 )}
               />
-              <span>{item.title}</span>
+              <span className="flex-1">{item.title}</span>
+              {item.badgeKey === "untracked" && untrackedCount && untrackedCount > 0 && (
+                <span
+                  className="ml-auto inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full bg-[var(--accent-olive)]/15 text-[var(--accent-olive-hover)] text-[10px] font-semibold tabular-nums"
+                  aria-label={`${untrackedCount} untracked commits`}
+                >
+                  {untrackedCount > 99 ? "99+" : untrackedCount}
+                </span>
+              )}
             </Link>
           );
         })}
