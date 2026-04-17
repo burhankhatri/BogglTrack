@@ -33,7 +33,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${lora.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-[family-name:var(--font-inter)] bg-background text-foreground">
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
+        <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
           <TooltipProvider>
             {children}
           </TooltipProvider>

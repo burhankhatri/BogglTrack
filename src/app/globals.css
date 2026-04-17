@@ -52,6 +52,50 @@
   --radius-lg: 12px;
   --radius-xl: 16px;
   --radius-full: 9999px;
+
+  /* Theme-aware color-scheme (affects native scrollbars, form controls) */
+  color-scheme: light;
+}
+
+/* Dark theme — next-themes sets data-theme="dark" on <html>.
+   Using a data-attr selector avoids Tailwind v4's class-based dark-mode
+   tree-shaking, which otherwise strips plain `.dark { ... }` rules. */
+html[data-theme="dark"] {
+  /* Backgrounds — near-black canvas, subtle elevation for cards */
+  --bg-sage: #0A0A0B;           /* Page canvas — deepest */
+  --bg-cream: #18181B;          /* Cards, surfaces — one step up */
+  --bg-cream-hover: #232327;    /* Card hover */
+  --bg-muted: #27272A;          /* Chips, inputs, dividers */
+
+  /* Text — inverted with enough contrast for readability */
+  --text-forest: #FAFAFA;       /* Primary — near-white */
+  --text-olive: #A1A1AA;        /* Secondary — neutral gray */
+  --text-cream: #18181B;        /* Text on light/accent backgrounds */
+  --text-muted: #71717A;        /* Tertiary — zero-state, tertiary labels */
+
+  /* Accent — slightly brighter emerald reads better on dark */
+  --accent-olive: #10B981;
+  --accent-olive-hover: #34D399;
+  --accent-olive-soft: rgba(16, 185, 129, 0.12);
+  --accent-coral: #F87171;
+  --accent-gold: #D4D08E;
+  --accent-teal: #10B981;
+
+  /* Borders — hairline, white-alpha instead of black-alpha */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-medium: rgba(255, 255, 255, 0.14);
+
+  /* Shadows — deeper, longer to read on dark backgrounds */
+  --shadow-card:
+    0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-dropdown:
+    0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 12px 32px rgba(0, 0, 0, 0.55),
+    0 4px 8px rgba(0, 0, 0, 0.35);
+
+  color-scheme: dark;
 }
 
 /* Pulsing indicator used for running timer */
