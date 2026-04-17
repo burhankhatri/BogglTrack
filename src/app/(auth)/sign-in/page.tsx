@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Clock, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { authClient } from "@/lib/auth/client";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -41,9 +42,7 @@ export default function SignInPage() {
   return (
     <div className="w-full max-w-sm mx-auto px-6">
       <div className="flex flex-col items-center mb-8">
-        <div className="h-10 w-10 rounded-[var(--radius-md)] bg-[var(--text-forest)] flex items-center justify-center mb-4">
-          <Clock className="h-5 w-5 text-[var(--text-cream)]" />
-        </div>
+        <BrandLogo size={40} className="mb-4" />
         <h1 className="text-[24px] font-semibold tracking-tight text-[var(--text-forest)]">
           Welcome back
         </h1>

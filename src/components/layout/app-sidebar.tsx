@@ -23,6 +23,7 @@ import {
 import { authClient } from "@/lib/auth/client";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 type NavItem = {
   title: string;
@@ -120,9 +121,7 @@ export function AppSidebar() {
     <aside className="hidden md:flex w-[232px] flex-col bg-[var(--bg-cream)] border-r border-[var(--border-subtle)] h-screen z-10 shrink-0 relative">
       <div className="h-16 flex items-center px-5 border-b border-[var(--border-subtle)]">
         <Link href="/timer" className="flex items-center gap-2.5 decoration-transparent">
-          <div className="h-7 w-7 rounded-md bg-[var(--text-forest)] flex items-center justify-center">
-            <Clock className="h-3.5 w-3.5 text-[var(--text-cream)]" />
-          </div>
+          <BrandLogo size={28} />
           <span className="text-[17px] font-semibold tracking-tight text-[var(--text-forest)]">
             BogglTrack
           </span>

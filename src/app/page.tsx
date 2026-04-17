@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { auth } from "@/lib/auth/server";
+import { BrandLogo } from "@/components/ui/brand-logo";
 
 export const metadata = {
   title: "BogglTrack — Time tracking & earnings for freelancers",
@@ -53,9 +54,7 @@ export default async function LandingPage() {
       {/* ============ NAV ============ */}
       <header className="max-w-[1200px] mx-auto px-6 md:px-8 pt-6 pb-4 flex items-center justify-between">
         <Link href="/" className="flex items-center gap-2.5 decoration-transparent">
-          <div className="h-8 w-8 rounded-[var(--radius-md)] bg-[var(--text-forest)] flex items-center justify-center">
-            <Clock className="h-4 w-4 text-[var(--text-cream)]" />
-          </div>
+          <BrandLogo size={32} />
           <span className="text-[18px] font-semibold tracking-tight">BogglTrack</span>
         </Link>
 
@@ -409,9 +408,7 @@ export default async function LandingPage() {
       <footer className="max-w-[1200px] mx-auto px-6 md:px-8 py-10 border-t border-[var(--border-subtle)]">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-[12px] text-[var(--text-olive)]">
           <div className="flex items-center gap-2.5">
-            <div className="h-6 w-6 rounded-[var(--radius-sm)] bg-[var(--text-forest)] flex items-center justify-center">
-              <Clock className="h-3 w-3 text-[var(--text-cream)]" />
-            </div>
+            <BrandLogo size={24} />
             <span className="font-medium text-[var(--text-forest)]">BogglTrack</span>
             <span>© {new Date().getFullYear()}</span>
           </div>
