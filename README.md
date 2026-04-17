@@ -1,36 +1,96 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BogglTrack
 
-## Getting Started
+Time tracking & earnings for freelancers. Runs on the web and as a native macOS app. Same account, same data, always in sync.
 
-First, run the development server:
+- **Web:** https://boggl-track.vercel.app
+- **macOS DMG:** https://github.com/burhankhatri/BogglTrack/releases/latest
+
+## Stack
+
+- Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4
+- Prisma + Neon Postgres
+- [Neon Auth](https://neon.tech/docs/neon-auth) (Better Auth) for sessions
+- Electron 32 for the macOS desktop wrapper, `electron-builder` for DMGs, `electron-updater` for auto-updates
+- Zustand for client state, Recharts for charts, `react-day-picker` v9 for date picking
+
+## Run it
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev              # web app at http://localhost:3000
+npm run electron:dev     # Electron window loading localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Required env vars (see `.env.example` if you add one — for now, check `src/lib/auth/server.ts` and `prisma/schema.prisma`):
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+DATABASE_URL=postgres://...          # Neon connection string
+NEON_AUTH_BASE_URL=https://...       # Neon Auth URL from project settings
+NEON_AUTH_COOKIE_SECRET=...          # 32+ char random string
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Project layout
 
-## Learn More
+```
+src/app/
+├── page.tsx              # public landing page (/) — session-aware
+├── (app)/                # authenticated routes
+│   ├── layout.tsx        # sidebar + global timer bar
+│   ├── dashboard/        # /dashboard
+│   ├── timer/            # /timer — track time
+│   ├── calendar/         # /calendar — view by day
+│   ├── projects/         # /projects — manage projects
+│   ├── clients/          # /clients
+│   ├── tags/             # /tags
+│   ├── invoices/         # /invoices — generate PDFs
+│   ├── reports/          # /reports
+│   └── settings/         # /settings
+├── (auth)/               # public auth flows
+│   ├── sign-in/
+│   ├── sign-up/
+│   ├── forgot-password/
+│   └── reset-password/
+└── api/                  # route handlers (CRUD + auth)
 
-To learn more about Next.js, take a look at the following resources:
+src/components/
+├── layout/               # sidebar, global timer bar, mobile tab bar
+└── ui/                   # primitives (button, card, select, calendar, etc.)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+electron/
+├── main.js               # Electron entry (menu, tray, Dock, IPC, auto-updater)
+├── preload.js            # renderer ↔ main bridge
+└── assets/               # icon.icns, dmg-background.png, source SVGs
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+docs/
+├── specs/                # design docs (what we're building + why)
+└── plans/                # implementation plans (task-by-task)
+```
 
-## Deploy on Vercel
+## Docs
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **[AGENTS.md](AGENTS.md)** — agent/AI rules. Includes the mandatory desktop release procedure. Read this if you're shipping.
+- **[DESIGN.md](DESIGN.md)** — design system reference (cal.com-inspired monochrome palette, typography, components).
+- **[testing.md](testing.md)** — test infrastructure, commands, env setup.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Shipping a desktop update
+
+See `AGENTS.md` → `desktop-release-rules`. Short version:
+
+```bash
+# 1. Bump version in package.json AND src/app/page.tsx (DMG_URL filename)
+# 2. Rebuild
+rm -rf dist && npm run dmg
+# 3. Release
+gh release create desktop-vX.Y.Z \
+  dist/BogglTrack-X.Y.Z-arm64.dmg \
+  dist/BogglTrack-X.Y.Z-arm64.dmg.blockmap \
+  dist/latest-mac.yml \
+  --title "BogglTrack X.Y.Z" --notes "..."
+# 4. Commit + push
+```
+
+Users on v0.2.0+ auto-update on next launch.
+
+## License
+
+Private — all rights reserved.
