@@ -13,7 +13,9 @@ import {
   DollarSign,
   Calendar,
   FileText,
+  LayoutDashboard,
 } from "lucide-react";
+import { auth } from "@/lib/auth/server";
 
 export const metadata = {
   title: "BogglTrack — Time tracking & earnings for freelancers",
@@ -21,18 +23,35 @@ export const metadata = {
     "Track time, manage projects, invoice clients. One tool, on the web and on your Mac. Same account, always in sync.",
 };
 
-// Hosted on GitHub Releases (~205 MB, too big for a git-tracked public asset).
+// Reads the session per-request so the nav adapts for signed-in visitors.
+export const dynamic = "force-dynamic";
+
+// Hosted on GitHub Releases — the DMG is too large for a git-tracked asset.
+// Filename tracks the current electron-builder version output.
 const DMG_URL =
-  "https://github.com/burhankhatri/BogglTrack/releases/latest/download/BogglTrack-0.1.0-arm64.dmg";
+  "https://github.com/burhankhatri/BogglTrack/releases/latest/download/BogglTrack-0.2.0-arm64.dmg";
 // Intel build not published yet — redirect Intel visitors to the releases page.
 const DMG_INTEL_URL = "https://github.com/burhankhatri/BogglTrack/releases/latest";
 
-export default function DownloadPage() {
+export default async function LandingPage() {
+  // Best-effort session read. If auth isn't reachable (preview env, network
+  // blip), fall back to the signed-out rendering — nothing breaks.
+  let isSignedIn = false;
+  try {
+    const { data: session } = await auth.getSession();
+    if (session?.user) isSignedIn = true;
+  } catch {
+    isSignedIn = false;
+  }
+
+  // Signed-in visitors jump straight to the app; strangers go to sign-up.
+  const webAppHref = isSignedIn ? "/dashboard" : "/sign-up";
+  const webAppLabel = isSignedIn ? "Open app" : "Use on the web";
   return (
     <div className="min-h-screen bg-[var(--bg-sage)] text-[var(--text-forest)]">
       {/* ============ NAV ============ */}
       <header className="max-w-[1200px] mx-auto px-6 md:px-8 pt-6 pb-4 flex items-center justify-between">
-        <Link href="/download" className="flex items-center gap-2.5 decoration-transparent">
+        <Link href="/" className="flex items-center gap-2.5 decoration-transparent">
           <div className="h-8 w-8 rounded-[var(--radius-md)] bg-[var(--text-forest)] flex items-center justify-center">
             <Clock className="h-4 w-4 text-[var(--text-cream)]" />
           </div>
@@ -42,13 +61,27 @@ export default function DownloadPage() {
         <nav className="hidden sm:flex items-center gap-6 text-[13px] font-medium text-[var(--text-olive)]">
           <a href="#features" className="hover:text-[var(--text-forest)] transition-colors">Features</a>
           <a href="#platforms" className="hover:text-[var(--text-forest)] transition-colors">Platforms</a>
-          <Link href="/sign-in" className="hover:text-[var(--text-forest)] transition-colors">Sign in</Link>
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center h-8 px-3 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 transition-opacity"
-          >
-            Get started
-          </Link>
+          {isSignedIn ? (
+            <Link
+              href="/dashboard"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 transition-opacity"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5" />
+              Open app
+            </Link>
+          ) : (
+            <>
+              <Link href="/sign-in" className="hover:text-[var(--text-forest)] transition-colors">
+                Sign in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="inline-flex items-center h-8 px-3 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 transition-opacity"
+              >
+                Get started
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -84,11 +117,11 @@ export default function DownloadPage() {
             </span>
           </a>
           <Link
-            href="/sign-up"
+            href={webAppHref}
             className="inline-flex items-center gap-2 h-12 px-5 rounded-[var(--radius-md)] bg-[var(--bg-cream)] text-[var(--text-forest)] text-[15px] font-medium hover:bg-[var(--bg-cream-hover)] transition-colors shadow-[var(--shadow-card)]"
           >
             <Globe className="h-4 w-4" />
-            Use on the web
+            {webAppLabel}
           </Link>
         </div>
 
@@ -327,10 +360,10 @@ export default function DownloadPage() {
             </ul>
 
             <Link
-              href="/sign-up"
+              href={webAppHref}
               className="mt-8 inline-flex items-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] text-[13px] font-medium hover:opacity-90 transition-opacity"
             >
-              Open in browser
+              {isSignedIn ? "Open dashboard" : "Open in browser"}
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
@@ -361,11 +394,11 @@ export default function DownloadPage() {
               Download for Mac
             </a>
             <Link
-              href="/sign-up"
+              href={webAppHref}
               className="inline-flex items-center gap-2 h-11 px-5 rounded-[var(--radius-md)] bg-[var(--bg-muted)] text-[var(--text-forest)] text-[14px] font-medium hover:bg-[var(--bg-cream-hover)] transition-colors"
             >
               <MonitorSmartphone className="h-4 w-4" />
-              Try the web app
+              {isSignedIn ? "Open dashboard" : "Try the web app"}
             </Link>
           </div>
         </div>
@@ -382,12 +415,20 @@ export default function DownloadPage() {
             <span>© {new Date().getFullYear()}</span>
           </div>
           <nav className="flex items-center gap-5">
-            <Link href="/sign-in" className="hover:text-[var(--text-forest)] transition-colors">
-              Sign in
-            </Link>
-            <Link href="/sign-up" className="hover:text-[var(--text-forest)] transition-colors">
-              Sign up
-            </Link>
+            {isSignedIn ? (
+              <Link href="/dashboard" className="hover:text-[var(--text-forest)] transition-colors">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/sign-in" className="hover:text-[var(--text-forest)] transition-colors">
+                  Sign in
+                </Link>
+                <Link href="/sign-up" className="hover:text-[var(--text-forest)] transition-colors">
+                  Sign up
+                </Link>
+              </>
+            )}
             <a href={DMG_URL} className="hover:text-[var(--text-forest)] transition-colors" download>
               Download
             </a>

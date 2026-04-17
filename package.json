@@ -1,6 +1,6 @@
 {
   "name": "boggltrack",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Time tracking & earnings for freelancers.",
   "author": "Burhan Khatri",
@@ -24,6 +24,7 @@
     "@xyflow/react": "^12.10.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
+    "electron-updater": "^6.8.3",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.7.0",
     "next": "16.2.1",

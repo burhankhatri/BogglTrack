@@ -198,7 +198,7 @@ function createSWRFetcher<T>(
 // ---------------------------------------------------------------------------
 
 const ROUTE_PREFETCH_MAP: Record<string, string[]> = {
-  "/": ["dashboard"],
+  "/dashboard": ["dashboard"],
   "/timer": ["projects", "tags", "settings", "timerEntries"],
   "/tracking": ["trackingEntries"],
   "/projects": ["pageProjects", "clients", "settings"],

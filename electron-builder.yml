@@ -45,3 +45,12 @@ dmg:
       y: 260
       type: link
       path: /Applications
+
+# electron-updater reads latest-mac.yml from the GitHub Release to detect
+# new versions. The release tag format is desktop-vX.Y.Z and the published
+# assets include the .dmg + .dmg.blockmap + latest-mac.yml.
+publish:
+  provider: github
+  owner: burhankhatri
+  repo: BogglTrack
+  releaseType: release

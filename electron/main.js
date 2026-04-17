@@ -2,9 +2,17 @@
 // Wraps the production web app in a native window with macOS-feeling chrome.
 // Keep this file plain CommonJS so electron-builder can run it without a TS step.
 
-const { app, BrowserWindow, Menu, shell, globalShortcut, Notification, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, shell, globalShortcut, Notification, ipcMain, dialog } = require("electron");
 const path = require("node:path");
 const fs = require("node:fs");
+
+// Lazy-load the updater so dev (when the package isn't wired) still boots.
+let autoUpdater = null;
+try {
+  autoUpdater = require("electron-updater").autoUpdater;
+} catch {
+  autoUpdater = null;
+}
 
 const PROD_URL = process.env.BOGGLTRACK_URL || "https://boggl-track.vercel.app";
 const IS_DEV = process.env.ELECTRON_IS_DEV === "1";
@@ -194,6 +202,36 @@ app.whenReady().then(() => {
 
   // Global shortcut — toggle timer from anywhere
   globalShortcut.register("CommandOrControl+Shift+T", () => sendMenu("toggle-timer"));
+
+  // Auto-update: check GitHub Releases on launch + every 6 hours.
+  // Silent download; prompt the user when a new version is ready to install.
+  if (!IS_DEV && autoUpdater) {
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on("update-downloaded", async (info) => {
+      if (!mainWindow) return;
+      const res = await dialog.showMessageBox(mainWindow, {
+        type: "info",
+        title: "Update ready",
+        message: `BogglTrack ${info.version} is ready to install.`,
+        detail: "Restart now to apply, or it'll install next time you quit.",
+        buttons: ["Restart Now", "Later"],
+        defaultId: 0,
+        cancelId: 1,
+      });
+      if (res.response === 0) autoUpdater.quitAndInstall();
+    });
+
+    autoUpdater.on("error", (err) => {
+      // Swallow — no modal, no crash. Failed updates retry next launch.
+      console.error("[updater]", err?.message || err);
+    });
+
+    const check = () => autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+    check();
+    setInterval(check, 6 * 60 * 60 * 1000);
+  }
 });
 
 app.on("before-quit", () => {

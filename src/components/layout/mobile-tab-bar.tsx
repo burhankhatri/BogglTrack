@@ -6,7 +6,7 @@ import { Clock, Calendar, LayoutDashboard, User, List, GitBranchPlus } from "luc
 import { useAppStore } from "@/stores/app-store";
 
 const mobileTabs = [
-  { title: "Home", href: "/", icon: LayoutDashboard },
+  { title: "Home", href: "/dashboard", icon: LayoutDashboard },
   { title: "Calendar", href: "/calendar", icon: Calendar },
   { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
   { title: "Overview", href: "/tracking", icon: List },
@@ -21,7 +21,7 @@ export function MobileTabBar() {
     <div className="md:hidden fixed bottom-0 left-0 right-0 bg-[var(--bg-cream)] border-t border-[var(--border-subtle)] pb-safe z-50">
       <div className="flex items-center justify-around h-[80px] px-2 relative">
         {mobileTabs.map((tab) => {
-          const isActive = tab.href === "/" ? pathname === "/" : pathname.startsWith(tab.href);
+          const isActive = pathname.startsWith(tab.href);
 
           return (
             <Link
