@@ -104,10 +104,11 @@ interface DashboardData {
   thisWeek: { hours: number; earnings: number };
   thisMonth: { hours: number; earnings: number };
   activeProjects: number;
+  totalCommits30d: number;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   recentEntries: any[];
   earningsTrend: { date: string; earnings: number }[];
-  topProjects: { id: string; name: string; color: string; hours: number; earnings: number }[];
+  topProjects: { id: string; name: string; color: string; hours: number; earnings: number; commitCount: number }[];
 }
 
 interface CacheEntry<T> {

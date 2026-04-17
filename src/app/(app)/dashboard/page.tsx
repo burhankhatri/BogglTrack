@@ -10,7 +10,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { Clock, Calendar, TrendingUp, FolderKanban } from "lucide-react";
+import { Clock, Calendar, TrendingUp, FolderKanban, GitCommit } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TimeEntryRow } from "@/components/ui/time-entry-row";
@@ -128,7 +128,9 @@ export default function DashboardPage() {
             <div className="flex items-baseline gap-2">
               <span className="text-[32px] font-semibold">{data.activeProjects}</span>
               <span className="text-[12px] font-medium text-[var(--text-olive)] tracking-normal normal-case">
-                active
+                {data.totalCommits30d > 0
+                  ? `· ${data.totalCommits30d} commit${data.totalCommits30d === 1 ? "" : "s"} · 30d`
+                  : "active"}
               </span>
             </div>
           }
@@ -209,7 +211,7 @@ export default function DashboardPage() {
               <div className="space-y-5 mt-1">
                 {data.topProjects.map((project) => (
                   <div key={project.id} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center justify-between text-sm gap-3">
                       <div className="flex items-center gap-2 min-w-0">
                         <span
                           className="size-2 rounded-full shrink-0"
@@ -218,8 +220,17 @@ export default function DashboardPage() {
                         <span className="font-medium text-[var(--text-forest)] truncate">
                           {project.name}
                         </span>
+                        {project.commitCount > 0 && (
+                          <span
+                            className="inline-flex items-center gap-1 shrink-0 px-1.5 py-0.5 rounded-full bg-[var(--bg-muted)] text-[10px] font-medium text-[var(--text-olive)] tabular-nums"
+                            title={`${project.commitCount} commit${project.commitCount === 1 ? "" : "s"} in the last 30 days`}
+                          >
+                            <GitCommit className="h-2.5 w-2.5" />
+                            {project.commitCount}
+                          </span>
+                        )}
                       </div>
-                      <div className="text-right text-[12px] font-medium text-[var(--text-olive)] tabular-nums shrink-0 ml-3">
+                      <div className="text-right text-[12px] font-medium text-[var(--text-olive)] tabular-nums shrink-0">
                         <span>{formatHours(project.hours)}</span>
                         <span className="ml-2 text-[var(--text-forest)]">
                           {formatCurrency(project.earnings)}

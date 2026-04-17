@@ -35,6 +35,12 @@ interface RuleInput {
   projectId: string;
 }
 
+export interface ProjectRepoInput {
+  id: string;
+  repoFullName: string;
+  projectId: string;
+}
+
 // ---- Grouping ----
 
 export function groupEntryDescriptions(entries: EntryInput[]): GroupedDescription[] {
@@ -68,16 +74,32 @@ export function groupEntryDescriptions(entries: EntryInput[]): GroupedDescriptio
 
 // ---- Node Building ----
 
-const COL_X = { client: 0, project: 400, entry: 800 };
+// Columns: Repo | Client | Project | Entries. Repos sit to the left of
+// Clients so commits flow left-to-right into projects and onward to entries.
+const COL_X = { repo: -400, client: 0, project: 400, entry: 800 };
 const ROW_SPACING = 100;
 const START_Y = 50;
 
 export function buildNodes(
   clients: ClientInput[],
   projects: ProjectInput[],
-  entryGroups: GroupedDescription[]
+  entryGroups: GroupedDescription[],
+  repos: ProjectRepoInput[] = []
 ): Node[] {
   const nodes: Node[] = [];
+
+  repos.forEach((r, i) => {
+    nodes.push({
+      id: `repo-${r.id}`,
+      type: "repoNode",
+      position: { x: COL_X.repo, y: START_Y + i * ROW_SPACING },
+      data: {
+        label: r.repoFullName,
+        repoFullName: r.repoFullName,
+        projectId: r.projectId,
+      },
+    });
+  });
 
   clients.forEach((c, i) => {
     nodes.push({
@@ -126,9 +148,21 @@ export function buildNodes(
 export function buildEdges(
   projects: ProjectInput[],
   entryGroups: GroupedDescription[],
-  rules: RuleInput[]
+  rules: RuleInput[],
+  repos: ProjectRepoInput[] = []
 ): Edge[] {
   const edges: Edge[] = [];
+
+  // Repo → Project edges
+  for (const r of repos) {
+    edges.push({
+      id: `edge-repo-${r.id}-project-${r.projectId}`,
+      source: `repo-${r.id}`,
+      target: `project-${r.projectId}`,
+      type: "default",
+      animated: true,
+    });
+  }
 
   // Project → Client edges
   for (const p of projects) {

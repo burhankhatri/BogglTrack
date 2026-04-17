@@ -10,6 +10,7 @@ import {
   Check,
   X,
   DollarSign,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -46,6 +47,7 @@ import {
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { EntryCommits } from "@/components/ui/entry-commits";
 import { BackfillCommitsButton } from "@/components/timer/backfill-commits-button";
+import { draftDescriptionFromCommits } from "@/lib/github/description";
 
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -769,6 +771,31 @@ export default function TimerPage() {
                               placeholder="What did you work on?"
                               autoFocus
                             />
+                            {(() => {
+                              // Commit-based description suggestion. Only
+                              // offer when the user hasn't typed anything
+                              // unique yet (empty or still the original
+                              // description, which might already be what
+                              // they want).
+                              const entryCommits = entry.commits;
+                              if (!entryCommits || entryCommits.length === 0) return null;
+                              const draft = draftDescriptionFromCommits(entryCommits);
+                              if (!draft || draft === editDescription) return null;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditDescription(draft)}
+                                  className="mt-2 inline-flex items-start gap-1.5 max-w-full text-left px-2.5 py-1.5 rounded-[var(--radius-md)] bg-[var(--accent-olive-soft)] text-[11px] text-[var(--accent-olive-hover)] hover:opacity-80 transition-opacity"
+                                  title="Replace description with a summary of the attached commits"
+                                >
+                                  <Sparkles className="h-3 w-3 shrink-0 mt-0.5" />
+                                  <span className="flex-1 min-w-0">
+                                    <span className="font-medium">Use commits:</span>{" "}
+                                    <span className="text-[var(--text-olive)] line-clamp-2">{draft}</span>
+                                  </span>
+                                </button>
+                              );
+                            })()}
                           </div>
 
                           <div className="grid grid-cols-3 gap-3">

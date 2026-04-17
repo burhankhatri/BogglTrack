@@ -19,6 +19,7 @@ interface ProjectAgg {
   color: string;
   total_seconds: number;
   total_earnings: number;
+  commit_count: number;
 }
 
 export async function GET() {
@@ -79,12 +80,14 @@ export async function GET() {
           ORDER BY day
         `,
 
-        // 3. Top projects by duration (last 30 days)
+        // 3. Top projects by duration (last 30 days) — plus commit count
+        // derived from the JSON `commits` array on each TimeEntry.
         prisma.$queryRaw<ProjectAgg[]>`
           SELECT
             p.id, p.name, p.color,
             SUM(te.duration) as total_seconds,
-            SUM(CASE WHEN te.billable THEN te.duration * COALESCE(p."hourlyRate", ${defaultRate}) / 3600.0 ELSE 0 END) as total_earnings
+            SUM(CASE WHEN te.billable THEN te.duration * COALESCE(p."hourlyRate", ${defaultRate}) / 3600.0 ELSE 0 END) as total_earnings,
+            COALESCE(SUM(CASE WHEN te.commits IS NOT NULL THEN jsonb_array_length(te.commits) ELSE 0 END), 0) as commit_count
           FROM "TimeEntry" te
           JOIN "Project" p ON te."projectId" = p.id
           WHERE te."userId" = ${user.id} AND te.duration IS NOT NULL AND te."startTime" >= ${thirtyDaysAgo}
@@ -136,7 +139,11 @@ export async function GET() {
       color: p.color,
       hours: Number(p.total_seconds),
       earnings: Math.round(Number(p.total_earnings) * 100) / 100,
+      commitCount: Number(p.commit_count),
     }));
+
+    // Totals across the last 30 days for the header stat card
+    const totalCommits30d = topProjects.reduce((s, p) => s + p.commitCount, 0);
 
     const toSeconds = (v: number | null) => Number(v ?? 0);
     const toEarnings = (v: number | null) => Math.round((Number(v) || 0) * 100) / 100;
@@ -155,6 +162,7 @@ export async function GET() {
         earnings: toEarnings(periodStats.month.total_earnings),
       },
       activeProjects,
+      totalCommits30d,
       recentEntries,
       earningsTrend,
       topProjects,

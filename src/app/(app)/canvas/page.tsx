@@ -22,6 +22,7 @@ import {
   buildNodes,
   buildEdges,
   type GroupedDescription,
+  type ProjectRepoInput,
 } from "./canvas-helpers";
 
 // ---- Custom Node Components ----
@@ -67,10 +68,23 @@ function EntryNode({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+function RepoNode({ data }: { data: Record<string, unknown> }) {
+  return (
+    <div className="px-4 py-3 rounded-[var(--radius-lg)] bg-[var(--bg-cream)] border-2 border-[var(--text-forest)] shadow-[var(--shadow-card)] min-w-[160px]">
+      <Handle type="source" position={Position.Right} className="!bg-[var(--text-forest)] !w-3 !h-3" />
+      <div className="text-[13px] font-medium text-[var(--text-olive)] mb-1">GitHub repo</div>
+      <div className="text-[14px] font-semibold text-[var(--text-forest)] font-mono truncate max-w-[200px]">
+        {data.label as string}
+      </div>
+    </div>
+  );
+}
+
 const nodeTypes = {
   clientNode: ClientNode,
   projectNode: ProjectNode,
   entryNode: EntryNode,
+  repoNode: RepoNode,
 };
 
 // ---- Interfaces ----
@@ -113,11 +127,18 @@ export default function CanvasPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [entryGroups, setEntryGroups] = useState<GroupedDescription[]>([]);
   const [rules, setRules] = useState<DescriptionRule[]>([]);
+  const [repos, setRepos] = useState<ProjectRepoInput[]>([]);
 
   const rebuildGraph = useCallback(
-    (c: Client[], p: Project[], eg: GroupedDescription[], r: DescriptionRule[]) => {
-      setNodes(buildNodes(c, p, eg));
-      setEdges(buildEdges(p, eg, r));
+    (
+      c: Client[],
+      p: Project[],
+      eg: GroupedDescription[],
+      r: DescriptionRule[],
+      rp: ProjectRepoInput[]
+    ) => {
+      setNodes(buildNodes(c, p, eg, rp));
+      setEdges(buildEdges(p, eg, r, rp));
     },
     [setNodes, setEdges]
   );
@@ -126,18 +147,20 @@ export default function CanvasPage() {
   useEffect(() => {
     async function load() {
       try {
-        const [clientsRes, projectsRes, entriesRes, rulesRes] = await Promise.all([
+        const [clientsRes, projectsRes, entriesRes, rulesRes, reposRes] = await Promise.all([
           fetch("/api/clients"),
           fetch("/api/projects"),
           fetch("/api/time-entries?limit=200"),
           fetch("/api/description-rules"),
+          fetch("/api/project-repos"),
         ]);
 
-        const [clientsData, projectsData, entriesData, rulesData] = await Promise.all([
+        const [clientsData, projectsData, entriesData, rulesData, reposData] = await Promise.all([
           clientsRes.json(),
           projectsRes.json(),
           entriesRes.json(),
           rulesRes.json(),
+          reposRes.ok ? reposRes.json() : Promise.resolve([]),
         ]);
 
         const c: Client[] = (clientsData || []).map((cl: any) => ({
@@ -156,12 +179,18 @@ export default function CanvasPage() {
         const eg = groupEntryDescriptions(completed);
 
         const r: DescriptionRule[] = rulesData || [];
+        const rp: ProjectRepoInput[] = (reposData || []).map((x: Record<string, unknown>) => ({
+          id: String(x.id),
+          repoFullName: String(x.repoFullName),
+          projectId: String(x.projectId),
+        }));
 
         setClients(c);
         setProjects(p);
         setEntryGroups(eg);
         setRules(r);
-        rebuildGraph(c, p, eg, r);
+        setRepos(rp);
+        rebuildGraph(c, p, eg, r, rp);
       } catch {
         toast.error("Failed to load canvas data");
       } finally {
