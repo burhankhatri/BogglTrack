@@ -164,6 +164,12 @@ export default function InvoicesPage() {
   const [recipientAddress, setRecipientAddress] = useState("");
   const [recipientEmail, setRecipientEmail] = useState("");
 
+  // Controls whether the commits attached to each line item are rendered
+  // on the invoice (preview + PDF). Defaults to true; auto-hidden when no
+  // line item has commits so the toggle doesn't clutter the UI for users
+  // without GitHub connected.
+  const [includeCommits, setIncludeCommits] = useState(true);
+
   // Step 3: Preview
   const [markAsInvoiced, setMarkAsInvoiced] = useState(true);
   const [downloading, setDownloading] = useState(false);
@@ -326,6 +332,13 @@ export default function InvoicesPage() {
     }
   }, [entries, selectedIds, groupMode]);
 
+  // Do any of the line items actually carry commits? Drives whether we
+  // bother rendering the "Include commits" toggle at all.
+  const hasAnyCommits = useMemo(
+    () => lineItems.some((li) => li.commits && li.commits.length > 0),
+    [lineItems]
+  );
+
   // Computed totals
   const subtotal = useMemo(
     () => lineItems.reduce((sum, li) => sum + li.amount, 0),
@@ -482,7 +495,7 @@ export default function InvoicesPage() {
           quantity: li.quantity,
           rate: li.rate,
           amount: li.amount,
-          commits: li.commits && li.commits.length > 0
+          commits: includeCommits && li.commits && li.commits.length > 0
             ? li.commits.map((c) => ({
                 sha: c.sha,
                 message: c.message,
@@ -839,27 +852,41 @@ export default function InvoicesPage() {
               {/* Grouping toggle + Line items */}
               <Card>
                 <CardContent className="pt-4">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
                     <span className="text-sm font-medium text-[var(--text-olive)]">Line Items</span>
-                    <div className="flex gap-1">
-                      <Button
-                        variant={groupMode === "individual" ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 px-3 text-xs rounded-full"
-                        onClick={() => setGroupMode("individual")}
-                        data-testid="group-individual"
-                      >
-                        Individual entries
-                      </Button>
-                      <Button
-                        variant={groupMode === "grouped" ? "default" : "outline"}
-                        size="sm"
-                        className="h-8 px-3 text-xs rounded-full"
-                        onClick={() => setGroupMode("grouped")}
-                        data-testid="group-grouped"
-                      >
-                        Group by description
-                      </Button>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {hasAnyCommits && (
+                        <label
+                          className="inline-flex items-center gap-2 text-[13px] text-[var(--text-forest)] cursor-pointer"
+                          data-testid="include-commits-toggle"
+                        >
+                          <Checkbox
+                            checked={includeCommits}
+                            onCheckedChange={(c) => setIncludeCommits(c)}
+                          />
+                          Include commits
+                        </label>
+                      )}
+                      <div className="flex gap-1">
+                        <Button
+                          variant={groupMode === "individual" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs rounded-full"
+                          onClick={() => setGroupMode("individual")}
+                          data-testid="group-individual"
+                        >
+                          Individual entries
+                        </Button>
+                        <Button
+                          variant={groupMode === "grouped" ? "default" : "outline"}
+                          size="sm"
+                          className="h-8 px-3 text-xs rounded-full"
+                          onClick={() => setGroupMode("grouped")}
+                          data-testid="group-grouped"
+                        >
+                          Group by description
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
@@ -910,7 +937,7 @@ export default function InvoicesPage() {
                               {formatCurrency(li.amount, currSymbol)}
                             </TableCell>
                           </TableRow>
-                          {li.commits && li.commits.length > 0 && (() => {
+                          {includeCommits && li.commits && li.commits.length > 0 && (() => {
                             const commits = li.commits;
                             const repos = new Set(commits.map((c) => c.repo));
                             const multi = repos.size > 1;
