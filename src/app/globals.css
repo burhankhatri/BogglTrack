@@ -139,6 +139,46 @@ html[data-theme="dark"] {
   to { opacity: 1; }
 }
 
+/* React Flow Controls — inherit theme colors so the zoom in/out tile
+   doesn't stay white in dark mode. React Flow uses its own CSS vars;
+   we map them to our theme tokens instead of restyling every class. */
+.react-flow__controls {
+  background-color: var(--bg-cream) !important;
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-card);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.react-flow__controls-button {
+  background-color: var(--bg-cream) !important;
+  border-bottom: 1px solid var(--border-subtle) !important;
+  color: var(--text-forest);
+  transition: background-color 150ms ease;
+}
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+.react-flow__controls-button:hover {
+  background-color: var(--bg-cream-hover) !important;
+}
+.react-flow__controls-button svg,
+.react-flow__controls-button path {
+  fill: var(--text-forest);
+}
+
+/* First-boot loader — three dots cascade while the app fetches its
+   essentials (settings, projects, running timer). Kept in CSS so the
+   loader can animate even before the GSAP bundle is evaluated. */
+@keyframes boot-dot {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.8); }
+  40% { opacity: 1; transform: scale(1); }
+}
+.boot-dot {
+  animation: boot-dot 1.1s ease-in-out infinite;
+}
+.boot-dot-2 { animation-delay: 0.15s; }
+.boot-dot-3 { animation-delay: 0.3s; }
+
 /* Route progress bar animation */
 @keyframes route-progress {
   0% { width: 0%; }

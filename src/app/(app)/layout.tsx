@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import { AppSidebar } from "@/components/layout/app-sidebar";
+import { AppBoot } from "@/components/layout/app-boot";
 import { GlobalTimerBar } from "@/components/layout/global-timer-bar";
 import { MobileTabBar } from "@/components/layout/mobile-tab-bar";
 
@@ -40,19 +41,21 @@ export default function AppLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-[var(--bg-sage)]">
-      <AppSidebar />
-      <div className="flex-1 flex flex-col overflow-hidden relative w-full">
-        <GlobalTimerBar />
-        <main
-          className="flex-1 overflow-y-auto bg-[var(--bg-sage)] p-4 md:p-6 pb-24 md:pb-6 relative"
-          style={{ viewTransitionName: "page-content" } as React.CSSProperties}
-        >
-          <RouteProgressBar />
-          {children}
-        </main>
-        <MobileTabBar />
+    <AppBoot>
+      <div className="flex h-screen overflow-hidden bg-[var(--bg-sage)]">
+        <AppSidebar />
+        <div className="flex-1 flex flex-col overflow-hidden relative w-full">
+          <GlobalTimerBar />
+          <main
+            className="flex-1 overflow-y-auto bg-[var(--bg-sage)] p-4 md:p-6 pb-24 md:pb-6 relative"
+            style={{ viewTransitionName: "page-content" } as React.CSSProperties}
+          >
+            <RouteProgressBar />
+            {children}
+          </main>
+          <MobileTabBar />
+        </div>
       </div>
-    </div>
+    </AppBoot>
   );
 }
