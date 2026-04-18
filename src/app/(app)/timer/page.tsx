@@ -47,6 +47,7 @@ import {
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { EntryCommits } from "@/components/ui/entry-commits";
 import { BackfillCommitsButton } from "@/components/timer/backfill-commits-button";
+import { FirstRunChecklist } from "@/components/timer/first-run-checklist";
 import { draftDescriptionFromCommits } from "@/lib/github/description";
 
 import { useAppStore } from "@/stores/app-store";
@@ -544,6 +545,10 @@ export default function TimerPage() {
 
   return (
     <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-10">
+      <FirstRunChecklist
+        hasProjects={projects.length > 0}
+        hasRate={userDefaultRate > 0}
+      />
       {/* Page header — acts as a real page header, not a twin of the entry rows */}
       <header className="flex items-end justify-between gap-6 px-1">
         <div>

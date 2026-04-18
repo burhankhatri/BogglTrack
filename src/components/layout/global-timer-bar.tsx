@@ -131,6 +131,56 @@ export function GlobalTimerBar() {
     };
   }, [isRunning, elapsedSeconds]);
 
+  // Scenario 6 — idle detection. If the tab was hidden for more than 15 min
+  // while a timer ran, surface a toast on return so the user can trim the
+  // away-from-keyboard time from the current entry.
+  useEffect(() => {
+    if (!isRunning) return;
+    let hiddenAt: number | null = null;
+    const onVis = () => {
+      if (document.visibilityState === "hidden") {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === "visible" && hiddenAt) {
+        const awayMs = Date.now() - hiddenAt;
+        hiddenAt = null;
+        if (awayMs <= 15 * 60 * 1000) return;
+        const awayMin = Math.floor(awayMs / 60000);
+        toast(`You were away for ${awayMin} min`, {
+          description: "Trim that time from this entry?",
+          duration: 10000,
+          action: {
+            label: `Trim ${awayMin}m`,
+            onClick: async () => {
+              const st = useTimerStore.getState();
+              if (!st.entryId || st.entryId.startsWith("temp-") || !st.startTime) return;
+              const newStart = new Date(st.startTime.getTime() + awayMs);
+              try {
+                const res = await fetch(`/api/time-entries/${st.entryId}`, {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ startTime: newStart.toISOString() }),
+                });
+                if (!res.ok) throw new Error();
+                useTimerStore.setState({
+                  startTime: newStart,
+                  elapsedSeconds: Math.max(
+                    0,
+                    Math.floor((Date.now() - newStart.getTime()) / 1000)
+                  ),
+                });
+                toast.success(`Trimmed ${awayMin}m from this entry`);
+              } catch {
+                toast.error("Couldn't trim — try editing the entry manually");
+              }
+            },
+          },
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [isRunning]);
+
   // Sync hourly rate with selected project
   useEffect(() => {
     if (projectId) {
