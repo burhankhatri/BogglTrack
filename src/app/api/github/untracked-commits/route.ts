@@ -68,7 +68,20 @@ export async function GET(req: NextRequest) {
     });
   };
 
+  // Merge commits are noise — they represent integration, not work in a
+  // focused session. If someone actually wants to track the merge they can
+  // still create the entry manually from the commit.
+  const isMergeCommit = (message: string) => {
+    const first = message.split("\n", 1)[0];
+    return (
+      /^Merge pull request #\d+/i.test(first) ||
+      /^Merge branch ['"]/i.test(first) ||
+      /^Merge remote-tracking branch/i.test(first)
+    );
+  };
+
   const untracked = commits
+    .filter((c) => !isMergeCommit(c.message))
     .map((c) => ({ ...c, at: new Date(c.committedAt) }))
     .filter((c) => !isCovered(c.at))
     .sort((a, b) => a.at.getTime() - b.at.getTime());

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
-import { ExternalLink, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { ExternalLink, CheckCircle2, AlertCircle, Loader2, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -36,6 +36,9 @@ export function GitHubConnectCard() {
   const [status, setStatus] = useState<GitHubStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+  // Keep the "what we'll access" block out of the way until someone actually
+  // cares — non-GitHub users shouldn't see a wall of scopes on every visit.
+  const [expanded, setExpanded] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -158,6 +161,26 @@ export function GitHubConnectCard() {
               Disconnect GitHub
             </button>
           </div>
+        ) : !expanded ? (
+          // Compact pitch — single row, click to learn more.
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="w-full flex items-center gap-3 text-left group"
+          >
+            <div className="h-9 w-9 rounded-full bg-[var(--bg-muted)] flex items-center justify-center shrink-0">
+              <GithubIcon className="h-4 w-4 text-[var(--text-olive)]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-medium text-[var(--text-forest)]">
+                Connect GitHub to auto-attach your commits
+              </p>
+              <p className="text-[11px] text-[var(--text-olive)] truncate">
+                Optional — tap to see what we&apos;ll access
+              </p>
+            </div>
+            <ChevronDown className="h-4 w-4 text-[var(--text-olive)]/60 group-hover:text-[var(--text-forest)] transition-colors shrink-0" />
+          </button>
         ) : (
           <div className="space-y-4">
             <div className="flex items-start gap-3">
@@ -190,13 +213,22 @@ export function GitHubConnectCard() {
               </p>
             </div>
 
-            <a
-              href="/api/github/authorize"
-              className="inline-flex items-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] text-[13px] font-medium hover:opacity-90 transition-opacity"
-            >
-              <GithubIcon className="h-4 w-4" />
-              Connect GitHub
-            </a>
+            <div className="flex items-center gap-2">
+              <a
+                href="/api/github/authorize"
+                className="inline-flex items-center gap-2 h-10 px-4 rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] text-[13px] font-medium hover:opacity-90 transition-opacity"
+              >
+                <GithubIcon className="h-4 w-4" />
+                Connect GitHub
+              </a>
+              <button
+                type="button"
+                onClick={() => setExpanded(false)}
+                className="h-10 px-3 text-[12px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
+              >
+                Not now
+              </button>
+            </div>
           </div>
         )}
       </CardContent>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import Link from "next/link";
 import {
   Play,
   Square,
@@ -201,11 +202,23 @@ export function GlobalTimerBar() {
 
     const timerState = useTimerStore.getState();
     const proj = projects.find((p) => p.id === timerState.projectId) || null;
+    // Capture BEFORE stopTimer() nukes the state — we need these to restore
+    // on "Undo" and to decide whether to surface an empty-description warning.
+    const snapshot = {
+      entryId: stoppedEntryId,
+      startTime: timerState.startTime?.toISOString() || now.toISOString(),
+      description: timerState.description,
+      projectId: timerState.projectId,
+      billable: timerState.billable,
+      tagIds: timerState.tagIds,
+      hourlyRate: timerState.hourlyRate,
+    };
+    const hadDescription = timerState.description.trim().length > 0;
 
     const syntheticEntry = {
       id: stoppedEntryId,
       description: timerState.description,
-      startTime: timerState.startTime?.toISOString() || now.toISOString(),
+      startTime: snapshot.startTime,
       endTime: now.toISOString(),
       duration: timerState.elapsedSeconds,
       billable: timerState.billable,
@@ -217,7 +230,24 @@ export function GlobalTimerBar() {
     };
 
     stopTimer();
-    toast.success("Time entry saved");
+
+    // Empty-description stop is the most common misclick — offer undo via toast
+    // instead of a blocking modal. The DB write is still in flight; the undo
+    // handler resumes locally and the failed server stop becomes a no-op
+    // (the entry never got its endTime persisted if we're fast enough).
+    if (!hadDescription) {
+      toast("Stopped with no description", {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            restoreTimer(snapshot);
+          },
+        },
+        duration: 6000,
+      });
+    } else {
+      toast.success("Time entry saved");
+    }
 
     window.dispatchEvent(
       new CustomEvent("timer-entry-completed", { detail: syntheticEntry })
@@ -239,7 +269,7 @@ export function GlobalTimerBar() {
           new CustomEvent("timer-entry-failed", { detail: { id: stoppedEntryId } })
         );
       });
-  }, [entryId, stopTimer, projects]);
+  }, [entryId, stopTimer, projects, restoreTimer]);
 
   return (
     <div className="sticky top-0 z-30 bg-[var(--bg-sage)] pt-4 pb-3 px-4 md:px-6">
@@ -367,11 +397,21 @@ export function GlobalTimerBar() {
               >
                 {formatElapsed(elapsedSeconds)}
               </span>
-              {hourlyRate > 0 && (
+              {hourlyRate > 0 ? (
                 <span className="mt-1 text-[11px] tabular-nums text-[var(--text-olive)]">
                   {formatEarnings(elapsedSeconds, hourlyRate)}
                 </span>
-              )}
+              ) : isRunning ? (
+                // Gentle nudge — no rate set means earnings are dark. One tap
+                // to /settings so the user can unblock themselves.
+                <Link
+                  href="/settings"
+                  className="mt-1 text-[11px] text-[var(--text-olive)]/80 hover:text-[var(--text-forest)] underline-offset-2 hover:underline"
+                  title="Set a default hourly rate to see earnings"
+                >
+                  Set rate
+                </Link>
+              ) : null}
             </div>
           </div>
 
