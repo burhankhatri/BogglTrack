@@ -146,6 +146,14 @@ export default function InvoicesPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loadingEntries, setLoadingEntries] = useState(false);
 
+  // Scenario 5 — invoice draft auto-persist. A browser crash mid-draft used
+  // to wipe every field. Now the form state writes to localStorage and
+  // offers a "Resume draft" banner on reopen.
+  const [resumableDraft, setResumableDraft] = useState<{
+    savedAt: number;
+  } | null>(null);
+  const draftHydratedRef = useRef(false);
+
   // Step 2: Invoice details
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [issueDate, setIssueDate] = useState<Date>(new Date());
@@ -227,6 +235,132 @@ export default function InvoicesPage() {
       if (senderSaveTimerRef.current) clearTimeout(senderSaveTimerRef.current);
     };
   }, [senderName, senderAddress, senderEmail, senderTaxId]);
+
+  // Draft persistence — read on mount, offer resume if a recent (< 24h)
+  // in-progress draft exists. We don't auto-restore to avoid surprising the
+  // user; the banner gives them Resume or Discard.
+  const DRAFT_KEY = "boggltrack-invoice-draft-v1";
+  const DRAFT_EXPIRY_MS = 24 * 60 * 60 * 1000;
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw) as { savedAt?: number; step?: number };
+      if (!d.savedAt || Date.now() - d.savedAt > DRAFT_EXPIRY_MS) {
+        localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      // Only resumable if the user was past step 1 — otherwise there's
+      // nothing worth restoring.
+      if ((d.step ?? 1) < 2) return;
+      setResumableDraft({ savedAt: d.savedAt });
+    } catch {
+      // Corrupt draft — drop it
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    }
+  }, []);
+
+  // Debounced write of every draft-relevant field. Skips until hydration
+  // ref is set (either draft resumed or user interacted past step 1) to
+  // avoid writing an empty skeleton on first mount.
+  useEffect(() => {
+    if (step < 2 && !draftHydratedRef.current) return;
+    draftHydratedRef.current = true;
+    const t = setTimeout(() => {
+      try {
+        const payload = {
+          savedAt: Date.now(),
+          step,
+          invoiceNumber,
+          issueDate: issueDate.toISOString(),
+          dueDate: dueDate.toISOString(),
+          groupMode,
+          lineItems,
+          taxRate,
+          discountPercent,
+          notes,
+          paymentTerms,
+          recipientName,
+          recipientAddress,
+          recipientEmail,
+          selectedIds: Array.from(selectedIds),
+          includeCommits,
+          datePreset,
+          customFrom: customFrom?.toISOString() ?? null,
+          customTo: customTo?.toISOString() ?? null,
+          selectedProjectId,
+          selectedClientId,
+          uninvoicedOnly,
+        };
+        localStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+      } catch {
+        // localStorage full or disabled — swallow silently
+      }
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [
+    step,
+    invoiceNumber,
+    issueDate,
+    dueDate,
+    groupMode,
+    lineItems,
+    taxRate,
+    discountPercent,
+    notes,
+    paymentTerms,
+    recipientName,
+    recipientAddress,
+    recipientEmail,
+    selectedIds,
+    includeCommits,
+    datePreset,
+    customFrom,
+    customTo,
+    selectedProjectId,
+    selectedClientId,
+    uninvoicedOnly,
+  ]);
+
+  const resumeDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      setStep(d.step ?? 2);
+      setInvoiceNumber(d.invoiceNumber ?? "");
+      if (d.issueDate) setIssueDate(new Date(d.issueDate));
+      if (d.dueDate) setDueDate(new Date(d.dueDate));
+      if (d.groupMode) setGroupMode(d.groupMode);
+      if (Array.isArray(d.lineItems)) setLineItems(d.lineItems);
+      setTaxRate(d.taxRate ?? 0);
+      setDiscountPercent(d.discountPercent ?? 0);
+      setNotes(d.notes ?? "");
+      setPaymentTerms(d.paymentTerms ?? "");
+      setRecipientName(d.recipientName ?? "");
+      setRecipientAddress(d.recipientAddress ?? "");
+      setRecipientEmail(d.recipientEmail ?? "");
+      if (Array.isArray(d.selectedIds)) setSelectedIds(new Set(d.selectedIds));
+      if (typeof d.includeCommits === "boolean") setIncludeCommits(d.includeCommits);
+      if (d.datePreset) setDatePreset(d.datePreset);
+      if (d.customFrom) setCustomFrom(new Date(d.customFrom));
+      if (d.customTo) setCustomTo(new Date(d.customTo));
+      setSelectedProjectId(d.selectedProjectId ?? "");
+      setSelectedClientId(d.selectedClientId ?? "");
+      setUninvoicedOnly(d.uninvoicedOnly ?? true);
+      draftHydratedRef.current = true;
+      setResumableDraft(null);
+    } catch {
+      toast.error("Draft was corrupted — starting fresh");
+      localStorage.removeItem(DRAFT_KEY);
+      setResumableDraft(null);
+    }
+  };
+
+  const discardDraft = () => {
+    localStorage.removeItem(DRAFT_KEY);
+    setResumableDraft(null);
+  };
 
   // Compute date range
   const dateRange = useMemo(() => {
@@ -530,6 +664,10 @@ export default function InvoicesPage() {
 
       toast.success("Invoice downloaded successfully");
 
+      // Draft is no longer resumable once the invoice is finalized + downloaded.
+      try { localStorage.removeItem(DRAFT_KEY); } catch {}
+      draftHydratedRef.current = false;
+
       // Reset to step 1
       setStep(1);
       setSelectedIds(new Set());
@@ -574,6 +712,37 @@ export default function InvoicesPage() {
           ))}
         </div>
       </div>
+
+      {/* Resumable draft banner — shown on /invoices entry when an in-progress
+          draft was saved within the last 24h. */}
+      {resumableDraft && step === 1 && (
+        <div className="mb-6 flex items-center justify-between gap-4 rounded-[var(--radius-md)] bg-[var(--accent-olive-soft)]/60 border border-[var(--border-subtle)] px-4 py-3">
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold text-[var(--text-forest)]">
+              You have an unsaved invoice draft
+            </p>
+            <p className="text-[12px] text-[var(--text-olive)] mt-0.5">
+              Saved {Math.max(1, Math.round((Date.now() - resumableDraft.savedAt) / 60000))} min ago — resume to pick up where you left off.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={discardDraft}
+              className="h-9 px-3 text-[12px] text-[var(--text-olive)] hover:text-[var(--accent-coral)] transition-colors"
+            >
+              Discard
+            </button>
+            <button
+              type="button"
+              onClick={resumeDraft}
+              className="h-9 px-4 text-[13px] font-medium text-[var(--text-cream)] bg-[var(--text-forest)] rounded-[var(--radius-md)] hover:opacity-90 transition-opacity"
+            >
+              Resume draft
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ========== STEP 1: SELECT ENTRIES ========== */}
       {step === 1 && (
