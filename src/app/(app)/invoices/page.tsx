@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   CalendarIcon,
   Filter,
@@ -186,15 +186,47 @@ export default function InvoicesPage() {
     store.fetchSettings();
   }, []);
 
-  // Pre-fill sender from settings
+  // Pre-fill sender from settings — one-shot on first arrival so the
+  // auto-save effect below doesn't fight with the invalidate/refetch cycle.
+  const senderHydratedRef = useRef(false);
+  const senderSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [senderSaveStatus, setSenderSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   useEffect(() => {
+    if (senderHydratedRef.current) return;
     if (settings) {
       setSenderName(settings.senderName || settings.name || "");
       setSenderAddress(settings.senderAddress || "");
       setSenderEmail(settings.senderEmail || settings.email || "");
       setSenderTaxId(settings.senderTaxId || "");
+      senderHydratedRef.current = true;
     }
   }, [settings]);
+
+  // Debounced auto-save of sender defaults — no more "Save as default" click.
+  useEffect(() => {
+    if (!senderHydratedRef.current) return;
+    if (senderSaveTimerRef.current) clearTimeout(senderSaveTimerRef.current);
+    setSenderSaveStatus("saving");
+    senderSaveTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ senderName, senderAddress, senderEmail, senderTaxId }),
+        });
+        if (!res.ok) throw new Error();
+        useAppStore.getState().invalidate("settings");
+        setSenderSaveStatus("saved");
+        setTimeout(() => setSenderSaveStatus("idle"), 1500);
+      } catch {
+        setSenderSaveStatus("idle");
+        toast.error("Couldn't save sender defaults");
+      }
+    }, 800);
+    return () => {
+      if (senderSaveTimerRef.current) clearTimeout(senderSaveTimerRef.current);
+    };
+  }, [senderName, senderAddress, senderEmail, senderTaxId]);
 
   // Compute date range
   const dateRange = useMemo(() => {
@@ -401,26 +433,6 @@ export default function InvoicesPage() {
       setLineItems(buildLineItems());
     }
   }, [groupMode]);
-
-  // Save sender defaults
-  const saveSenderDefaults = async () => {
-    try {
-      await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          senderName,
-          senderAddress,
-          senderEmail,
-          senderTaxId,
-        }),
-      });
-      useAppStore.getState().invalidate("settings");
-      toast.success("Sender details saved as default");
-    } catch {
-      toast.error("Failed to save defaults");
-    }
-  };
 
   // Download handler
   const handleDownload = async () => {
@@ -1036,9 +1048,13 @@ export default function InvoicesPage() {
                 <CardContent className="pt-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-[var(--text-olive)] uppercase tracking-wider">From</span>
-                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={saveSenderDefaults}>
-                      Save as default
-                    </Button>
+                    <span className="text-[11px] text-[var(--text-olive)]/70">
+                      {senderSaveStatus === "saving"
+                        ? "Saving…"
+                        : senderSaveStatus === "saved"
+                        ? "Saved"
+                        : "Auto-saves as default"}
+                    </span>
                   </div>
                   <Input placeholder="Your name / business" value={senderName} onChange={(e) => setSenderName(e.target.value)} className="text-sm" data-testid="sender-name" />
                   <Textarea placeholder="Address" value={senderAddress} onChange={(e) => setSenderAddress(e.target.value)} className="text-sm min-h-[60px]" />

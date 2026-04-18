@@ -131,23 +131,27 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-8 max-w-[800px] mx-auto py-8 px-4 lg:px-0">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">
-            Settings
-          </h1>
-          <p className="text-[15px] text-[var(--text-olive)]">
-            Manage your account preferences and defaults.
-          </p>
+    <div className="max-w-[800px] mx-auto px-4 lg:px-0">
+      {/* Sticky so the single Save button stays reachable no matter how far
+          you scroll through the cards below. */}
+      <div className="sticky top-0 z-20 -mx-4 lg:mx-0 bg-[var(--bg-sage)]/90 backdrop-blur-md border-b border-[var(--border-subtle)]">
+        <div className="flex items-center justify-between px-4 lg:px-0 py-4">
+          <div>
+            <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">
+              Settings
+            </h1>
+            <p className="text-[15px] text-[var(--text-olive)]">
+              Manage your account preferences and defaults.
+            </p>
+          </div>
+          <Button onClick={handleSave} disabled={saving} className="rounded-full shadow-sm text-[15px] h-[40px] px-6">
+            <Save className="h-4 w-4 mr-2" />
+            {saving ? "Saving..." : "Save Changes"}
+          </Button>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="rounded-full shadow-sm text-[15px] h-[40px] px-6">
-          <Save className="h-4 w-4 mr-2" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
       </div>
 
-      <div className="space-y-8">
+      <div className="space-y-8 py-8">
         {/* Profile */}
         <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
           <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">

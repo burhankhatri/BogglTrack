@@ -2,6 +2,7 @@
 
 import * as React from "react"
 import { createPortal } from "react-dom"
+import { gsap } from "gsap"
 import { cn } from "@/lib/utils"
 import { Check, ChevronDown } from "lucide-react"
 import { useAnchoredPosition } from "@/hooks/use-anchored-position"
@@ -130,6 +131,26 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
       }
     }, [open, onOpenChange, triggerRef])
 
+    // GSAP entrance — fires only once position is known so the tween starts
+    // at the correct on-screen coordinates. Using useLayoutEffect + gsap.fromTo
+    // sets the start state synchronously before paint (no flash of final state).
+    React.useLayoutEffect(() => {
+      if (!open || !position || !contentRef.current) return
+      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      if (reduced) {
+        gsap.set(contentRef.current, { opacity: 1, scale: 1, y: 0 })
+        return
+      }
+      const tween = gsap.fromTo(
+        contentRef.current,
+        { opacity: 0, scale: 0.96, y: -4 },
+        { opacity: 1, scale: 1, y: 0, duration: 0.18, ease: "power2.out" }
+      )
+      return () => {
+        tween.kill()
+      }
+    }, [open, position])
+
     if (!open) return null
     if (typeof document === "undefined") return null
 
@@ -146,10 +167,15 @@ const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
           left: position?.left ?? -9999,
           width: position?.width ? Math.max(position.width, 200) : undefined,
           visibility: position ? "visible" : "hidden",
+          // Disable ALL CSS transitions. Default transition-property is "all",
+          // so any duration utility (e.g. duration-100) would make top/left
+          // animate from -9999 to target on first positioned render — the flicker.
+          transition: "none",
+          transformOrigin: "top left",
           ...style,
         }}
         className={cn(
-          "z-50 rounded-[var(--radius-md)] bg-[var(--bg-cream)] text-[var(--text-forest)] shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100 max-h-[300px] overflow-y-auto",
+          "z-50 rounded-[var(--radius-md)] bg-[var(--bg-cream)] text-[var(--text-forest)] shadow-[var(--shadow-dropdown)] max-h-[300px] overflow-y-auto",
           className
         )}
         {...props}
