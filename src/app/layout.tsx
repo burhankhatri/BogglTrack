@@ -18,12 +18,27 @@ const lora = Lora({
 });
 
 export const metadata: Metadata = {
-  title: "BogglTrack",
-  description: "Time tracking & earnings for freelancers",
+  title: "BogglTrack — Time tracking & earnings for freelancers",
+  description:
+    "Track every billable minute, manage projects and clients, and invoice in one click. Works in your browser. Feels at home on your Mac.",
   metadataBase: new URL(
     process.env.NEXT_PUBLIC_APP_URL ||
     (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : "http://localhost:3000")
   ),
+  openGraph: {
+    type: "website",
+    url: "/",
+    siteName: "BogglTrack",
+    title: "BogglTrack — Time tracking & earnings for freelancers",
+    description:
+      "Track every billable minute, manage projects and clients, and invoice in one click. Works in your browser. Feels at home on your Mac.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "BogglTrack — Time tracking & earnings for freelancers",
+    description:
+      "Track every billable minute, manage projects and clients, and invoice in one click.",
+  },
 };
 
 export default function RootLayout({
