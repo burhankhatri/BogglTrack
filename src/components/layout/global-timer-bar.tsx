@@ -39,7 +39,9 @@ export function GlobalTimerBar() {
   const setRunningTimerChecked = useAppStore((s) => s.setRunningTimerChecked);
   const [loading] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
+  const [projectFilter, setProjectFilter] = useState("");
   const projectMenuRef = useRef<HTMLDivElement>(null);
+  const projectFilterInputRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const {
@@ -139,19 +141,47 @@ export function GlobalTimerBar() {
     }
   }, [projectId, projects, setHourlyRate]);
 
-  // Close project dropdown on outside click
+  // Close project dropdown on outside click; reset the filter + focus the
+  // search input when the menu opens so typing "just works".
   useEffect(() => {
-    if (!projectMenuOpen) return;
+    if (!projectMenuOpen) {
+      setProjectFilter("");
+      return;
+    }
+    // Focus search on next tick — the input mounts as part of this render.
+    const t = setTimeout(() => projectFilterInputRef.current?.focus(), 0);
     const onDocClick = (e: MouseEvent) => {
       if (!projectMenuRef.current?.contains(e.target as Node)) {
         setProjectMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("mousedown", onDocClick);
+    };
   }, [projectMenuOpen]);
 
   const selectedProject = projects.find((p) => p.id === projectId) || null;
+  const filteredProjects = projectFilter.trim()
+    ? projects.filter((p) =>
+        p.name.toLowerCase().includes(projectFilter.trim().toLowerCase())
+      )
+    : projects;
+
+  // Scenario 13 — detect a pasted GitHub commit URL in the description. We
+  // don't auto-attach (that could surprise someone pasting for reference);
+  // we show a one-click chip they can accept.
+  const commitUrlMatch = description.match(
+    /https?:\/\/github\.com\/([^/\s]+)\/([^/\s]+)\/commit\/([a-f0-9]{7,40})/i
+  );
+  const detectedCommit = commitUrlMatch
+    ? {
+        repo: `${commitUrlMatch[1]}/${commitUrlMatch[2]}`,
+        sha: commitUrlMatch[3].slice(0, 7),
+        fullUrl: commitUrlMatch[0],
+      }
+    : null;
 
   const handleStart = useCallback(() => {
     const now = new Date().toISOString();
@@ -309,38 +339,68 @@ export function GlobalTimerBar() {
           {projectMenuOpen && (
             <div
               role="listbox"
-              className="absolute left-0 top-[calc(100%+6px)] z-50 w-56 max-h-[320px] overflow-y-auto rounded-[var(--radius-md)] bg-[var(--bg-cream)] p-1 shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100"
+              className="absolute left-0 top-[calc(100%+6px)] z-50 w-64 rounded-[var(--radius-md)] bg-[var(--bg-cream)] shadow-[var(--shadow-dropdown)] animate-in fade-in-0 zoom-in-95 duration-100 overflow-hidden flex flex-col"
             >
-              <button
-                type="button"
-                onClick={() => {
-                  setProjectId(null);
-                  setProjectMenuOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-olive)] hover:bg-[var(--bg-muted)] transition-colors text-left"
-              >
-                <span className="h-2 w-2 rounded-full border border-[var(--border-medium)] shrink-0" />
-                <span>No project</span>
-                {!projectId && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
-              </button>
-              {projects.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => {
-                    setProjectId(p.id);
-                    setProjectMenuOpen(false);
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-forest)] hover:bg-[var(--bg-muted)] transition-colors text-left"
-                >
-                  <span
-                    className="h-2 w-2 rounded-full shrink-0"
-                    style={{ backgroundColor: p.color }}
+              {/* Search — only shown once there's enough projects to warrant it */}
+              {projects.length > 5 && (
+                <div className="border-b border-[var(--border-subtle)] p-1.5">
+                  <input
+                    ref={projectFilterInputRef}
+                    type="text"
+                    value={projectFilter}
+                    onChange={(e) => setProjectFilter(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && filteredProjects.length > 0) {
+                        setProjectId(filteredProjects[0].id);
+                        setProjectMenuOpen(false);
+                      } else if (e.key === "Escape") {
+                        setProjectMenuOpen(false);
+                      }
+                    }}
+                    placeholder="Search projects…"
+                    className="w-full h-8 px-2 text-[13px] bg-transparent focus:outline-none placeholder:text-[var(--text-olive)]/60 text-[var(--text-forest)]"
                   />
-                  <span className="truncate">{p.name}</span>
-                  {projectId === p.id && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
-                </button>
-              ))}
+                </div>
+              )}
+              <div className="max-h-[280px] overflow-y-auto p-1">
+                {!projectFilter.trim() && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProjectId(null);
+                      setProjectMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-olive)] hover:bg-[var(--bg-muted)] transition-colors text-left"
+                  >
+                    <span className="h-2 w-2 rounded-full border border-[var(--border-medium)] shrink-0" />
+                    <span>No project</span>
+                    {!projectId && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
+                  </button>
+                )}
+                {filteredProjects.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setProjectId(p.id);
+                      setProjectMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-forest)] hover:bg-[var(--bg-muted)] transition-colors text-left"
+                  >
+                    <span
+                      className="h-2 w-2 rounded-full shrink-0"
+                      style={{ backgroundColor: p.color }}
+                    />
+                    <span className="truncate">{p.name}</span>
+                    {projectId === p.id && <Check className="h-3.5 w-3.5 ml-auto text-[var(--text-forest)]" />}
+                  </button>
+                ))}
+                {filteredProjects.length === 0 && projectFilter.trim() && (
+                  <div className="px-3 py-3 text-[12px] text-[var(--text-olive)]/70 text-center">
+                    No projects match &quot;{projectFilter}&quot;
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -357,6 +417,27 @@ export function GlobalTimerBar() {
             className="w-full h-10 bg-transparent border-transparent shadow-none text-[15px] px-2 focus-visible:ring-0 placeholder:text-[var(--text-olive)]/70 text-[var(--text-forest)]"
             disabled={isRunning}
           />
+          {/* Scenario 13 — pasted a GitHub commit URL; offer to shorten it to
+              the 7-char SHA and keep the rest of the description intact. */}
+          {detectedCommit && !isRunning && (
+            <button
+              type="button"
+              onClick={() => {
+                setDescription(
+                  description
+                    .replace(detectedCommit.fullUrl, `[${detectedCommit.sha}]`)
+                    .trim()
+                );
+              }}
+              className="mt-1 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[var(--bg-muted)] text-[11px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
+              title={`Shorten to [${detectedCommit.sha}]`}
+            >
+              <span>GitHub commit</span>
+              <code className="font-mono">{detectedCommit.sha}</code>
+              <span>· {detectedCommit.repo}</span>
+              <span className="text-[var(--text-olive)]/60">— tap to shorten</span>
+            </button>
+          )}
         </div>
 
         {/* RIGHT — Billable toggle + Timer module + Stop */}
