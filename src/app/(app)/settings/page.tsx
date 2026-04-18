@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Settings, Save, User, Clock, CreditCard, Palette } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { User, Clock, CreditCard, Palette, CheckCircle2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
 
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
@@ -16,7 +15,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { GitHubConnectCard } from "@/components/settings/github-connect-card";
 import { CURRENCIES } from "@/lib/constants";
@@ -34,12 +32,14 @@ interface UserSettings {
   theme: string;
 }
 
+type SaveStatus = "idle" | "saving" | "saved";
+
 export default function SettingsPage() {
   const storeSettings = useAppStore((s) => s.settings.data);
   const fetchStoreSettings = useAppStore((s) => s.fetchSettings);
-  const [settings, setSettings] = useState<UserSettings | null>(storeSettings);
+  const [, setSettings] = useState<UserSettings | null>(storeSettings);
   const [loading, setLoading] = useState(!storeSettings);
-  const [saving, setSaving] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
   const { setTheme } = useTheme();
 
   const [name, setName] = useState(storeSettings?.name ?? "");
@@ -50,6 +50,12 @@ export default function SettingsPage() {
   const [timeFormat, setTimeFormat] = useState(storeSettings?.timeFormat ?? "24h");
   const [weekStartDay, setWeekStartDay] = useState(storeSettings?.weekStartDay ?? "monday");
   const [themeValue, setThemeValue] = useState(storeSettings?.theme ?? "system");
+
+  // One-shot hydration from the server. `hydratedRef` prevents the auto-save
+  // effect from firing on the initial form population.
+  const hydratedRef = useRef(false);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetchStoreSettings().then((data) => {
@@ -63,11 +69,52 @@ export default function SettingsPage() {
       setWeekStartDay(data.weekStartDay);
       setThemeValue(data.theme);
       setLoading(false);
+      hydratedRef.current = true;
     }).catch(() => {
       toast.error("Failed to load settings");
       setLoading(false);
     });
   }, [fetchStoreSettings]);
+
+  // Debounced auto-save — PATCHes 600ms after the last change.
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    setSaveStatus("saving");
+    saveTimerRef.current = setTimeout(async () => {
+      const currencyObj = CURRENCIES.find((c) => c.code === currency);
+      try {
+        const res = await fetch("/api/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim() || null,
+            defaultHourlyRate: parseFloat(defaultHourlyRate) || 0,
+            currency,
+            currencySymbol: currencyObj?.symbol || "$",
+            dateFormat,
+            timeFormat,
+            weekStartDay,
+            theme: themeValue,
+          }),
+        });
+        if (!res.ok) throw new Error();
+        const updated = await res.json();
+        setSettings(updated);
+        useAppStore.getState().invalidate("settings");
+        setSaveStatus("saved");
+        savedFlashTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500);
+      } catch {
+        setSaveStatus("idle");
+        toast.error("Couldn't save — check your connection");
+      }
+    }, 600);
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, [name, email, defaultHourlyRate, currency, dateFormat, timeFormat, weekStartDay, themeValue]);
 
   function handleCurrencyChange(code: string | null) {
     if (code) setCurrency(code);
@@ -77,38 +124,6 @@ export default function SettingsPage() {
     if (value) {
       setThemeValue(value);
       setTheme(value);
-    }
-  }
-
-  async function handleSave() {
-    const currencyObj = CURRENCIES.find((c) => c.code === currency);
-
-    setSaving(true);
-    try {
-      const res = await fetch("/api/settings", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim() || null,
-          defaultHourlyRate: parseFloat(defaultHourlyRate) || 0,
-          currency,
-          currencySymbol: currencyObj?.symbol || "$",
-          dateFormat,
-          timeFormat,
-          weekStartDay,
-          theme: themeValue,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to save settings");
-      const updated = await res.json();
-      setSettings(updated);
-      useAppStore.getState().invalidate("settings");
-      toast.success("Settings saved");
-    } catch {
-      toast.error("Failed to save settings");
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -131,27 +146,38 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-[800px] mx-auto px-4 lg:px-0">
-      {/* Sticky so the single Save button stays reachable no matter how far
-          you scroll through the cards below. */}
-      <div className="sticky top-0 z-20 -mx-4 lg:mx-0 bg-[var(--bg-sage)]/90 backdrop-blur-md border-b border-[var(--border-subtle)]">
-        <div className="flex items-center justify-between px-4 lg:px-0 py-4">
-          <div>
-            <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">
-              Settings
-            </h1>
-            <p className="text-[15px] text-[var(--text-olive)]">
-              Manage your account preferences and defaults.
-            </p>
-          </div>
-          <Button onClick={handleSave} disabled={saving} className="rounded-full shadow-sm text-[15px] h-[40px] px-6">
-            <Save className="h-4 w-4 mr-2" />
-            {saving ? "Saving..." : "Save Changes"}
-          </Button>
+    <div className="max-w-[800px] mx-auto py-8 px-4 lg:px-0">
+      <div className="flex items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-[28px] font-serif font-semibold text-[var(--text-forest)] tracking-tight mb-1">
+            Settings
+          </h1>
+          <p className="text-[15px] text-[var(--text-olive)]">
+            Manage your account preferences and defaults.
+          </p>
+        </div>
+        {/* Auto-save status — no button, no sticky. Minimal and out of the way. */}
+        <div
+          aria-live="polite"
+          className="flex items-center gap-1.5 text-[12px] text-[var(--text-olive)]/80 whitespace-nowrap"
+        >
+          {saveStatus === "saving" ? (
+            <>
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Saving…</span>
+            </>
+          ) : saveStatus === "saved" ? (
+            <>
+              <CheckCircle2 className="h-3 w-3 text-[var(--accent-olive-hover)]" />
+              <span>Saved</span>
+            </>
+          ) : (
+            <span>Changes save automatically</span>
+          )}
         </div>
       </div>
 
-      <div className="space-y-8 py-8">
+      <div className="space-y-8">
         {/* Profile */}
         <Card className="overflow-hidden border-none shadow-[var(--shadow-card)] ring-1 ring-[var(--border-subtle)]">
           <CardHeader className="bg-[var(--bg-muted)]/30 border-b border-[var(--border-subtle)] pb-4">

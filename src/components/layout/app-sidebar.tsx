@@ -176,6 +176,8 @@ export function AppSidebar() {
         <button
           type="button"
           onClick={() => setMenuOpen((o) => !o)}
+          onMouseEnter={() => prefetchForRoute("/settings")}
+          onFocus={() => prefetchForRoute("/settings")}
           className={cn(
             "w-full flex items-center gap-2.5 h-11 px-2.5 rounded-[var(--radius-md)] transition-colors",
             "hover:bg-[var(--bg-muted)]"
