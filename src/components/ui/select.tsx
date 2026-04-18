@@ -26,13 +26,26 @@ const SelectContext = React.createContext<SelectContextValue>({
   triggerRef: { current: null } as React.MutableRefObject<HTMLButtonElement | null>,
 })
 
+// Walk the Select's JSX tree synchronously to collect (value → label) pairs
+// from every SelectItem, even those whose SelectContent hasn't mounted yet.
+// Without this, SelectValue reads from an empty map on first render and the
+// trigger shows only the placeholder until the user opens the dropdown —
+// so the "currently selected" state is invisible.
+function collectLabels(nodes: React.ReactNode, map: Map<string, React.ReactNode>) {
+  React.Children.forEach(nodes, (child) => {
+    if (!React.isValidElement(child)) return
+    const props = child.props as { value?: unknown; children?: React.ReactNode }
+    if (typeof props.value === "string" && "children" in props) {
+      map.set(props.value, props.children as React.ReactNode)
+    }
+    if (props.children) collectLabels(props.children, map)
+  })
+}
+
 const Select = ({ children, value, onValueChange, defaultValue }: { children: React.ReactNode, value?: string, onValueChange?: (value: string) => void, defaultValue?: string }) => {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const [internalValue, setInternalValue] = React.useState(defaultValue || value)
-  const labelMapRef = React.useRef(new Map<string, React.ReactNode>())
   const triggerRef = React.useRef<HTMLButtonElement | null>(null)
-  // Force re-render when labels register
-  const [, setLabelVersion] = React.useState(0)
 
   React.useEffect(() => {
     if (value !== undefined) setInternalValue(value)
@@ -44,13 +57,22 @@ const Select = ({ children, value, onValueChange, defaultValue }: { children: Re
     setInternalOpen(false)
   }
 
-  const registerLabel = React.useCallback((val: string, label: React.ReactNode) => {
-    labelMapRef.current.set(val, label)
-    setLabelVersion((v) => v + 1)
-  }, [])
+  // Derive labelMap from children every render. Cheap — Select trees rarely
+  // have more than a few dozen items. This lets the trigger show the selected
+  // label immediately, before the dropdown has ever been opened.
+  const labelMap = React.useMemo(() => {
+    const m = new Map<string, React.ReactNode>()
+    collectLabels(children, m)
+    return m
+  }, [children])
+
+  // Kept as a no-op for backwards-compat with SelectItem's registerLabel call.
+  // Labels are now derived synchronously above; SelectItems don't need to
+  // announce themselves.
+  const registerLabel = React.useCallback(() => {}, [])
 
   return (
-    <SelectContext.Provider value={{ open: internalOpen, onOpenChange: setInternalOpen, value: internalValue, onValueChange: handleValueChange, labelMap: labelMapRef.current, registerLabel, triggerRef }}>
+    <SelectContext.Provider value={{ open: internalOpen, onOpenChange: setInternalOpen, value: internalValue, onValueChange: handleValueChange, labelMap, registerLabel, triggerRef }}>
       <div className="relative w-full">
         {children}
       </div>
