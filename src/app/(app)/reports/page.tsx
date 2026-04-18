@@ -473,147 +473,170 @@ export default function ReportsPage() {
       <div className="flex gap-6 items-start">
         {/* Main content */}
         <div className="flex-1 min-w-0 space-y-5">
-          {/* Compact filter bar */}
-          <div className="flex flex-wrap items-center gap-2">
-            <Select
-              value={datePreset}
-              onValueChange={(val: string) => val && setDatePreset(val as DatePreset)}
-            >
-              <SelectTrigger className="h-9 rounded-full text-[13px] w-auto min-w-[130px]">
-                <SelectValue placeholder="Date range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-time">All Time</SelectItem>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="this-week">This Week</SelectItem>
-                <SelectItem value="this-month">This Month</SelectItem>
-                <SelectItem value="last-month">Last Month</SelectItem>
-                <SelectItem value="last-30">Last 30 Days</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filter bar — grouped into a single card so it reads as one
+              unit instead of a scattered row of pills. Groups (period / scope
+              / show) are separated by thin dividers that hide on narrow
+              viewports where the bar wraps. */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-[var(--radius-xl)] bg-[var(--bg-cream)] border border-[var(--border-subtle)] shadow-sm px-3 py-2.5">
+            {/* Period group */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-olive)]/80 hidden md:inline">
+                Period
+              </span>
+              <Select
+                value={datePreset}
+                onValueChange={(val: string) => val && setDatePreset(val as DatePreset)}
+              >
+                <SelectTrigger className="h-9 rounded-full text-[13px] w-auto min-w-[130px]">
+                  <SelectValue placeholder="Date range" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all-time">All Time</SelectItem>
+                  <SelectItem value="today">Today</SelectItem>
+                  <SelectItem value="this-week">This Week</SelectItem>
+                  <SelectItem value="this-month">This Month</SelectItem>
+                  <SelectItem value="last-month">Last Month</SelectItem>
+                  <SelectItem value="last-30">Last 30 Days</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
 
-            {datePreset === "custom" && (
-              <>
-                <Popover>
-                  <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
-                    <CalendarIcon className="size-3.5 mr-1.5" />
-                    {customFrom ? format(customFrom, "MMM d") : "From"}
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customFrom}
-                      onSelect={(d: Date | undefined) => setCustomFrom(d)}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <span className="text-[var(--text-olive)] text-xs">to</span>
-                <Popover>
-                  <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
-                    <CalendarIcon className="size-3.5 mr-1.5" />
-                    {customTo ? format(customTo, "MMM d") : "To"}
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={customTo}
-                      onSelect={(d: Date | undefined) => setCustomTo(d)}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </>
-            )}
-
-            <div className="w-px h-5 bg-[var(--border-medium)]" />
-
-            <Popover>
-              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
-                <Filter className="size-3.5 mr-1.5" />
-                {selectedProjectIds.length === 0
-                  ? "All Projects"
-                  : `${selectedProjectIds.length} project${selectedProjectIds.length > 1 ? "s" : ""}`}
-              </PopoverTrigger>
-              <PopoverContent className="w-56">
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {projects.map((p) => (
-                    <button
-                      key={p.id}
-                      className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-[var(--bg-muted)]"
-                      onClick={() =>
-                        setSelectedProjectIds((ids) => toggleId(ids, p.id))
-                      }
-                    >
-                      <span
-                        className="size-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: p.color }}
+              {datePreset === "custom" && (
+                <>
+                  <Popover>
+                    <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                      <CalendarIcon className="size-3.5 mr-1.5" />
+                      {customFrom ? format(customFrom, "MMM d") : "From"}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customFrom}
+                        onSelect={(d: Date | undefined) => setCustomFrom(d)}
                       />
-                      <span className="flex-1 truncate">{p.name}</span>
-                      {selectedProjectIds.includes(p.id) && (
-                        <span className="text-[var(--accent-teal)] text-xs font-bold">
-                          &#10003;
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                  {projects.length === 0 && (
-                    <p className="text-xs text-[var(--text-olive)] px-2 py-1">
-                      No projects found.
-                    </p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+                    </PopoverContent>
+                  </Popover>
+                  <span className="text-[var(--text-olive)] text-xs">to</span>
+                  <Popover>
+                    <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                      <CalendarIcon className="size-3.5 mr-1.5" />
+                      {customTo ? format(customTo, "MMM d") : "To"}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customTo}
+                        onSelect={(d: Date | undefined) => setCustomTo(d)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </>
+              )}
+            </div>
 
-            <Popover>
-              <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
-                <Filter className="size-3.5 mr-1.5" />
-                {selectedClientIds.length === 0
-                  ? "All Clients"
-                  : `${selectedClientIds.length} client${selectedClientIds.length > 1 ? "s" : ""}`}
-              </PopoverTrigger>
-              <PopoverContent className="w-56">
-                <div className="space-y-1 max-h-48 overflow-y-auto">
-                  {clients.map((c) => (
-                    <button
-                      key={c.id}
-                      className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-[var(--bg-muted)]"
-                      onClick={() =>
-                        setSelectedClientIds((ids) => toggleId(ids, c.id))
-                      }
-                    >
-                      <span className="flex-1 truncate">{c.name}</span>
-                      {selectedClientIds.includes(c.id) && (
-                        <span className="text-[var(--accent-teal)] text-xs font-bold">
-                          &#10003;
-                        </span>
-                      )}
-                    </button>
-                  ))}
-                  {clients.length === 0 && (
-                    <p className="text-xs text-[var(--text-olive)] px-2 py-1">
-                      No clients found.
-                    </p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+            <div className="hidden md:block w-px h-6 bg-[var(--border-subtle)]" />
 
-            <Select
-              value={billableFilter}
-              onValueChange={(val: string) =>
-                val && setBillableFilter(val as BillableFilter)
-              }
-            >
-              <SelectTrigger className="h-9 rounded-full text-[13px] w-auto min-w-[100px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="billable">Billable</SelectItem>
-                <SelectItem value="non-billable">Non-Billable</SelectItem>
-              </SelectContent>
-            </Select>
+            {/* Scope group */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-olive)]/80 hidden md:inline">
+                Scope
+              </span>
+              <Popover>
+                <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                  <Filter className="size-3.5 mr-1.5" />
+                  {selectedProjectIds.length === 0
+                    ? "All Projects"
+                    : `${selectedProjectIds.length} project${selectedProjectIds.length > 1 ? "s" : ""}`}
+                </PopoverTrigger>
+                <PopoverContent className="w-56">
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {projects.map((p) => (
+                      <button
+                        key={p.id}
+                        className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-[var(--bg-muted)]"
+                        onClick={() =>
+                          setSelectedProjectIds((ids) => toggleId(ids, p.id))
+                        }
+                      >
+                        <span
+                          className="size-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: p.color }}
+                        />
+                        <span className="flex-1 truncate">{p.name}</span>
+                        {selectedProjectIds.includes(p.id) && (
+                          <span className="text-[var(--accent-teal)] text-xs font-bold">
+                            &#10003;
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    {projects.length === 0 && (
+                      <p className="text-xs text-[var(--text-olive)] px-2 py-1">
+                        No projects found.
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger className="inline-flex items-center justify-center whitespace-nowrap font-semibold transition-colors border border-[var(--border-medium)] bg-[var(--bg-cream)] hover:bg-[var(--bg-cream-hover)] text-[var(--text-forest)] rounded-full h-9 text-[13px] px-3">
+                  <Filter className="size-3.5 mr-1.5" />
+                  {selectedClientIds.length === 0
+                    ? "All Clients"
+                    : `${selectedClientIds.length} client${selectedClientIds.length > 1 ? "s" : ""}`}
+                </PopoverTrigger>
+                <PopoverContent className="w-56">
+                  <div className="space-y-1 max-h-48 overflow-y-auto">
+                    {clients.map((c) => (
+                      <button
+                        key={c.id}
+                        className="flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-md text-sm hover:bg-[var(--bg-muted)]"
+                        onClick={() =>
+                          setSelectedClientIds((ids) => toggleId(ids, c.id))
+                        }
+                      >
+                        <span className="flex-1 truncate">{c.name}</span>
+                        {selectedClientIds.includes(c.id) && (
+                          <span className="text-[var(--accent-teal)] text-xs font-bold">
+                            &#10003;
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                    {clients.length === 0 && (
+                      <p className="text-xs text-[var(--text-olive)] px-2 py-1">
+                        No clients found.
+                      </p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="hidden md:block w-px h-6 bg-[var(--border-subtle)]" />
+
+            {/* Show group */}
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-[var(--text-olive)]/80 hidden md:inline">
+                Show
+              </span>
+              <Select
+                value={billableFilter}
+                onValueChange={(val: string) =>
+                  val && setBillableFilter(val as BillableFilter)
+                }
+              >
+                <SelectTrigger className="h-9 rounded-full text-[13px] w-auto min-w-[100px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Entries</SelectItem>
+                  <SelectItem value="billable">Billable</SelectItem>
+                  <SelectItem value="non-billable">Non-Billable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Tabs */}

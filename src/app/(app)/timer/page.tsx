@@ -147,6 +147,7 @@ export default function TimerPage() {
   const userDefaultRate = settingsData?.defaultHourlyRate ?? 0;
   const [weeklyHours, setWeeklyHours] = useState(0);
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
+  const [hasGithub, setHasGithub] = useState(true); // default true so the step doesn't flash before status resolves
   const storeLoading = useAppStore((s) => s.timerEntries.loading);
   const [loading, setLoading] = useState(!storeEntries);
 
@@ -224,6 +225,14 @@ export default function TimerPage() {
         setEntries(entriesResult);
         const rate = settingsResult?.defaultHourlyRate ?? 0;
         computeWeeklySummary(entriesResult, rate);
+        // GitHub status drives the onboarding checklist's third step.
+        // Fire-and-forget: don't block the initial render on it.
+        fetch("/api/github/status")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data) setHasGithub(Boolean(data.connected));
+          })
+          .catch(() => {});
       } catch {
         toast.error("Failed to load data");
       } finally {
@@ -548,6 +557,7 @@ export default function TimerPage() {
       <FirstRunChecklist
         hasProjects={projects.length > 0}
         hasRate={userDefaultRate > 0}
+        hasGithub={hasGithub}
       />
       {/* Page header — acts as a real page header, not a twin of the entry rows */}
       <header className="flex items-end justify-between gap-6 px-1">

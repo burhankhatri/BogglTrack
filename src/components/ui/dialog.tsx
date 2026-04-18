@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import { createPortal } from "react-dom"
 import { cn } from "@/lib/utils"
 import { X } from "lucide-react"
 
@@ -50,7 +51,12 @@ DialogTrigger.displayName = "DialogTrigger"
 const DialogPortal = ({ children }: { children: React.ReactNode }) => {
   const { open } = React.useContext(DialogContext)
   if (!open) return null
-  return <div>{children}</div>
+  if (typeof document === "undefined") return null
+  // Portal to body so the modal escapes any ancestor stacking context
+  // (e.g. the scrolling <main> that sits below the sticky timer bar).
+  // Without this, the modal's z-50 is trapped inside <main> and the
+  // timer bar (z-30 in a higher stacking context) covers the title.
+  return createPortal(<>{children}</>, document.body)
 }
 
 const DialogOverlay = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
@@ -60,7 +66,7 @@ const DialogOverlay = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTML
       <div
         ref={ref}
         className={cn(
-          "fixed inset-0 z-50 bg-[var(--text-forest)]/30 backdrop-blur-[2px] backdrop-filter flex items-center justify-center animate-in fade-in-0 duration-200",
+          "fixed inset-0 z-50 bg-[var(--text-forest)]/30 backdrop-blur-[2px] backdrop-filter flex items-center justify-center overflow-y-auto py-8 animate-in fade-in-0 duration-200",
           className
         )}
         onClick={() => onOpenChange(false)}

@@ -31,7 +31,6 @@ export async function getAuthUser() {
         data: {
           name: authUser.name || "Freelancer",
           email,
-          defaultHourlyRate: 50,
         },
       });
     }

@@ -191,12 +191,15 @@ export default function ProjectsPage() {
           }}
         >
           <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="font-serif text-xl tracking-tight text-[var(--text-forest)]">New Project</DialogTitle>
+            <DialogHeader className="mb-5">
+              <DialogTitle className="font-serif text-[22px] tracking-tight text-[var(--text-forest)]">New Project</DialogTitle>
+              <p className="text-[13px] text-[var(--text-olive)] mt-1">
+                You can edit these details any time.
+              </p>
             </DialogHeader>
-            <div className="space-y-5 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="project-name" className="text-[14px]">Name</Label>
+            <div className="space-y-5">
+              <div className="space-y-1.5">
+                <Label htmlFor="project-name" className="text-[13px] font-medium text-[var(--text-olive)]">Name</Label>
                 <Input
                   id="project-name"
                   placeholder="Website Redesign"
@@ -206,20 +209,21 @@ export default function ProjectsPage() {
                     if (e.key === "Enter") handleCreate();
                   }}
                   className="rounded-[var(--radius-lg)] h-11"
+                  autoFocus
                 />
               </div>
 
               <div className="space-y-2">
-                <Label className="text-[14px]">Color</Label>
-                <div className="grid grid-cols-6 gap-3">
+                <Label className="text-[13px] font-medium text-[var(--text-olive)]">Color</Label>
+                <div className="flex flex-wrap gap-2 px-1 py-1">
                   {PROJECT_COLORS.map((c) => (
                     <button
                       key={c}
                       type="button"
-                      className={`size-10 rounded-[var(--radius-md)] transition-all flex items-center justify-center ${
+                      className={`size-8 rounded-full transition-all ${
                         color === c
-                          ? "ring-2 ring-offset-2 ring-offset-[var(--bg-cream)] ring-[var(--accent-olive)] scale-110"
-                          : "hover:scale-105"
+                          ? "ring-2 ring-offset-2 ring-offset-[var(--bg-cream)] ring-[var(--accent-olive)]"
+                          : "hover:scale-110 opacity-80 hover:opacity-100"
                       }`}
                       style={{ backgroundColor: c }}
                       onClick={() => setColor(c)}
@@ -229,8 +233,8 @@ export default function ProjectsPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label className="text-[14px]">Client</Label>
+              <div className="space-y-1.5">
+                <Label className="text-[13px] font-medium text-[var(--text-olive)]">Client</Label>
                 <Select
                   value={clientId ?? ""}
                   onValueChange={(val: string) =>
@@ -252,8 +256,8 @@ export default function ProjectsPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="hourly-rate" className="text-[14px]">Hourly Rate</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="hourly-rate" className="text-[13px] font-medium text-[var(--text-olive)]">Hourly Rate</Label>
                   <Input
                     id="hourly-rate"
                     type="number"
@@ -265,8 +269,8 @@ export default function ProjectsPage() {
                     className="rounded-[var(--radius-lg)] h-11"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="estimated-hours" className="text-[14px]">Est. Hours</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="estimated-hours" className="text-[13px] font-medium text-[var(--text-olive)]">Est. Hours</Label>
                   <Input
                     id="estimated-hours"
                     type="number"
@@ -279,9 +283,12 @@ export default function ProjectsPage() {
                   />
                 </div>
               </div>
+              <p className="text-[12px] text-[var(--text-olive)]/80 -mt-2">
+                Leave rate blank to use your default from Settings.
+              </p>
 
               <Button
-                className="w-full rounded-full h-[44px] text-[15px] font-medium mt-2"
+                className="w-full rounded-full h-[44px] text-[15px] font-medium"
                 onClick={handleCreate}
                 disabled={creating || !name.trim()}
               >

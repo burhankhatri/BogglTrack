@@ -12,16 +12,17 @@ const DISMISSED_KEY = "boggltrack-onboarding-dismissed";
 interface Props {
   hasProjects: boolean;
   hasRate: boolean;
+  hasGithub: boolean;
 }
 
-export function FirstRunChecklist({ hasProjects, hasRate }: Props) {
+export function FirstRunChecklist({ hasProjects, hasRate, hasGithub }: Props) {
   const [dismissed, setDismissed] = useState(true); // default hidden until hydrated
 
   useEffect(() => {
     setDismissed(localStorage.getItem(DISMISSED_KEY) === "1");
   }, []);
 
-  const allDone = hasProjects && hasRate;
+  const allDone = hasProjects && hasRate && hasGithub;
   if (dismissed || allDone) return null;
 
   const steps = [
@@ -34,6 +35,11 @@ export function FirstRunChecklist({ hasProjects, hasRate }: Props) {
       label: "Create your first project",
       href: "/projects",
       done: hasProjects,
+    },
+    {
+      label: "Connect your GitHub account",
+      href: "/settings",
+      done: hasGithub,
     },
   ];
 
@@ -56,12 +62,12 @@ export function FirstRunChecklist({ hasProjects, hasRate }: Props) {
         Get set up
       </p>
       <p className="mt-0.5 text-[12px] text-[var(--text-olive)]">
-        Two quick steps so your entries track earnings from day one.
+        A few quick steps so your entries track earnings from day one.
       </p>
       <div className="mt-3 space-y-1.5">
         {steps.map((s) => (
           <Link
-            key={s.href}
+            key={s.label}
             href={s.href}
             className={`flex items-center gap-2 px-2 py-1.5 -mx-2 rounded-[var(--radius-sm)] text-[13px] transition-colors ${
               s.done
