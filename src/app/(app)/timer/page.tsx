@@ -59,6 +59,7 @@ import {
 } from "@/lib/earnings";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
 import { parseEntryTimestamp, buildTimestampISO, resolveTimeRange } from "./timestamp-helpers";
+import { groupEntriesByDesc, type GroupedEntry } from "./grouping-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -102,19 +103,6 @@ interface TimeEntry {
   project: Project | null;
   tags: TimeEntryTag[];
   commits?: AttachedCommit[] | null;
-}
-
-interface GroupedEntry {
-  key: string;
-  description: string;
-  entries: TimeEntry[];
-  totalDuration: number;
-  billable: boolean;
-  projectId: string | null;
-  project: Project | null;
-  tags: TimeEntryTag[];
-  startTime: string;
-  endTime: string | null;
 }
 
 interface DayGroup {
@@ -286,34 +274,6 @@ export default function TimerPage() {
   // ---------------------------------------------------------------------------
   // Grouping entries by day
   // ---------------------------------------------------------------------------
-
-  function groupEntriesByDesc(dayEntries: TimeEntry[]): GroupedEntry[] {
-    const map = new Map<string, GroupedEntry>();
-    for (const entry of dayEntries) {
-      const key = entry.description || "";
-      const existing = map.get(key);
-      if (existing) {
-        existing.entries.push(entry);
-        existing.totalDuration += entry.duration ?? 0;
-        if (entry.startTime < existing.startTime) existing.startTime = entry.startTime;
-        if (entry.endTime && (!existing.endTime || entry.endTime > existing.endTime)) existing.endTime = entry.endTime;
-      } else {
-        map.set(key, {
-          key: entry.id,
-          description: entry.description,
-          entries: [entry],
-          totalDuration: entry.duration ?? 0,
-          billable: entry.billable,
-          projectId: entry.projectId,
-          project: entry.project,
-          tags: entry.tags,
-          startTime: entry.startTime,
-          endTime: entry.endTime,
-        });
-      }
-    }
-    return Array.from(map.values());
-  }
 
   function groupByDay(list: TimeEntry[]): DayGroup[] {
     const groups: DayGroup[] = [];
