@@ -58,7 +58,7 @@ import {
   getApplicableRate,
 } from "@/lib/earnings";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
-import { parseEntryTimestamp, buildTimestampISO, validateTimeRange } from "./timestamp-helpers";
+import { parseEntryTimestamp, buildTimestampISO, validateTimeRange, resolveTimeRange } from "./timestamp-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -370,11 +370,9 @@ export default function TimerPage() {
       return;
     }
 
-    const startISO = `${manualDate}T${manualStartTime}:00`;
-    const endISO = `${manualDate}T${manualEndTime}:00`;
-
-    if (new Date(endISO) <= new Date(startISO)) {
-      toast.error("End time must be after start time");
+    const resolved = resolveTimeRange(manualDate, manualStartTime, manualEndTime);
+    if (!resolved.ok) {
+      toast.error(resolved.error);
       return;
     }
 
@@ -385,8 +383,8 @@ export default function TimerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           description: manualDescription,
-          startTime: new Date(startISO).toISOString(),
-          endTime: new Date(endISO).toISOString(),
+          startTime: resolved.startISO,
+          endTime: resolved.endISO,
           projectId:
             manualProjectId === NO_PROJECT ? null : manualProjectId,
           billable: manualBillable,
