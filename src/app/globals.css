@@ -9,18 +9,19 @@
 @theme inline {
   --font-sans: var(--font-inter);
   --font-serif: var(--font-lora);
+  --font-display: var(--font-display);
 }
 
 :root {
-  /* Backgrounds — neutral grayscale, enterprise-grade */
-  --bg-sage: #FAFAFA;           /* Page canvas — warm near-white */
-  --bg-cream: #FFFFFF;          /* Cards, surfaces — pure white */
-  --bg-cream-hover: #F5F5F5;    /* Card hover state */
-  --bg-muted: #F4F4F5;          /* Muted backgrounds, chips, dividers */
+  /* Backgrounds — Cal.com Monochrome */
+  --bg-sage: #FFFFFF;           /* Page canvas — Pure White */
+  --bg-cream: #FFFFFF;          /* Cards, surfaces — Pure White */
+  --bg-cream-hover: #F9F9F9;    /* Card hover state */
+  --bg-muted: #F5F5F5;          /* Muted backgrounds, chips, dividers */
 
   /* Text — Cal-inspired neutrals */
-  --text-forest: #18181B;       /* Primary — near-black charcoal */
-  --text-olive: #71717A;        /* Secondary — neutral gray */
+  --text-forest: #242424;       /* Primary — Charcoal */
+  --text-olive: #898989;        /* Secondary — Mid Gray */
   --text-cream: #FFFFFF;        /* Text on dark/accent */
   --text-muted: #A1A1AA;        /* Tertiary — zero-state, tertiary labels */
 
@@ -33,18 +34,18 @@
   --accent-teal: #059669;           /* Chart line (same as primary accent) */
 
   /* Borders — hairline shadow-rings */
-  --border-subtle: rgba(24, 24, 27, 0.06);
-  --border-medium: rgba(24, 24, 27, 0.12);
+  --border-subtle: rgba(34, 42, 53, 0.08);
+  --border-medium: rgba(34, 42, 53, 0.12);
 
   /* Shadows — Cal-inspired layered depth */
   --shadow-card:
-    0 0 0 1px rgba(24, 24, 27, 0.05),
-    0 1px 2px rgba(24, 24, 27, 0.04),
-    0 1px 3px rgba(24, 24, 27, 0.03);
+    0 1px 5px -4px rgba(19, 19, 22, 0.7),
+    0 0 0 1px rgba(34, 42, 53, 0.08),
+    0 4px 8px rgba(34, 42, 53, 0.05);
   --shadow-dropdown:
-    0 0 0 1px rgba(24, 24, 27, 0.06),
-    0 8px 24px rgba(24, 24, 27, 0.08),
-    0 2px 4px rgba(24, 24, 27, 0.04);
+    0 0 0 1px rgba(34, 42, 53, 0.08),
+    0 12px 32px rgba(19, 19, 22, 0.08),
+    0 4px 8px rgba(19, 19, 22, 0.04);
 
   /* Radius */
   --radius-sm: 6px;
@@ -104,6 +105,45 @@ html[data-theme="dark"] {
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 .pulse-dot { animation: pulse-dot 1.2s ease-in-out infinite; }
+
+/* Landing — SplitText helpers so words/chars can slide up from behind a clip line. */
+.split-line { display: block; overflow: hidden; }
+.split-word,
+.split-char { display: inline-block; will-change: transform, opacity; }
+
+/* Landing — entrance animations driven purely by CSS so they play even when
+   the browser tab is first loading or when the GSAP ticker is paused. */
+@keyframes land-rise {
+  from { opacity: 0; transform: translate3d(0, 24px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.land-rise { animation: land-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes land-rise-word {
+  from { opacity: 0; transform: translate3d(0, 110%, 0) rotate(6deg); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) rotate(0deg); }
+}
+.land-word {
+  display: inline-block;
+  animation: land-rise-word 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+.land-line { display: block; overflow: hidden; }
+
+@keyframes land-fade {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.land-fade { animation: land-fade 0.7s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .land-rise,
+  .land-word,
+  .land-fade { animation: none; }
+}
+
+/* Landing — prevent horizontal scroll bleed from pinned/horizontal scenes. */
+html, body { overflow-x: clip; }
 
 @layer base {
   * {

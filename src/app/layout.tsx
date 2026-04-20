@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Lora } from "next/font/google";
+import { Inter, Instrument_Sans } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
@@ -12,8 +12,8 @@ const inter = Inter({
   subsets: ["latin"],
 });
 
-const lora = Lora({
-  variable: "--font-lora",
+const display = Instrument_Sans({
+  variable: "--font-display",
   subsets: ["latin"],
 });
 
@@ -47,7 +47,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${lora.variable} h-full antialiased`} suppressHydrationWarning>
+    <html lang="en" className={`${inter.variable} ${display.variable} h-full antialiased`} suppressHydrationWarning>
       <body className="min-h-full flex flex-col font-[family-name:var(--font-inter)] bg-background text-foreground">
         <ThemeProvider attribute="data-theme" defaultTheme="system" enableSystem>
           <TooltipProvider>
