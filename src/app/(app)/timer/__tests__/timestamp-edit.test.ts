@@ -2,7 +2,6 @@ import { describe, it, expect } from "vitest";
 import {
   parseEntryTimestamp,
   buildTimestampISO,
-  validateTimeRange,
   resolveTimeRange,
 } from "../timestamp-helpers";
 
@@ -39,23 +38,6 @@ describe("buildTimestampISO", () => {
     expect(d.getDate()).toBe(8);
     expect(d.getHours()).toBe(9);
     expect(d.getMinutes()).toBe(30);
-  });
-});
-
-describe("validateTimeRange", () => {
-  it("returns null when end is after start", () => {
-    const error = validateTimeRange("2026-04-08", "09:00", "10:00");
-    expect(error).toBeNull();
-  });
-
-  it("returns error when end equals start", () => {
-    const error = validateTimeRange("2026-04-08", "09:00", "09:00");
-    expect(error).toBe("End time must be after start time");
-  });
-
-  it("returns error when end is before start", () => {
-    const error = validateTimeRange("2026-04-08", "10:00", "09:00");
-    expect(error).toBe("End time must be after start time");
   });
 });
 

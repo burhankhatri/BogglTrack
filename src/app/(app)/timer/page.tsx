@@ -58,7 +58,7 @@ import {
   getApplicableRate,
 } from "@/lib/earnings";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
-import { parseEntryTimestamp, buildTimestampISO, validateTimeRange, resolveTimeRange } from "./timestamp-helpers";
+import { parseEntryTimestamp, buildTimestampISO, resolveTimeRange } from "./timestamp-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
