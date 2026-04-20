@@ -1,5 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { groupEntriesByDesc, type GroupableTimeEntry } from "../grouping-helpers";
+import {
+  groupEntriesByDesc,
+  resolveActiveEntry,
+  type GroupableTimeEntry,
+} from "../grouping-helpers";
 
 const projectA = {
   id: "proj-a",
@@ -131,5 +135,26 @@ describe("groupEntriesByDesc — strict composite merge key", () => {
 
     expect(grouped).toHaveLength(1);
     expect(grouped[0].entries).toHaveLength(2);
+  });
+});
+
+describe("resolveActiveEntry", () => {
+  const group = {
+    entries: [make("1"), make("2"), make("3")],
+  };
+
+  it("returns the matching entry when activeId hits a non-first id", () => {
+    // This is the regression case that was silently corrupting data:
+    // clicking Edit on sub-row '2' must route to entry '2', NOT entry '1'.
+    expect(resolveActiveEntry(group, "2").id).toBe("2");
+    expect(resolveActiveEntry(group, "3").id).toBe("3");
+  });
+
+  it("returns the first entry when activeId is null", () => {
+    expect(resolveActiveEntry(group, null).id).toBe("1");
+  });
+
+  it("returns the first entry when activeId does not match any sub-entry", () => {
+    expect(resolveActiveEntry(group, "nope").id).toBe("1");
   });
 });

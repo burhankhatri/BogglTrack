@@ -71,6 +71,23 @@ function buildMergeKey(entry: GroupableTimeEntry): string {
   ].join("|");
 }
 
+// Given a merged group and the id of the entry the user is currently
+// editing/deleting, return that underlying entry. Falls back to the first
+// entry in the group (used as the "representative" when the header
+// Edit/Delete buttons fire) if no id is provided or the id does not match.
+// Keeping this as a pure helper makes it trivially unit-testable and
+// prevents regressions where handlers target the wrong entry.
+export function resolveActiveEntry<T extends GroupableTimeEntry>(
+  group: { entries: T[] },
+  activeId: string | null
+): T {
+  if (activeId) {
+    const match = group.entries.find((e) => e.id === activeId);
+    if (match) return match;
+  }
+  return group.entries[0];
+}
+
 export function groupEntriesByDesc<T extends GroupableTimeEntry>(
   dayEntries: T[]
 ): GroupedEntry[] {

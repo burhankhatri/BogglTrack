@@ -60,7 +60,7 @@ import {
 } from "@/lib/earnings";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
 import { parseEntryTimestamp, buildTimestampISO, resolveTimeRange } from "./timestamp-helpers";
-import { groupEntriesByDesc, type GroupedEntry } from "./grouping-helpers";
+import { groupEntriesByDesc, resolveActiveEntry, type GroupedEntry } from "./grouping-helpers";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -720,10 +720,17 @@ export default function TimerPage() {
             <Card className="border border-[var(--border-subtle)] shadow-[var(--shadow-card)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
               <div className="flex flex-col">
                 {group.grouped.map((ge, index) => {
-                  // Use the first entry for editing/deleting
+                  // `entry` is the group's representative — used by the
+                  // header Edit button (which edits the "first" entry as
+                  // a stand-in for the whole merged row). For save/delete,
+                  // always target the SPECIFIC entry the user activated
+                  // (from a sub-row click, for example) so we never
+                  // silently overwrite the wrong underlying record.
                   const entry = ge.entries[0];
                   const isEditing = ge.entries.some((e) => editingId === e.id);
                   const isDeleting = ge.entries.some((e) => deletingId === e.id);
+                  const editingEntry = resolveActiveEntry(ge, editingId);
+                  const deletingEntry = resolveActiveEntry(ge, deletingId);
                   const dur = ge.totalDuration;
                   const rate = getApplicableRate(
                     ge.project?.hourlyRate ?? null,
@@ -770,7 +777,7 @@ export default function TimerPage() {
                               value={editDescription}
                               onChange={(e) => setEditDescription(e.target.value)}
                               onKeyDown={(e) => {
-                                if (e.key === "Enter") saveEdit(entry.id);
+                                if (e.key === "Enter") saveEdit(editingEntry.id);
                                 if (e.key === "Escape") cancelEdit();
                               }}
                               placeholder="What did you work on?"
@@ -881,7 +888,7 @@ export default function TimerPage() {
                               </Button>
                               <Button
                                 className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90"
-                                onClick={() => saveEdit(entry.id)}
+                                onClick={() => saveEdit(editingEntry.id)}
                               >
                                 <Check className="h-3.5 w-3.5 mr-1" />
                                 Save
@@ -891,6 +898,18 @@ export default function TimerPage() {
                         </div>
                       ) : isDeleting ? (
                         /* ---- Delete confirmation mode — row fills with a prompt ---- */
+                        (() => {
+                          const delDur = deletingEntry.duration ?? 0;
+                          const delRate = getApplicableRate(
+                            deletingEntry.project?.hourlyRate ?? null,
+                            userDefaultRate
+                          );
+                          const delEarnings = calculateEarnings(
+                            delDur,
+                            delRate,
+                            deletingEntry.billable
+                          );
+                          return (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 flex-1 min-w-0">
                           <div className="flex items-start gap-3 min-w-0">
                             <div className="h-9 w-9 rounded-full bg-[var(--accent-coral)]/10 flex items-center justify-center shrink-0">
@@ -901,8 +920,8 @@ export default function TimerPage() {
                                 Delete this time entry?
                               </p>
                               <p className="text-[12px] text-[var(--text-olive)] truncate max-w-[500px]">
-                                {ge.description || "(No description)"} · {formatDuration(dur)}
-                                {earnings > 0 && ` · ${formatCurrency(earnings)}`}
+                                {deletingEntry.description || "(No description)"} · {formatDuration(delDur)}
+                                {delEarnings > 0 && ` · ${formatCurrency(delEarnings)}`}
                               </p>
                             </div>
                           </div>
@@ -916,13 +935,15 @@ export default function TimerPage() {
                             </Button>
                             <Button
                               className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--accent-coral)] text-white hover:opacity-90"
-                              onClick={() => handleDelete(entry.id)}
+                              onClick={() => handleDelete(deletingEntry.id)}
                             >
                               <Trash2 className="h-3.5 w-3.5 mr-1.5" />
                               Delete entry
                             </Button>
                           </div>
                         </div>
+                          );
+                        })()
                       ) : (
                         /* ---- Normal display mode ---- */
                         <>
