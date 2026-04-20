@@ -53,11 +53,25 @@ export interface GroupedEntry {
   commits: AttachedCommit[];
 }
 
+// Strict merge key: two entries only merge when they represent the *same
+// work* — same description, same project, same billable state, same tag
+// set. Client is derived from project (one-to-many), so including
+// projectId covers client too. Mirrors timer/grouping-helpers.ts.
+function buildMergeKey(entry: GroupableEntry): string {
+  const tagIds = entry.tags.map((t) => t.tagId).sort().join(",");
+  return [
+    entry.description || "",
+    entry.projectId ?? "",
+    entry.billable ? "1" : "0",
+    tagIds,
+  ].join("|");
+}
+
 export function groupEntriesByDescription(entries: GroupableEntry[]): GroupedEntry[] {
   const groups = new Map<string, GroupedEntry>();
 
   for (const entry of entries) {
-    const key = entry.description;
+    const key = buildMergeKey(entry);
     const existing = groups.get(key);
 
     if (existing) {

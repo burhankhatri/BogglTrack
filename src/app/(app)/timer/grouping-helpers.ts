@@ -55,12 +55,27 @@ export interface GroupedEntry {
   endTime: string | null;
 }
 
+// Strict merge key: two entries only merge when they represent the *same
+// work* — same description, same project, same billable state, same tag set.
+// Client is derived from project (one-to-many), so including projectId
+// covers client too. Null projectId is stable as an empty string so two
+// no-project entries with the same description still merge together.
+function buildMergeKey(entry: GroupableTimeEntry): string {
+  const tagIds = entry.tags.map((t) => t.tagId).sort().join(",");
+  return [
+    entry.description || "",
+    entry.projectId ?? "",
+    entry.billable ? "1" : "0",
+    tagIds,
+  ].join("|");
+}
+
 export function groupEntriesByDesc<T extends GroupableTimeEntry>(
   dayEntries: T[]
 ): GroupedEntry[] {
   const map = new Map<string, GroupedEntry>();
   for (const entry of dayEntries) {
-    const key = entry.description || "";
+    const key = buildMergeKey(entry);
     const existing = map.get(key);
     if (existing) {
       existing.entries.push(entry);
