@@ -162,6 +162,20 @@ export default function TimerPage() {
   // Delete confirmation
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // Merged-row expand state — keyed on the stable composite merge key so
+  // re-renders (e.g. after new entries arrive) don't collapse open rows.
+  const [expandedMergeKeys, setExpandedMergeKeys] = useState<Set<string>>(
+    () => new Set()
+  );
+  const toggleExpanded = useCallback((mergeKey: string) => {
+    setExpandedMergeKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(mergeKey)) next.delete(mergeKey);
+      else next.add(mergeKey);
+      return next;
+    });
+  }, []);
+
   // Timer store (used by resumeTimerOptimistic internally)
 
   // ---------------------------------------------------------------------------

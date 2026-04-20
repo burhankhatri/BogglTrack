@@ -44,6 +44,7 @@ export interface GroupableTimeEntry {
 
 export interface GroupedEntry {
   key: string;
+  mergeKey: string;
   description: string;
   entries: GroupableTimeEntry[];
   totalDuration: number;
@@ -86,6 +87,7 @@ export function groupEntriesByDesc<T extends GroupableTimeEntry>(
     } else {
       map.set(key, {
         key: entry.id,
+        mergeKey: key,
         description: entry.description,
         entries: [entry],
         totalDuration: entry.duration ?? 0,
