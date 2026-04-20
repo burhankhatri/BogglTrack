@@ -434,28 +434,23 @@ export default function TimerPage() {
   }
 
   async function saveEdit(entryId: string) {
-    // Validate timestamps if both are present
-    if (editStartTime && editEndTime) {
-      const error = validateTimeRange(editDate, editStartTime, editEndTime);
-      if (error) {
-        toast.error(error);
-        return;
-      }
-    }
+    const body: Record<string, unknown> = {
+      description: editDescription,
+      projectId: editProjectId === NO_PROJECT ? null : editProjectId,
+      billable: editBillable,
+    };
 
     try {
-      const body: Record<string, unknown> = {
-        description: editDescription,
-        projectId: editProjectId === NO_PROJECT ? null : editProjectId,
-        billable: editBillable,
-      };
-
-      // Include timestamps if the user edited them
-      if (editDate && editStartTime) {
+      if (editDate && editStartTime && editEndTime) {
+        const resolved = resolveTimeRange(editDate, editStartTime, editEndTime);
+        if (!resolved.ok) {
+          toast.error(resolved.error);
+          return;
+        }
+        body.startTime = resolved.startISO;
+        body.endTime = resolved.endISO;
+      } else if (editDate && editStartTime) {
         body.startTime = buildTimestampISO(editDate, editStartTime);
-      }
-      if (editDate && editEndTime) {
-        body.endTime = buildTimestampISO(editDate, editEndTime);
       }
 
       const res = await fetch(`/api/time-entries/${entryId}`, {
