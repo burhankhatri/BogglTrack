@@ -39,3 +39,35 @@ export function resolveTimeRange(
 
   return { ok: true, startISO, endISO, crossesMidnight };
 }
+
+export type ExplicitRangeResult =
+  | { ok: true; startISO: string; endISO: string }
+  | { ok: false; error: string };
+
+// Turns an explicit (startDate, startTime, endDate, endTime) quadruple into
+// ISO timestamps. Unlike resolveTimeRange, the end date is picked by the
+// user directly, so there is no midnight-rollover guess — we just verify
+// that end strictly follows start.
+export function buildExplicitRange(
+  startDate: string,
+  startTime: string,
+  endDate: string,
+  endTime: string
+): ExplicitRangeResult {
+  const start = new Date(`${startDate}T${startTime}:00`);
+  const end = new Date(`${endDate}T${endTime}:00`);
+
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return { ok: false, error: "Invalid date or time" };
+  }
+
+  if (end.getTime() <= start.getTime()) {
+    return { ok: false, error: "End must be after start" };
+  }
+
+  return {
+    ok: true,
+    startISO: start.toISOString(),
+    endISO: end.toISOString(),
+  };
+}

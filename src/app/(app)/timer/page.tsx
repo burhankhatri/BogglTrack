@@ -59,7 +59,7 @@ import {
   getApplicableRate,
 } from "@/lib/earnings";
 import { resumeTimerOptimistic } from "@/lib/timer-actions";
-import { parseEntryTimestamp, buildTimestampISO, resolveTimeRange } from "./timestamp-helpers";
+import { parseEntryTimestamp, buildTimestampISO, buildExplicitRange } from "./timestamp-helpers";
 import { groupEntriesByDesc, resolveActiveEntry, type GroupedEntry } from "./grouping-helpers";
 
 // ---------------------------------------------------------------------------
@@ -141,9 +141,16 @@ export default function TimerPage() {
   const [loading, setLoading] = useState(!storeEntries);
 
   // Manual entry form state
-  const [manualDate, setManualDate] = useState(
+  const [manualStartDate, setManualStartDate] = useState(
     format(new Date(), "yyyy-MM-dd")
   );
+  const [manualEndDate, setManualEndDate] = useState(
+    format(new Date(), "yyyy-MM-dd")
+  );
+  // Has the user explicitly picked an end date? Until they do, the end date
+  // mirrors whatever they set the start date to, so same-day entries are
+  // a single click.
+  const [manualEndDateTouched, setManualEndDateTouched] = useState(false);
   const [manualStartTime, setManualStartTime] = useState("09:00");
   const [manualEndTime, setManualEndTime] = useState("10:00");
   const [manualDescription, setManualDescription] = useState("");
@@ -156,8 +163,9 @@ export default function TimerPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editProjectId, setEditProjectId] = useState<string>(NO_PROJECT);
   const [editBillable, setEditBillable] = useState(true);
-  const [editDate, setEditDate] = useState("");
+  const [editStartDate, setEditStartDate] = useState("");
   const [editStartTime, setEditStartTime] = useState("");
+  const [editEndDate, setEditEndDate] = useState("");
   const [editEndTime, setEditEndTime] = useState("");
 
   // Delete confirmation
@@ -335,24 +343,42 @@ export default function TimerPage() {
 
   const dayGroups = groupByDay(entries);
 
-  // Visual affordance for entries that span midnight — shown next to the end
-  // time input so the rollover is never silent.
-  const manualCrossesMidnight =
-    Boolean(manualStartTime && manualEndTime) && manualEndTime < manualStartTime;
-  const editCrossesMidnight =
-    Boolean(editStartTime && editEndTime) && editEndTime < editStartTime;
+  // Until the user explicitly picks an end date, the end date mirrors the
+  // start date — keeps same-day entries a single click while still letting
+  // them split the dates for overnight or multi-day entries.
+  function handleManualStartDateChange(nextDate: string) {
+    setManualStartDate(nextDate);
+    if (!manualEndDateTouched) {
+      setManualEndDate(nextDate);
+    }
+  }
+
+  function handleManualEndDateChange(nextDate: string) {
+    setManualEndDate(nextDate);
+    setManualEndDateTouched(true);
+  }
 
   // ---------------------------------------------------------------------------
   // Manual entry submission
   // ---------------------------------------------------------------------------
 
   async function handleManualAdd() {
-    if (!manualDate || !manualStartTime || !manualEndTime) {
-      toast.error("Please fill in date, start time, and end time");
+    if (
+      !manualStartDate ||
+      !manualStartTime ||
+      !manualEndDate ||
+      !manualEndTime
+    ) {
+      toast.error("Please fill in start date, start time, end date, and end time");
       return;
     }
 
-    const resolved = resolveTimeRange(manualDate, manualStartTime, manualEndTime);
+    const resolved = buildExplicitRange(
+      manualStartDate,
+      manualStartTime,
+      manualEndDate,
+      manualEndTime
+    );
     if (!resolved.ok) {
       toast.error(resolved.error);
       return;
@@ -383,6 +409,10 @@ export default function TimerPage() {
       setManualDescription("");
       setManualStartTime("09:00");
       setManualEndTime("10:00");
+      const today = format(new Date(), "yyyy-MM-dd");
+      setManualStartDate(today);
+      setManualEndDate(today);
+      setManualEndDateTouched(false);
       setManualProjectId(NO_PROJECT);
       setManualBillable(true);
 
@@ -405,12 +435,17 @@ export default function TimerPage() {
     setEditProjectId(entry.projectId ?? NO_PROJECT);
     setEditBillable(entry.billable);
     const start = parseEntryTimestamp(entry.startTime);
-    setEditDate(start.date);
+    setEditStartDate(start.date);
     setEditStartTime(start.time);
     if (entry.endTime) {
       const end = parseEntryTimestamp(entry.endTime);
+      setEditEndDate(end.date);
       setEditEndTime(end.time);
     } else {
+      // Still-running entry. Leave end fields empty so the user can either
+      // leave them blank (keeps it running) or fill in both to convert the
+      // entry into a completed one.
+      setEditEndDate("");
       setEditEndTime("");
     }
   }
@@ -423,16 +458,30 @@ export default function TimerPage() {
     };
 
     try {
-      if (editDate && editStartTime && editEndTime) {
-        const resolved = resolveTimeRange(editDate, editStartTime, editEndTime);
+      const hasEndFields = Boolean(editEndDate && editEndTime);
+      const hasPartialEnd =
+        Boolean(editEndDate) !== Boolean(editEndTime);
+
+      if (hasPartialEnd) {
+        toast.error("Fill in both end date and end time, or clear both");
+        return;
+      }
+
+      if (editStartDate && editStartTime && hasEndFields) {
+        const resolved = buildExplicitRange(
+          editStartDate,
+          editStartTime,
+          editEndDate,
+          editEndTime
+        );
         if (!resolved.ok) {
           toast.error(resolved.error);
           return;
         }
         body.startTime = resolved.startISO;
         body.endTime = resolved.endISO;
-      } else if (editDate && editStartTime) {
-        body.startTime = buildTimestampISO(editDate, editStartTime);
+      } else if (editStartDate && editStartTime) {
+        body.startTime = buildTimestampISO(editStartDate, editStartTime);
       }
 
       const res = await fetch(`/api/time-entries/${entryId}`, {
@@ -598,16 +647,19 @@ export default function TimerPage() {
               />
             </div>
 
-            {/* Date / Start / End row */}
-            <div className="grid grid-cols-3 gap-6 pt-2">
+            {/* Start date / Start time / End date / End time row.
+                Four fields laid out as 2x2 on narrow screens and 1x4 on md+
+                so neither the date triggers nor the time pickers squish. */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
               <div>
                 <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  Date
+                  Start date
                 </label>
                 <DatePickerField
-                  value={manualDate}
-                  onChange={setManualDate}
+                  value={manualStartDate}
+                  onChange={handleManualStartDateChange}
                   size="md"
+                  displayFormat="MMM d, yyyy"
                 />
               </div>
               <div>
@@ -622,19 +674,20 @@ export default function TimerPage() {
                 />
               </div>
               <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wide">
-                    End time
-                  </label>
-                  {manualCrossesMidnight && (
-                    <span
-                      className="text-[10px] font-semibold tabular-nums text-[var(--accent-olive-hover)] bg-[var(--accent-olive-soft)] px-1.5 py-0.5 rounded-full"
-                      title="End time is on the next day"
-                    >
-                      +1 day
-                    </span>
-                  )}
-                </div>
+                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
+                  End date
+                </label>
+                <DatePickerField
+                  value={manualEndDate}
+                  onChange={handleManualEndDateChange}
+                  size="md"
+                  displayFormat="MMM d, yyyy"
+                />
+              </div>
+              <div>
+                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
+                  End time
+                </label>
                 <Input
                   type="time"
                   value={manualEndTime}
@@ -810,12 +863,13 @@ export default function TimerPage() {
                             })()}
                           </div>
 
-                          <div className="grid grid-cols-3 gap-3">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                             <DatePickerField
-                              value={editDate}
-                              onChange={setEditDate}
+                              value={editStartDate}
+                              onChange={setEditStartDate}
                               size="sm"
                               displayFormat="MMM d"
+                              placeholder="Start date"
                             />
                             <Input
                               type="time"
@@ -823,22 +877,20 @@ export default function TimerPage() {
                               onChange={(e) => setEditStartTime(e.target.value)}
                               className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
                             />
-                            <div className="relative">
-                              <Input
-                                type="time"
-                                value={editEndTime}
-                                onChange={(e) => setEditEndTime(e.target.value)}
-                                className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
-                              />
-                              {editCrossesMidnight && (
-                                <span
-                                  className="absolute -top-2 right-1 text-[10px] font-semibold tabular-nums text-[var(--accent-olive-hover)] bg-[var(--accent-olive-soft)] px-1.5 py-0.5 rounded-full pointer-events-none shadow-sm"
-                                  title="End time is on the next day"
-                                >
-                                  +1 day
-                                </span>
-                              )}
-                            </div>
+                            <DatePickerField
+                              value={editEndDate}
+                              onChange={setEditEndDate}
+                              size="sm"
+                              displayFormat="MMM d"
+                              placeholder="End date"
+                            />
+                            <Input
+                              type="time"
+                              value={editEndTime}
+                              onChange={(e) => setEditEndTime(e.target.value)}
+                              className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
+                              placeholder="End time"
+                            />
                           </div>
 
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
