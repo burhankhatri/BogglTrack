@@ -11,6 +11,7 @@ import {
   X,
   DollarSign,
   Sparkles,
+  ChevronDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -730,17 +731,22 @@ export default function TimerPage() {
                   );
                   const earnings = calculateEarnings(dur, rate, ge.billable);
                   const isLast = index === group.grouped.length - 1;
+                  const isMerged = ge.entries.length > 1;
+                  const isExpanded = expandedMergeKeys.has(ge.mergeKey);
 
                   return (
                     <div
                       key={ge.key}
+                      className={!isLast ? "border-b border-[var(--border-subtle)]" : ""}
+                    >
+                    <div
                       className={`relative flex flex-col sm:flex-row sm:items-center justify-between p-4 px-6 transition-colors group ${
                         isEditing
                           ? "bg-[var(--bg-muted)]/40"
                           : isDeleting
                           ? "bg-[var(--accent-coral)]/6"
                           : "hover:bg-[var(--bg-sage)]/30"
-                      } ${!isLast ? "border-b border-[var(--border-subtle)]" : ""}`}
+                      }`}
                     >
                       {/* Left accent strip — tells the user the row is in a special state */}
                       {(isEditing || isDeleting) && (
@@ -948,10 +954,19 @@ export default function TimerPage() {
                                   {t.tag.name}
                                 </Badge>
                               ))}
-                              {ge.entries.length > 1 && (
-                                <span className="text-[11px] font-medium text-[var(--text-olive)] bg-[var(--bg-muted)] px-2 py-0.5 rounded-full">
+                              {isMerged && (
+                                <button
+                                  type="button"
+                                  onClick={() => toggleExpanded(ge.mergeKey)}
+                                  aria-expanded={isExpanded}
+                                  aria-label={`${isExpanded ? "Hide" : "Show"} ${ge.entries.length} merged entries`}
+                                  className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-olive)] bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] hover:text-[var(--text-forest)] px-2 py-0.5 rounded-full transition-colors cursor-pointer"
+                                >
+                                  <ChevronDown
+                                    className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                  />
                                   {ge.entries.length} entries
-                                </span>
+                                </button>
                               )}
                             </div>
 
@@ -1005,6 +1020,67 @@ export default function TimerPage() {
                           </div>
                         </>
                       )}
+                    </div>
+                    {isMerged && isExpanded && !isEditing && !isDeleting && (
+                      <div className="px-6 pt-1 pb-3 space-y-1 bg-[var(--bg-muted)]/25 border-t border-[var(--border-subtle)]/60">
+                        {ge.entries
+                          .slice()
+                          .sort((a, b) => (a.startTime < b.startTime ? -1 : 1))
+                          .map((sub) => {
+                            const subDur = sub.duration ?? 0;
+                            const subStart = new Date(sub.startTime);
+                            const subEnd = sub.endTime ? new Date(sub.endTime) : null;
+                            const subCrossesMidnight =
+                              subEnd !== null &&
+                              (subEnd.getFullYear() !== subStart.getFullYear() ||
+                                subEnd.getMonth() !== subStart.getMonth() ||
+                                subEnd.getDate() !== subStart.getDate());
+                            return (
+                              <div
+                                key={sub.id}
+                                className="flex items-center justify-between gap-3 px-2 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-cream)]/60 transition-colors group/sub"
+                              >
+                                <div className="flex items-center gap-3 min-w-0 text-[12px] tabular-nums text-[var(--text-olive)]">
+                                  <Clock className="h-3 w-3 shrink-0 opacity-60" />
+                                  <span className="font-medium">
+                                    {format(subStart, "h:mm a")}
+                                    {subEnd && (
+                                      <>
+                                        {" – "}
+                                        {format(subEnd, "h:mm a")}
+                                        {subCrossesMidnight && (
+                                          <span className="ml-1 text-[10px] font-semibold text-[var(--accent-olive-hover)]">
+                                            +1d
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                  </span>
+                                  <span className="text-[var(--text-forest)] font-semibold">
+                                    {formatDuration(subDur)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity">
+                                  <button
+                                    className="h-7 w-7 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
+                                    onClick={() => startEditing(sub)}
+                                    title="Edit this entry"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </button>
+                                  <button
+                                    className="h-7 w-7 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
+                                    onClick={() => setDeletingId(sub.id)}
+                                    title="Delete this entry"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
                     </div>
                   );
                 })}
