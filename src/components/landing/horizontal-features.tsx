@@ -116,10 +116,10 @@ export function HorizontalFeatures() {
   }, []);
 
   return (
-    <section ref={rootRef} className="relative bg-[var(--bg-sage)] overflow-hidden">
-      {/* Sticky title band that stays while cards pan. */}
-      <div className="absolute top-0 left-0 right-0 z-10 px-6 md:px-10 pt-14 md:pt-20 pointer-events-none">
-        <div className="max-w-[1400px] mx-auto flex items-end justify-between gap-8">
+    <>
+      {/* Intro — lives outside the pin so it doesn't overlap the panning cards. */}
+      <section className="relative bg-[var(--bg-sage)] pt-24 md:pt-40 pb-10 md:pb-16 px-6 md:px-10">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row md:items-end md:justify-between gap-6">
           <h2
             ref={titleRef}
             className="font-[family-name:var(--font-display)] text-[42px] md:text-[76px] font-bold tracking-[-0.03em] leading-[0.95] text-[var(--text-forest)] max-w-[760px]"
@@ -128,24 +128,29 @@ export function HorizontalFeatures() {
             <br />
             <span className="text-[var(--text-olive)]">Done perfectly.</span>
           </h2>
-          <div className="hidden md:flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.28em] text-[var(--text-olive)]">
+          <div className="flex items-center gap-3 text-[12px] font-bold uppercase tracking-[0.28em] text-[var(--text-olive)] pb-3">
             <span className="h-px w-10 bg-[var(--text-olive)]" />
             Scroll →
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="h-screen flex items-center pt-40 md:pt-52 pb-20">
-        <div
-          ref={trackRef}
-          className="flex gap-5 md:gap-8 pl-6 md:pl-16 pr-[40vw] will-change-transform"
-        >
-          {FEATURES.map((f, i) => (
-            <FeatureCard key={f.title} feature={f} index={i} />
-          ))}
+      {/* Pinned horizontal scroll — cards own the entire viewport.
+          pt-24 pushes cards below the sticky 64px nav so they never slide
+          under it; pb-16 keeps a hint of bg visible past the bottom. */}
+      <section ref={rootRef} className="relative bg-[var(--bg-sage)] overflow-hidden">
+        <div className="h-screen flex items-center pt-24 pb-16">
+          <div
+            ref={trackRef}
+            className="flex gap-5 md:gap-8 pl-6 md:pl-16 pr-[40vw] will-change-transform"
+          >
+            {FEATURES.map((f, i) => (
+              <FeatureCard key={f.title} feature={f} index={i} />
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }
 
@@ -260,21 +265,23 @@ function FeatureDemo({ demo, kbd }: { demo: Feature["demo"]; kbd?: string }) {
   }
 
   if (demo === "calendar") {
+    const filledSet = new Set([3, 4, 5, 9, 10, 11, 12, 16, 17, 18, 23, 24, 25]);
+    const heavySet = new Set([10, 17, 24]);
     return (
-      <div className="mt-8 rounded-[14px] bg-[var(--bg-muted)] p-4 border border-[var(--border-subtle)]">
-        <div className="grid grid-cols-7 gap-1">
-          {Array.from({ length: 35 }).map((_, i) => {
-            const filled = [3, 4, 5, 9, 10, 11, 12, 16, 17, 18, 23, 24, 25, 30, 31].includes(i);
-            const heavy = [10, 17, 24].includes(i);
+      <div className="mt-8 rounded-[14px] bg-[var(--bg-muted)]/70 p-3 border border-[var(--border-subtle)]">
+        <div className="grid grid-cols-7 gap-[5px]">
+          {Array.from({ length: 28 }).map((_, i) => {
+            const filled = filledSet.has(i);
+            const heavy = heavySet.has(i);
             return (
               <div
                 key={i}
-                className={`aspect-square rounded-[6px] ${
+                className={`aspect-square rounded-[4px] ${
                   filled
                     ? heavy
                       ? "bg-[var(--text-forest)]"
                       : "bg-[var(--text-forest)]/50"
-                    : "bg-[var(--bg-muted)] border border-[var(--border-subtle)]"
+                    : "bg-[var(--border-subtle)] border border-[var(--border-subtle)]"
                 }`}
               />
             );
