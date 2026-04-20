@@ -133,7 +133,7 @@ export function LandingHero({ webAppHref, webAppLabel, dmgUrl, dmgIntelUrl }: Pr
                    text-[22vw] md:text-[18vw] leading-[0.9] font-black
                    text-transparent"
         style={{
-          WebkitTextStroke: "1px var(--border-medium)",
+          WebkitTextStroke: "1px var(--ghost-stroke)",
         }}
       >
         $1,247.38

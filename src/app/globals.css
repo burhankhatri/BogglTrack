@@ -37,6 +37,10 @@
   --border-subtle: rgba(34, 42, 53, 0.08);
   --border-medium: rgba(34, 42, 53, 0.12);
 
+  /* Ghost outline — large outlined display text (hero $ behind headline).
+     Tuned per theme so the stroke has equal presence in light and dark. */
+  --ghost-stroke: rgba(36, 36, 36, 0.22);
+
   /* Shadows — Cal-inspired layered depth */
   --shadow-card:
     0 1px 5px -4px rgba(19, 19, 22, 0.7),
@@ -85,6 +89,9 @@ html[data-theme="dark"] {
   /* Borders — hairline, white-alpha instead of black-alpha */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
+
+  /* Ghost outline — keep the luminous white-alpha reading on near-black. */
+  --ghost-stroke: rgba(255, 255, 255, 0.14);
 
   /* Shadows — deeper, longer to read on dark backgrounds */
   --shadow-card:
