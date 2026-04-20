@@ -3,6 +3,7 @@ import {
   parseEntryTimestamp,
   buildTimestampISO,
   validateTimeRange,
+  resolveTimeRange,
 } from "../timestamp-helpers";
 
 describe("parseEntryTimestamp", () => {
@@ -55,5 +56,79 @@ describe("validateTimeRange", () => {
   it("returns error when end is before start", () => {
     const error = validateTimeRange("2026-04-08", "10:00", "09:00");
     expect(error).toBe("End time must be after start time");
+  });
+});
+
+describe("resolveTimeRange", () => {
+  it("returns ok for a same-day range with end after start", () => {
+    const result = resolveTimeRange("2026-04-08", "09:00", "10:00");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.crossesMidnight).toBe(false);
+    // Both timestamps should be on 2026-04-08 in local time.
+    const start = new Date(result.startISO);
+    const end = new Date(result.endISO);
+    expect(start.getFullYear()).toBe(2026);
+    expect(start.getMonth()).toBe(3);
+    expect(start.getDate()).toBe(8);
+    expect(start.getHours()).toBe(9);
+    expect(end.getFullYear()).toBe(2026);
+    expect(end.getMonth()).toBe(3);
+    expect(end.getDate()).toBe(8);
+    expect(end.getHours()).toBe(10);
+  });
+
+  it("rolls end to the next day when end is before start (23:00 -> 00:30)", () => {
+    const result = resolveTimeRange("2026-04-08", "23:00", "00:30");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.crossesMidnight).toBe(true);
+    const start = new Date(result.startISO);
+    const end = new Date(result.endISO);
+    expect(start.getDate()).toBe(8);
+    expect(start.getHours()).toBe(23);
+    expect(end.getDate()).toBe(9);
+    expect(end.getHours()).toBe(0);
+    expect(end.getMinutes()).toBe(30);
+  });
+
+  it("rolls end to the next day for a larger overnight range (22:00 -> 06:00)", () => {
+    const result = resolveTimeRange("2026-04-08", "22:00", "06:00");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.crossesMidnight).toBe(true);
+    const end = new Date(result.endISO);
+    expect(end.getDate()).toBe(9);
+    expect(end.getHours()).toBe(6);
+  });
+
+  it("rolls end to the next day across a month boundary (30th -> 1st)", () => {
+    // 2026-04-30 23:30 -> 00:15 should roll to 2026-05-01
+    const result = resolveTimeRange("2026-04-30", "23:30", "00:15");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.crossesMidnight).toBe(true);
+    const end = new Date(result.endISO);
+    expect(end.getFullYear()).toBe(2026);
+    expect(end.getMonth()).toBe(4); // May
+    expect(end.getDate()).toBe(1);
+    expect(end.getHours()).toBe(0);
+    expect(end.getMinutes()).toBe(15);
+  });
+
+  it("returns an error when end equals start", () => {
+    const result = resolveTimeRange("2026-04-08", "09:00", "09:00");
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("End time must be after start time");
   });
 });
