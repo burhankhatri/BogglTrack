@@ -360,6 +360,13 @@ export default function TimerPage() {
 
   const dayGroups = groupByDay(entries);
 
+  // Visual affordance for entries that span midnight — shown next to the end
+  // time input so the rollover is never silent.
+  const manualCrossesMidnight =
+    Boolean(manualStartTime && manualEndTime) && manualEndTime < manualStartTime;
+  const editCrossesMidnight =
+    Boolean(editStartTime && editEndTime) && editEndTime < editStartTime;
+
   // ---------------------------------------------------------------------------
   // Manual entry submission
   // ---------------------------------------------------------------------------
@@ -640,9 +647,19 @@ export default function TimerPage() {
                 />
               </div>
               <div>
-                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  End time
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[12px] font-medium text-[var(--text-olive)] uppercase tracking-wide">
+                    End time
+                  </label>
+                  {manualCrossesMidnight && (
+                    <span
+                      className="text-[10px] font-semibold tabular-nums text-[var(--accent-olive-hover)] bg-[var(--accent-olive-soft)] px-1.5 py-0.5 rounded-full"
+                      title="End time is on the next day"
+                    >
+                      +1 day
+                    </span>
+                  )}
+                </div>
                 <Input
                   type="time"
                   value={manualEndTime}
@@ -819,12 +836,22 @@ export default function TimerPage() {
                               onChange={(e) => setEditStartTime(e.target.value)}
                               className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
                             />
-                            <Input
-                              type="time"
-                              value={editEndTime}
-                              onChange={(e) => setEditEndTime(e.target.value)}
-                              className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
-                            />
+                            <div className="relative">
+                              <Input
+                                type="time"
+                                value={editEndTime}
+                                onChange={(e) => setEditEndTime(e.target.value)}
+                                className="bg-[var(--bg-cream)] border-transparent rounded-[var(--radius-md)] h-9 font-sans text-[13px] tabular-nums shadow-[var(--shadow-card)]"
+                              />
+                              {editCrossesMidnight && (
+                                <span
+                                  className="absolute -top-2 right-1 text-[10px] font-semibold tabular-nums text-[var(--accent-olive-hover)] bg-[var(--accent-olive-soft)] px-1.5 py-0.5 rounded-full pointer-events-none shadow-sm"
+                                  title="End time is on the next day"
+                                >
+                                  +1 day
+                                </span>
+                              )}
+                            </div>
                           </div>
 
                           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
