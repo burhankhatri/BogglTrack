@@ -1040,8 +1040,8 @@ export default function TimerPage() {
                                 key={sub.id}
                                 className="flex items-center justify-between gap-3 px-2 py-2 rounded-[var(--radius-md)] hover:bg-[var(--bg-cream)]/60 transition-colors group/sub"
                               >
-                                <div className="flex items-center gap-3 min-w-0 text-[12px] tabular-nums text-[var(--text-olive)]">
-                                  <Clock className="h-3 w-3 shrink-0 opacity-60" />
+                                <div className="flex items-center gap-2.5 min-w-0 text-[12px] tabular-nums text-[var(--text-olive)]">
+                                  <Clock className="h-3 w-3 shrink-0 opacity-50" />
                                   <span className="font-medium">
                                     {format(subStart, "h:mm a")}
                                     {subEnd && (
@@ -1056,6 +1056,7 @@ export default function TimerPage() {
                                       </>
                                     )}
                                   </span>
+                                  <span className="opacity-40">·</span>
                                   <span className="text-[var(--text-forest)] font-semibold">
                                     {formatDuration(subDur)}
                                   </span>
