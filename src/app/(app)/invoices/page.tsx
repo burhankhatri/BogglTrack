@@ -6,6 +6,8 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Clock,
   Download,
   ArrowLeft,
 } from "lucide-react";
@@ -50,6 +52,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { formatCurrency, formatDuration } from "@/lib/earnings";
 import { generateInvoicePDF, type InvoicePDFData } from "@/lib/invoice-pdf";
 import { useAppStore } from "@/stores/app-store";
+import { groupPreviewEntriesByDay } from "./invoice-grouping-helpers";
 
 // ---- Types ----
 
@@ -69,6 +72,8 @@ interface PreviewEntry {
   billable: boolean;
   earnings: number;
   rate: number;
+  projectId: string | null;
+  tags: { tagId: string }[];
   commits?: InvoiceCommit[] | null;
   project: {
     id: string;
@@ -145,6 +150,17 @@ export default function InvoicesPage() {
   const [entries, setEntries] = useState<PreviewEntry[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loadingEntries, setLoadingEntries] = useState(false);
+  // Expanded grouped rows in the Step 1 entry table. Keyed on the stable
+  // composite merge key so re-fetches don't collapse open rows.
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const toggleGroupExpanded = useCallback((mergeKey: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(mergeKey)) next.delete(mergeKey);
+      else next.add(mergeKey);
+      return next;
+    });
+  }, []);
 
   // Scenario 5 — invoice draft auto-persist. A browser crash mid-draft used
   // to wipe every field. Now the form state writes to localStorage and
@@ -430,6 +446,24 @@ export default function InvoicesPage() {
     } else {
       setSelectedIds(new Set(entries.map((e) => e.id)));
     }
+  };
+
+  // Group entries by same-day + identical description/project/billable/tags
+  // so the Step 1 table shows one row per unit of work instead of one row
+  // per timer session.
+  const groupedRows = useMemo(() => groupPreviewEntriesByDay(entries), [entries]);
+
+  // Toggle every entry inside a grouped row together.
+  const toggleGroup = (mergeKey: string) => {
+    const row = groupedRows.find((r) => r.mergeKey === mergeKey);
+    if (!row) return;
+    const allSelected = row.entries.every((e) => selectedIds.has(e.id));
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allSelected) row.entries.forEach((e) => next.delete(e.id));
+      else row.entries.forEach((e) => next.add(e.id));
+      return next;
+    });
   };
 
   // Build line items when entering step 2.
@@ -918,37 +952,101 @@ export default function InvoicesPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {entries.map((e) => (
-                      <TableRow key={e.id} className={selectedIds.has(e.id) ? "bg-[var(--accent-teal)]/5" : ""}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedIds.has(e.id)}
-                            onCheckedChange={() => toggleEntry(e.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="text-sm">{format(new Date(e.startTime), "MMM d")}</TableCell>
-                        <TableCell className="text-sm max-w-[200px] truncate">{e.description || "(no description)"}</TableCell>
-                        <TableCell>
-                          {e.project ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: e.project.color }} />
-                              <span className="text-sm truncate">{e.project.name}</span>
-                            </div>
-                          ) : (
-                            <span className="text-[var(--text-olive)] text-sm">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono tabular-nums text-sm">
-                          {formatDuration(e.duration || 0)}
-                        </TableCell>
-                        <TableCell className="text-right text-sm">
-                          {currSymbol}{e.rate.toFixed(2)}/h
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-[var(--accent-teal)] text-sm">
-                          {formatCurrency(e.earnings, currSymbol)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {groupedRows.map((row) => {
+                      const first = row.entries[0];
+                      const isMerged = row.entries.length > 1;
+                      const isExpanded = expandedGroups.has(row.mergeKey);
+                      const selectedInGroup = row.entries.filter((e) => selectedIds.has(e.id)).length;
+                      const allSelected = selectedInGroup === row.entries.length;
+                      const someSelected = selectedInGroup > 0 && !allSelected;
+                      const sharedRate = first.rate;
+                      return (
+                        <React.Fragment key={row.mergeKey}>
+                          <TableRow className={allSelected ? "bg-[var(--accent-teal)]/5" : someSelected ? "bg-[var(--accent-teal)]/[0.03]" : ""}>
+                            <TableCell>
+                              <Checkbox
+                                checked={allSelected}
+                                ref={(el: HTMLInputElement | null) => {
+                                  if (el) el.indeterminate = someSelected;
+                                }}
+                                onCheckedChange={() => toggleGroup(row.mergeKey)}
+                              />
+                            </TableCell>
+                            <TableCell className="text-sm">{format(new Date(first.startTime), "MMM d")}</TableCell>
+                            <TableCell className="text-sm max-w-[260px]">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="truncate">{first.description || "(no description)"}</span>
+                                {isMerged && (
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleGroupExpanded(row.mergeKey)}
+                                    aria-expanded={isExpanded}
+                                    aria-label={`${isExpanded ? "Hide" : "Show"} ${row.entries.length} merged entries`}
+                                    className="inline-flex items-center gap-1 text-[11px] font-medium text-[var(--text-olive)] bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] hover:text-[var(--text-forest)] px-2 py-0.5 rounded-full transition-colors shrink-0"
+                                  >
+                                    <ChevronDown
+                                      className={`h-3 w-3 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                    />
+                                    {row.entries.length}
+                                  </button>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {first.project ? (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="size-2 rounded-full shrink-0" style={{ backgroundColor: first.project.color }} />
+                                  <span className="text-sm truncate">{first.project.name}</span>
+                                </div>
+                              ) : (
+                                <span className="text-[var(--text-olive)] text-sm">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right font-mono tabular-nums text-sm">
+                              {formatDuration(row.totalDuration)}
+                            </TableCell>
+                            <TableCell className="text-right text-sm">
+                              {currSymbol}{sharedRate.toFixed(2)}/h
+                            </TableCell>
+                            <TableCell className="text-right font-medium text-[var(--accent-teal)] text-sm">
+                              {formatCurrency(row.totalEarnings, currSymbol)}
+                            </TableCell>
+                          </TableRow>
+                          {isMerged && isExpanded && row.entries.map((sub) => {
+                            const subStart = new Date(sub.startTime);
+                            const subDur = sub.duration ?? 0;
+                            return (
+                              <TableRow
+                                key={sub.id}
+                                className={`bg-[var(--bg-muted)]/25 ${selectedIds.has(sub.id) ? "bg-[var(--accent-teal)]/5" : ""}`}
+                              >
+                                <TableCell className="pl-10">
+                                  <Checkbox
+                                    checked={selectedIds.has(sub.id)}
+                                    onCheckedChange={() => toggleEntry(sub.id)}
+                                  />
+                                </TableCell>
+                                <TableCell className="text-[12px] text-[var(--text-olive)]" colSpan={3}>
+                                  <span className="inline-flex items-center gap-2">
+                                    <Clock className="h-3 w-3 opacity-50" />
+                                    <span className="tabular-nums">{format(subStart, "h:mm a")}</span>
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right font-mono tabular-nums text-[12px] text-[var(--text-olive)]">
+                                  {formatDuration(subDur)}
+                                </TableCell>
+                                <TableCell className="text-right text-[12px] text-[var(--text-olive)]">
+                                  {currSymbol}{sub.rate.toFixed(2)}/h
+                                </TableCell>
+                                <TableCell className="text-right font-medium text-[var(--text-olive)] text-[12px]">
+                                  {formatCurrency(sub.earnings, currSymbol)}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </React.Fragment>
+                      );
+                    })}
                     {entries.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={7} className="text-center text-[var(--text-olive)] py-8">
