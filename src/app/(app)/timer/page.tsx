@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import {
   Play,
   Pencil,
@@ -10,6 +10,7 @@ import {
   DollarSign,
   Sparkles,
   ChevronDown,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -104,6 +105,91 @@ interface DayGroup {
 // ---------------------------------------------------------------------------
 const NO_PROJECT = "__none__";
 const EMPTY_PROJECTS: Project[] = [];
+
+// ---------------------------------------------------------------------------
+// Kebab menu — Edit / Delete actions for a time entry row
+// ---------------------------------------------------------------------------
+
+function EntryActionsMenu({
+  onEdit,
+  onDelete,
+  size = "md",
+}: {
+  onEdit: () => void;
+  onDelete: () => void;
+  size?: "sm" | "md";
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const btnSize = size === "sm" ? "h-7 w-7" : "h-9 w-9";
+  const iconSize = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        aria-label="More actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        className={`${btnSize} text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors`}
+      >
+        <MoreVertical className={iconSize} />
+      </button>
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-[calc(100%+4px)] z-30 w-36 rounded-[var(--radius-md)] bg-[var(--bg-cream)] shadow-[var(--shadow-dropdown)] border border-[var(--border-subtle)] py-1 animate-in fade-in-0 zoom-in-95 duration-100"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onEdit();
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center gap-2 text-[13px] text-[var(--text-forest)] hover:bg-[var(--bg-muted)] transition-colors"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            Edit
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              onDelete();
+            }}
+            className="w-full px-3 py-1.5 text-left flex items-center gap-2 text-[13px] text-[var(--accent-coral)] hover:bg-[var(--accent-coral)]/10 transition-colors"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -721,23 +807,11 @@ export default function TimerPage() {
                             </div>
 
                             <div className="flex items-center gap-1.5 ml-2">
-                              {/* Hover actions (edit/delete) */}
-                              <div className="flex items-center gap-1.5 transition-opacity opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                                <button
-                                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
-                                  onClick={() => startEditing(entry)}
-                                  title="Edit"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </button>
-                                <button
-                                  className="h-9 w-9 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
-                                  onClick={() => setDeletingId(entry.id)}
-                                  title="Delete"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
+                              {/* Kebab menu — Edit / Delete */}
+                              <EntryActionsMenu
+                                onEdit={() => startEditing(entry)}
+                                onDelete={() => setDeletingId(entry.id)}
+                              />
 
                               {/* Play Button */}
                               <button
@@ -792,22 +866,12 @@ export default function TimerPage() {
                                     {formatDuration(subDur)}
                                   </span>
                                 </div>
-                                <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity">
-                                  <button
-                                    className="h-7 w-7 text-[var(--text-olive)] hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
-                                    onClick={() => startEditing(sub)}
-                                    title="Edit this entry"
-                                  >
-                                    <Pencil className="h-3.5 w-3.5" />
-                                  </button>
-                                  <button
-                                    className="h-7 w-7 text-[var(--text-olive)] hover:bg-[var(--accent-coral)]/10 hover:text-[var(--accent-coral)] rounded-[var(--radius-md)] flex items-center justify-center transition-colors"
-                                    onClick={() => setDeletingId(sub.id)}
-                                    title="Delete this entry"
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </button>
-                                </div>
+                                <EntryActionsMenu
+                                  size="sm"
+                                  onEdit={() => startEditing(sub)}
+                                  onDelete={() => setDeletingId(sub.id)}
+                                />
+
                               </div>
                             );
                           })}
