@@ -350,6 +350,23 @@ export function GlobalTimerBar() {
       );
       setAddOpen(false);
       resetAddForm();
+
+      // Auto-link GitHub commits in the background — matches the auto-attach
+      // behaviour that handleStop already has for running timers, so manual
+      // entries for past work get commits without any extra click. Silent on
+      // failure (no GitHub account, network hiccup) — we just skip the link.
+      void fetch(`/api/time-entries/${entry.id}/fetch-commits`, {
+        method: "POST",
+      })
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data?.entry) {
+            window.dispatchEvent(
+              new CustomEvent("timer-entry-confirmed", { detail: data.entry })
+            );
+          }
+        })
+        .catch(() => {});
     } catch {
       toast.error("Failed to add entry");
     } finally {

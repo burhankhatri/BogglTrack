@@ -19,6 +19,8 @@ import {
   isSameDay,
   isToday,
   isYesterday,
+  startOfWeek,
+  subDays,
 } from "date-fns";
 
 import { Button } from "@/components/ui/button";
@@ -294,6 +296,79 @@ export default function TimerPage() {
       window.removeEventListener("timer-entry-failed", handleFailed);
     };
   }, [fetchEntries, storeEntries]);
+
+  // ---------------------------------------------------------------------------
+  // Background commit sync — keeps GitHub commits attached to entries in
+  // near-real-time. The stop-timer endpoint already auto-attaches commits for
+  // running timers; this closes the gap for:
+  //   • manual entries created while the tab is open
+  //   • commits pushed after an entry was stopped/saved
+  //
+  // Strategy: on mount do a 7-day backfill (catches anything missed while the
+  // tab was closed), then every 10 min sweep the last 24h. Also runs when the
+  // tab regains focus. onlyMissing:true means we skip entries that already
+  // have commits — the endpoint and GitHub API cost stay bounded.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    let cancelled = false;
+    let ghConnected: boolean | null = null;
+
+    async function runSync(days: number) {
+      if (cancelled) return;
+      if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+        return;
+      }
+      if (ghConnected === null) {
+        try {
+          const res = await fetch("/api/github/status");
+          const data = res.ok ? await res.json() : null;
+          ghConnected = Boolean(data?.connected);
+        } catch {
+          ghConnected = false;
+        }
+      }
+      if (!ghConnected) return;
+
+      const from =
+        days >= 7
+          ? startOfWeek(new Date(), { weekStartsOn: 1 }).toISOString()
+          : subDays(new Date(), days).toISOString();
+      const to = new Date().toISOString();
+      try {
+        const res = await fetch("/api/time-entries/backfill-commits", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ from, to, onlyMissing: true }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled && data.updated > 0) {
+          await fetchEntries();
+        }
+      } catch {
+        // Silent — a failed sweep is harmless, next tick will try again.
+      }
+    }
+
+    // First sweep after initial load settles
+    const initTimer = setTimeout(() => runSync(7), 2500);
+
+    // Recurring sweep — narrow 24h window is enough for most cases
+    const interval = setInterval(() => runSync(1), 10 * 60 * 1000);
+
+    // Catch commits pushed while the tab was hidden
+    const onVis = () => {
+      if (document.visibilityState === "visible") runSync(1);
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(initTimer);
+      clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [fetchEntries]);
 
   // ---------------------------------------------------------------------------
   // Grouping entries by day
