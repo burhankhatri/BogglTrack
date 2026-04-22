@@ -5,10 +5,8 @@ import {
   Play,
   Pencil,
   Trash2,
-  Plus,
   Clock,
   Check,
-  X,
   DollarSign,
   Sparkles,
   ChevronDown,
@@ -17,7 +15,6 @@ import { toast } from "sonner";
 import {
   format,
   parseISO,
-  startOfWeek,
   isSameDay,
   isToday,
   isYesterday,
@@ -28,27 +25,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
-} from "@/components/ui/tabs";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import { DatePickerField } from "@/components/ui/date-picker-field";
 import { EntryCommits } from "@/components/ui/entry-commits";
-import { BackfillCommitsButton } from "@/components/timer/backfill-commits-button";
-import { FirstRunChecklist } from "@/components/timer/first-run-checklist";
 import { draftDescriptionFromCommits } from "@/lib/github/description";
 
 import { useAppStore } from "@/stores/app-store";
@@ -120,7 +104,6 @@ interface DayGroup {
 // ---------------------------------------------------------------------------
 const NO_PROJECT = "__none__";
 const EMPTY_PROJECTS: Project[] = [];
-const EMPTY_TAGS: Tag[] = [];
 
 // ---------------------------------------------------------------------------
 // Page Component
@@ -131,32 +114,9 @@ export default function TimerPage() {
   const storeEntries = useAppStore((s) => s.timerEntries.data);
   const [entries, setEntries] = useState<TimeEntry[]>(storeEntries ?? []);
   const projects = (useAppStore((s) => s.projects.data) as Project[] | null) ?? EMPTY_PROJECTS;
-  const tags = (useAppStore((s) => s.tags.data) as Tag[] | null) ?? EMPTY_TAGS;
   const settingsData = useAppStore((s) => s.settings.data);
   const userDefaultRate = settingsData?.defaultHourlyRate ?? 0;
-  const [weeklyHours, setWeeklyHours] = useState(0);
-  const [weeklyEarnings, setWeeklyEarnings] = useState(0);
-  const [hasGithub, setHasGithub] = useState(true); // default true so the step doesn't flash before status resolves
-  const storeLoading = useAppStore((s) => s.timerEntries.loading);
   const [loading, setLoading] = useState(!storeEntries);
-
-  // Manual entry form state
-  const [manualStartDate, setManualStartDate] = useState(
-    format(new Date(), "yyyy-MM-dd")
-  );
-  const [manualEndDate, setManualEndDate] = useState(
-    format(new Date(), "yyyy-MM-dd")
-  );
-  // Has the user explicitly picked an end date? Until they do, the end date
-  // mirrors whatever they set the start date to, so same-day entries are
-  // a single click.
-  const [manualEndDateTouched, setManualEndDateTouched] = useState(false);
-  const [manualStartTime, setManualStartTime] = useState("09:00");
-  const [manualEndTime, setManualEndTime] = useState("10:00");
-  const [manualDescription, setManualDescription] = useState("");
-  const [manualProjectId, setManualProjectId] = useState<string>(NO_PROJECT);
-  const [manualBillable, setManualBillable] = useState(true);
-  const [manualSubmitting, setManualSubmitting] = useState(false);
 
   // Inline editing state
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -191,26 +151,6 @@ export default function TimerPage() {
   // Data fetching
   // ---------------------------------------------------------------------------
 
-  // Compute weekly summary from entries (no separate API call)
-  const computeWeeklySummary = useCallback(
-    (entryList: TimeEntry[], rate: number) => {
-      const now = new Date();
-      const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-      let totalSec = 0;
-      let totalEarn = 0;
-      for (const e of entryList) {
-        if (e.duration && new Date(e.startTime) >= weekStart) {
-          totalSec += e.duration;
-          const r = getApplicableRate(e.project?.hourlyRate ?? null, rate);
-          totalEarn += calculateEarnings(e.duration, r, e.billable);
-        }
-      }
-      setWeeklyHours(totalSec / 3600);
-      setWeeklyEarnings(totalEarn);
-    },
-    []
-  );
-
   const fetchEntries = useCallback(async () => {
     try {
       const data = await useAppStore.getState().fetchTimerEntries(true);
@@ -227,23 +167,13 @@ export default function TimerPage() {
     async function init() {
       if (!storeEntries) setLoading(true);
       try {
-        const [, , settingsResult, entriesResult] = await Promise.all([
+        const [, , , entriesResult] = await Promise.all([
           appStore.fetchProjects(),
           appStore.fetchTags(),
           appStore.fetchSettings(),
           appStore.fetchTimerEntries(),
         ]);
         setEntries(entriesResult);
-        const rate = settingsResult?.defaultHourlyRate ?? 0;
-        computeWeeklySummary(entriesResult, rate);
-        // GitHub status drives the onboarding checklist's third step.
-        // Fire-and-forget: don't block the initial render on it.
-        fetch("/api/github/status")
-          .then((r) => (r.ok ? r.json() : null))
-          .then((data) => {
-            if (data) setHasGithub(Boolean(data.connected));
-          })
-          .catch(() => {});
       } catch {
         toast.error("Failed to load data");
       } finally {
@@ -256,28 +186,13 @@ export default function TimerPage() {
     const handleCompleted = (e: Event) => {
       const entry = (e as CustomEvent).detail;
       setEntries((prev) => [entry, ...prev]);
-      if (entry.duration) {
-        setWeeklyHours((prev) => prev + entry.duration / 3600);
-        const rate = getApplicableRate(
-          entry.project?.hourlyRate ?? null,
-          useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
-        );
-        const earn = calculateEarnings(entry.duration, rate, entry.billable);
-        setWeeklyEarnings((prev) => prev + earn);
-      }
     };
     const handleConfirmed = (e: Event) => {
       const confirmed = (e as CustomEvent).detail;
       setEntries((prev) =>
         prev.map((entry) => (entry.id === confirmed.id ? confirmed : entry))
       );
-      // Re-fetch entries and recompute weekly summary
-      fetchEntries().then((data) => {
-        computeWeeklySummary(
-          data,
-          useAppStore.getState().settings.data?.defaultHourlyRate ?? 0
-        );
-      });
+      fetchEntries();
     };
     const handleFailed = (e: Event) => {
       const { id } = (e as CustomEvent).detail;
@@ -292,7 +207,7 @@ export default function TimerPage() {
       window.removeEventListener("timer-entry-confirmed", handleConfirmed);
       window.removeEventListener("timer-entry-failed", handleFailed);
     };
-  }, [fetchEntries, computeWeeklySummary]);
+  }, [fetchEntries, storeEntries]);
 
   // ---------------------------------------------------------------------------
   // Grouping entries by day
@@ -342,88 +257,6 @@ export default function TimerPage() {
   }
 
   const dayGroups = groupByDay(entries);
-
-  // Until the user explicitly picks an end date, the end date mirrors the
-  // start date — keeps same-day entries a single click while still letting
-  // them split the dates for overnight or multi-day entries.
-  function handleManualStartDateChange(nextDate: string) {
-    setManualStartDate(nextDate);
-    if (!manualEndDateTouched) {
-      setManualEndDate(nextDate);
-    }
-  }
-
-  function handleManualEndDateChange(nextDate: string) {
-    setManualEndDate(nextDate);
-    setManualEndDateTouched(true);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Manual entry submission
-  // ---------------------------------------------------------------------------
-
-  async function handleManualAdd() {
-    if (
-      !manualStartDate ||
-      !manualStartTime ||
-      !manualEndDate ||
-      !manualEndTime
-    ) {
-      toast.error("Please fill in start date, start time, end date, and end time");
-      return;
-    }
-
-    const resolved = buildExplicitRange(
-      manualStartDate,
-      manualStartTime,
-      manualEndDate,
-      manualEndTime
-    );
-    if (!resolved.ok) {
-      toast.error(resolved.error);
-      return;
-    }
-
-    setManualSubmitting(true);
-    try {
-      const res = await fetch("/api/time-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: manualDescription,
-          startTime: resolved.startISO,
-          endTime: resolved.endISO,
-          projectId:
-            manualProjectId === NO_PROJECT ? null : manualProjectId,
-          billable: manualBillable,
-          tagIds: [],
-        }),
-      });
-
-      if (!res.ok) {
-        toast.error("Failed to create entry");
-        return;
-      }
-
-      toast.success("Time entry added");
-      setManualDescription("");
-      setManualStartTime("09:00");
-      setManualEndTime("10:00");
-      const today = format(new Date(), "yyyy-MM-dd");
-      setManualStartDate(today);
-      setManualEndDate(today);
-      setManualEndDateTouched(false);
-      setManualProjectId(NO_PROJECT);
-      setManualBillable(true);
-
-      const refreshed = await fetchEntries();
-      computeWeeklySummary(refreshed, userDefaultRate);
-    } catch {
-      toast.error("Failed to create entry");
-    } finally {
-      setManualSubmitting(false);
-    }
-  }
 
   // ---------------------------------------------------------------------------
   // Inline edit
@@ -497,8 +330,7 @@ export default function TimerPage() {
 
       toast.success("Entry updated");
       setEditingId(null);
-      const refreshed = await fetchEntries();
-      computeWeeklySummary(refreshed, userDefaultRate);
+      await fetchEntries();
     } catch {
       toast.error("Failed to update entry");
     }
@@ -525,8 +357,7 @@ export default function TimerPage() {
 
       toast.success("Entry deleted");
       setDeletingId(null);
-      const refreshed = await fetchEntries();
-      computeWeeklySummary(refreshed, userDefaultRate);
+      await fetchEntries();
     } catch {
       toast.error("Failed to delete entry");
     }
@@ -578,179 +409,6 @@ export default function TimerPage() {
 
   return (
     <div className="mx-auto max-w-[900px] px-4 py-8 md:pt-10 space-y-10">
-      <FirstRunChecklist
-        hasProjects={projects.length > 0}
-        hasRate={userDefaultRate > 0}
-        hasGithub={hasGithub}
-      />
-      {/* Page header — acts as a real page header, not a twin of the entry rows */}
-      <header className="flex items-end justify-between gap-6 px-1">
-        <div>
-          <h1 className="font-sans text-[28px] md:text-[32px] font-semibold tracking-tight text-[var(--text-forest)] leading-none">
-            Timer
-          </h1>
-          <p className="mt-1.5 text-[13px] text-[var(--text-olive)]">
-            Track time as you work. Entries are saved automatically.
-          </p>
-          <div className="mt-3">
-            <BackfillCommitsButton onComplete={() => fetchEntries()} />
-          </div>
-        </div>
-        <div className="flex items-baseline gap-5 tabular-nums shrink-0">
-          <div className="text-right">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-olive)]">
-              This week
-            </p>
-            <p className="mt-0.5 text-[20px] md:text-[22px] font-semibold text-[var(--text-forest)]">
-              {weeklyHours.toFixed(1)}h
-            </p>
-          </div>
-          {weeklyEarnings > 0 && (
-            <div className="text-right">
-              <p className="text-[10px] font-medium uppercase tracking-wide text-[var(--text-olive)]">
-                Earned
-              </p>
-              <p className="mt-0.5 text-[20px] md:text-[22px] font-semibold text-[var(--text-forest)]">
-                {formatCurrency(weeklyEarnings)}
-              </p>
-            </div>
-          )}
-        </div>
-      </header>
-
-      {/* Track / Add-entry tabs — clearer verbs than "Timer / Manual" */}
-      <Tabs defaultValue="timer" className="w-full relative z-10 lg:px-0">
-        <TabsList className="bg-[var(--bg-muted)] h-10 p-1 gap-1 border border-transparent rounded-full w-full max-w-[360px]">
-          <TabsTrigger value="timer" className="rounded-full w-1/2 data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:shadow-sm font-medium text-[13px] transition-colors">
-            Track
-          </TabsTrigger>
-          <TabsTrigger value="manual" className="rounded-full w-1/2 text-[var(--text-olive)] data-[state=active]:text-[var(--text-forest)] data-[state=active]:bg-[var(--bg-cream)] data-[state=active]:shadow-sm font-medium text-[13px] transition-colors">
-            Add entry
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="timer">
-        </TabsContent>
-
-        <TabsContent value="manual" className="mt-6">
-          <Card className="px-6 py-6 space-y-5 shadow-[var(--shadow-card)] border border-[var(--border-subtle)] bg-[var(--bg-cream)] rounded-[var(--radius-xl)]">
-            {/* Description — big, but padded properly so text doesn't kiss the focus border */}
-            <div>
-              <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                What did you work on?
-              </label>
-              <Input
-                placeholder="Describe the work…"
-                value={manualDescription}
-                onChange={(e) => setManualDescription(e.target.value)}
-                className="w-full h-12 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[15px] font-medium px-4 focus-visible:bg-[var(--bg-cream)] focus-visible:border-[var(--accent-olive)]"
-              />
-            </div>
-
-            {/* Start date / Start time / End date / End time row.
-                Four fields laid out as 2x2 on narrow screens and 1x4 on md+
-                so neither the date triggers nor the time pickers squish. */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-              <div>
-                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  Start date
-                </label>
-                <DatePickerField
-                  value={manualStartDate}
-                  onChange={handleManualStartDateChange}
-                  size="md"
-                  displayFormat="MMM d, yyyy"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  Start time
-                </label>
-                <Input
-                  type="time"
-                  value={manualStartTime}
-                  onChange={(e) => setManualStartTime(e.target.value)}
-                  className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-10 font-sans text-sm tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  End date
-                </label>
-                <DatePickerField
-                  value={manualEndDate}
-                  onChange={handleManualEndDateChange}
-                  size="md"
-                  displayFormat="MMM d, yyyy"
-                />
-              </div>
-              <div>
-                <label className="text-[12px] font-medium text-[var(--text-olive)] mb-2 block uppercase tracking-wide">
-                  End time
-                </label>
-                <Input
-                  type="time"
-                  value={manualEndTime}
-                  onChange={(e) => setManualEndTime(e.target.value)}
-                  className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-10 font-sans text-sm tabular-nums hover:bg-[var(--bg-cream-hover)] transition-colors"
-                />
-              </div>
-            </div>
-
-            {/* Project / Billable row */}
-            <div className="flex items-end gap-4 pt-2">
-              <div className="flex-1">
-                <label className="text-[13px] font-medium text-[var(--text-olive)] mb-2 block">
-                  Project
-                </label>
-                <Select
-                  value={manualProjectId}
-                  onValueChange={(v: string) => v && setManualProjectId(v)}
-                >
-                  <SelectTrigger className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-lg)] h-10">
-                    <SelectValue placeholder="No project" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NO_PROJECT}>No project</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="h-2.5 w-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: p.color }}
-                          />
-                          {p.name}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <Button
-                variant={manualBillable ? "default" : "outline"}
-                size="sm"
-                className={`shrink-0 gap-1.5 h-10 rounded-[var(--radius-lg)] ${manualBillable ? "bg-[var(--accent-olive)] text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] shadow-sm" : "border-[var(--border-subtle)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"}`}
-                onClick={() => setManualBillable(!manualBillable)}
-              >
-                <DollarSign className="h-4 w-4" />
-                {manualBillable ? "Billable" : "Non-billable"}
-              </Button>
-            </div>
-
-            {/* Submit */}
-            <Button
-              className="w-full h-[46px] rounded-full bg-[var(--text-forest)] text-[var(--text-cream)] hover:bg-[var(--text-forest)]/90 shadow-sm mt-4 text-[15px] font-medium"
-              onClick={handleManualAdd}
-              disabled={manualSubmitting}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {manualSubmitting ? "Adding..." : "Add Time Entry"}
-            </Button>
-          </Card>
-        </TabsContent>
-      </Tabs>
-
       {/* Time entry list grouped by day */}
       <div className="space-y-8 lg:px-0">
         {dayGroups.length === 0 && (

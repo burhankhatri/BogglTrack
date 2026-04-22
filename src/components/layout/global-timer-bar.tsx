@@ -9,13 +9,27 @@ import {
   Loader2,
   ChevronDown,
   Check,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
 
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { DatePickerField } from "@/components/ui/date-picker-field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useTimerStore } from "@/stores/timer-store";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
+import { buildExplicitRange } from "@/app/(app)/timer/timestamp-helpers";
+
+const NO_PROJECT = "__none__";
 
 function formatElapsed(totalSeconds: number): string {
   const hours = Math.floor(totalSeconds / 3600);
@@ -43,6 +57,30 @@ export function GlobalTimerBar() {
   const projectMenuRef = useRef<HTMLDivElement>(null);
   const projectFilterInputRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Manual "add entry" popover state — a lightweight editor for entering a
+  // past block of time without touching the running timer.
+  const todayYMD = format(new Date(), "yyyy-MM-dd");
+  const [addOpen, setAddOpen] = useState(false);
+  const [addDescription, setAddDescription] = useState("");
+  const [addStartDate, setAddStartDate] = useState(todayYMD);
+  const [addStartTime, setAddStartTime] = useState("09:00");
+  const [addEndDate, setAddEndDate] = useState(todayYMD);
+  const [addEndTime, setAddEndTime] = useState("10:00");
+  const [addProjectId, setAddProjectId] = useState<string>(NO_PROJECT);
+  const [addBillable, setAddBillable] = useState(true);
+  const [addSubmitting, setAddSubmitting] = useState(false);
+
+  const resetAddForm = useCallback(() => {
+    const t = format(new Date(), "yyyy-MM-dd");
+    setAddDescription("");
+    setAddStartDate(t);
+    setAddStartTime("09:00");
+    setAddEndDate(t);
+    setAddEndTime("10:00");
+    setAddProjectId(NO_PROJECT);
+    setAddBillable(true);
+  }, []);
 
   const {
     isRunning,
@@ -269,6 +307,64 @@ export function GlobalTimerBar() {
         toast.error("Failed to start timer");
       });
   }, [description, projectId, billable, projects, startTimer, setEntryId, stopTimer]);
+
+  const handleManualAdd = useCallback(async () => {
+    if (!addStartDate || !addStartTime || !addEndDate || !addEndTime) {
+      toast.error("Fill in start and end date & time");
+      return;
+    }
+    const resolved = buildExplicitRange(
+      addStartDate,
+      addStartTime,
+      addEndDate,
+      addEndTime
+    );
+    if (!resolved.ok) {
+      toast.error(resolved.error);
+      return;
+    }
+    setAddSubmitting(true);
+    try {
+      const res = await fetch("/api/time-entries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: addDescription,
+          startTime: resolved.startISO,
+          endTime: resolved.endISO,
+          projectId: addProjectId === NO_PROJECT ? null : addProjectId,
+          billable: addBillable,
+          tagIds: [],
+        }),
+      });
+      if (!res.ok) {
+        toast.error("Failed to add entry");
+        return;
+      }
+      const entry = await res.json();
+      toast.success("Entry added");
+      // Feed the timer page's list the same way handleStop does, so the new
+      // entry appears instantly without a refetch.
+      window.dispatchEvent(
+        new CustomEvent("timer-entry-completed", { detail: entry })
+      );
+      setAddOpen(false);
+      resetAddForm();
+    } catch {
+      toast.error("Failed to add entry");
+    } finally {
+      setAddSubmitting(false);
+    }
+  }, [
+    addDescription,
+    addStartDate,
+    addStartTime,
+    addEndDate,
+    addEndTime,
+    addProjectId,
+    addBillable,
+    resetAddForm,
+  ]);
 
   const handleStop = useCallback(() => {
     if (!entryId) return;
@@ -567,8 +663,159 @@ export function GlobalTimerBar() {
               <Play className="h-4 w-4 ml-[1px] fill-current" />
             )}
           </button>
+
+          {/* Add manual entry — opens an inline editor beneath the timer bar */}
+          <button
+            type="button"
+            aria-label="Add manual time entry"
+            aria-expanded={addOpen}
+            title="Add a past time entry"
+            onClick={() => {
+              setAddOpen((o) => {
+                const next = !o;
+                if (!next) resetAddForm();
+                return next;
+              });
+            }}
+            className={cn(
+              "h-10 w-10 rounded-full inline-flex items-center justify-center transition-all shrink-0 bg-[var(--bg-muted)] text-[var(--text-forest)] hover:bg-[var(--bg-cream-hover)] border border-[var(--border-medium)]",
+              addOpen && "bg-[var(--bg-cream-hover)] ring-1 ring-[var(--accent-olive)]/40"
+            )}
+          >
+            <Plus className={cn("h-4 w-4 transition-transform", addOpen && "rotate-45")} />
+          </button>
         </div>
       </div>
+
+      {/* Manual-entry editor — expands inline below the timer bar so nothing
+          is ever clipped off-screen. Reuses the inline-edit row pattern. */}
+      {addOpen && (
+        <div className="mt-2 px-3 md:px-4 py-4 bg-[var(--bg-cream)] rounded-[var(--radius-lg)] border border-[var(--border-subtle)] shadow-[var(--shadow-card)] space-y-4">
+          <div>
+            <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+              What did you work on?
+            </label>
+            <Input
+              placeholder="Describe the work…"
+              value={addDescription}
+              onChange={(e) => setAddDescription(e.target.value)}
+              className="w-full h-10 bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] text-[14px] px-3 focus-visible:bg-[var(--bg-cream)] focus-visible:border-[var(--accent-olive)]"
+              autoFocus
+            />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+                Start date
+              </label>
+              <DatePickerField
+                value={addStartDate}
+                onChange={setAddStartDate}
+                size="sm"
+                displayFormat="MMM d, yyyy"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+                Start time
+              </label>
+              <Input
+                type="time"
+                value={addStartTime}
+                onChange={(e) => setAddStartTime(e.target.value)}
+                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 text-[13px] tabular-nums"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+                End date
+              </label>
+              <DatePickerField
+                value={addEndDate}
+                onChange={setAddEndDate}
+                size="sm"
+                displayFormat="MMM d, yyyy"
+              />
+            </div>
+            <div>
+              <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+                End time
+              </label>
+              <Input
+                type="time"
+                value={addEndTime}
+                onChange={(e) => setAddEndTime(e.target.value)}
+                className="bg-[var(--bg-muted)] border-transparent rounded-[var(--radius-md)] h-9 text-[13px] tabular-nums"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-4">
+            <div className="flex-1 md:max-w-[280px]">
+              <label className="text-[11px] font-medium text-[var(--text-olive)] mb-1.5 block uppercase tracking-wide">
+                Project
+              </label>
+              <Select
+                value={addProjectId}
+                onValueChange={(v: string) => v && setAddProjectId(v)}
+              >
+                <SelectTrigger className="bg-[var(--bg-muted)]/50 border-transparent rounded-[var(--radius-md)] h-9">
+                  <SelectValue placeholder="No project" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_PROJECT}>No project</SelectItem>
+                  {projects.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: p.color }}
+                        />
+                        {p.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setAddBillable(!addBillable)}
+              className={cn(
+                "h-9 inline-flex items-center justify-center gap-1.5 px-3 rounded-[var(--radius-md)] text-[12px] font-medium transition-colors shrink-0",
+                addBillable
+                  ? "bg-[var(--accent-olive-soft)] text-[var(--accent-olive-hover)]"
+                  : "bg-[var(--bg-muted)] text-[var(--text-olive)] hover:text-[var(--text-forest)]"
+              )}
+            >
+              <DollarSign className="h-3.5 w-3.5" />
+              {addBillable ? "Billable" : "Non-billable"}
+            </button>
+
+            <div className="flex items-center gap-2 md:ml-auto">
+              <Button
+                variant="ghost"
+                className="h-9 px-3 text-[13px] rounded-[var(--radius-md)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-muted)]"
+                onClick={() => {
+                  setAddOpen(false);
+                  resetAddForm();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90"
+                onClick={handleManualAdd}
+                disabled={addSubmitting}
+              >
+                {addSubmitting ? "Adding…" : "Add entry"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
