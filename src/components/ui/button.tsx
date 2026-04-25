@@ -15,9 +15,9 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           "inline-flex items-center justify-center whitespace-nowrap text-sm font-semibold transition-colors disabled:pointer-events-none disabled:opacity-50",
           {
-            "bg-[var(--accent-olive)] text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] shadow-sm":
+            "bg-[var(--accent-olive)] text-white hover:bg-[var(--accent-olive-hover)] shadow-sm":
               variant === "default",
-            "bg-[var(--accent-olive)] text-[var(--text-forest)] hover:bg-[var(--accent-olive-hover)] hover:scale-105 rounded-full shadow-sm":
+            "bg-[var(--accent-olive)] text-white hover:bg-[var(--accent-olive-hover)] hover:scale-105 rounded-full shadow-sm":
               variant === "icon",
             "hover:bg-[var(--bg-muted)] text-[var(--text-olive)] hover:text-[var(--text-forest)]":
               variant === "ghost",

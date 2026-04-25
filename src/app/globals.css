@@ -1,11 +1,11 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-/* Serif — for headings, page titles, branding */
-/* font-family: 'Lora', Georgia, serif; */
-/* Sans — for body, data, labels, UI */
-/* font-family: 'Inter', system-ui, sans-serif; */
-
+/* Typography — Apple HIG inspired.
+   SF Pro ships with macOS / iOS / iPadOS, so the `-apple-system` /
+   BlinkMacSystemFont tokens pick it up natively on Apple devices. Inter is
+   kept as a cross-platform fallback with similar metrics so non-Apple users
+   still get a clean sans. See DESIGN.md. */
 @theme inline {
   --font-sans: var(--font-inter);
   --font-serif: var(--font-lora);
@@ -13,95 +13,88 @@
 }
 
 :root {
-  /* Backgrounds — Cal.com Monochrome */
-  --bg-sage: #FFFFFF;           /* Page canvas — Pure White */
-  --bg-cream: #FFFFFF;          /* Cards, surfaces — Pure White */
-  --bg-cream-hover: #F9F9F9;    /* Card hover state */
-  --bg-muted: #F5F5F5;          /* Muted backgrounds, chips, dividers */
+  /* Backgrounds — Apple: page canvas is the soft blue-gray (#f5f5f7), cards
+     are pure white. Informational sections live on the canvas; surfaces rise
+     to white to read as "on top". */
+  --bg-sage: #F5F5F7;           /* Page canvas — Apple light gray */
+  --bg-cream: #FFFFFF;          /* Cards, surfaces */
+  --bg-cream-hover: #FAFAFC;    /* Subtle hover / filter button bg */
+  --bg-muted: #ECECEF;          /* Chips, inputs, inline dividers */
 
-  /* Text — Cal-inspired neutrals */
-  --text-forest: #242424;       /* Primary — Charcoal */
-  --text-olive: #898989;        /* Secondary — Mid Gray */
-  --text-cream: #FFFFFF;        /* Text on dark/accent */
-  --text-muted: #A1A1AA;        /* Tertiary — zero-state, tertiary labels */
+  /* Text — Apple's near-black with alpha-based secondary/tertiary so they
+     pick up whatever surface they sit on. */
+  --text-forest: #1D1D1F;                 /* Primary — Apple near-black */
+  --text-olive: rgba(0, 0, 0, 0.72);      /* Secondary */
+  --text-cream: #FFFFFF;                  /* Text on dark / accent surfaces */
+  --text-muted: rgba(0, 0, 0, 0.48);      /* Tertiary — captions, hints */
 
-  /* Accent — single restrained brand color (emerald), used sparingly */
-  --accent-olive: #059669;          /* Primary accent — running state, positive deltas */
-  --accent-olive-hover: #047857;    /* Accent hover / active */
-  --accent-olive-soft: #ECFDF5;     /* Accent background tint */
-  --accent-coral: #B91C1C;          /* Destructive — reserved for delete confirmations only */
-  --accent-gold: #D4D08E;           /* (legacy; kept for calendar blocks) */
-  --accent-teal: #059669;           /* Chart line (same as primary accent) */
+  /* Accent — Apple Blue is the only chromatic color in the interface.
+     `--accent-olive` naming is kept so we don't have to churn every call-site;
+     the value is Apple Blue. `--accent-coral` is Apple-style red for destructive. */
+  --accent-olive: #0071E3;                /* Apple Blue — primary CTA, focus */
+  --accent-olive-hover: #0077ED;          /* Slightly brighter on hover */
+  --accent-olive-soft: rgba(0, 113, 227, 0.10); /* Subtle blue tint */
+  --accent-coral: #D70015;                /* Apple systemRed — destructive */
+  --accent-gold: #D4D08E;                 /* (legacy; kept for calendar blocks) */
+  --accent-teal: #0071E3;                 /* Chart line — matches accent */
 
-  /* Borders — hairline shadow-rings */
-  --border-subtle: rgba(34, 42, 53, 0.08);
-  --border-medium: rgba(34, 42, 53, 0.12);
+  /* Borders — Apple uses borders sparingly; hairline alpha on black. */
+  --border-subtle: rgba(0, 0, 0, 0.06);
+  --border-medium: rgba(0, 0, 0, 0.12);
 
-  /* Ghost outline — large outlined display text (hero $ behind headline).
-     Tuned per theme so the stroke has equal presence in light and dark. */
-  --ghost-stroke: rgba(36, 36, 36, 0.22);
+  /* Ghost outline — large outlined display text (hero $ behind headline). */
+  --ghost-stroke: rgba(29, 29, 31, 0.18);
 
-  /* Shadows — Cal-inspired layered depth */
-  --shadow-card:
-    0 1px 5px -4px rgba(19, 19, 22, 0.7),
-    0 0 0 1px rgba(34, 42, 53, 0.08),
-    0 4px 8px rgba(34, 42, 53, 0.05);
-  --shadow-dropdown:
-    0 0 0 1px rgba(34, 42, 53, 0.08),
-    0 12px 32px rgba(19, 19, 22, 0.08),
-    0 4px 8px rgba(19, 19, 22, 0.04);
+  /* Shadows — Apple: one soft, diffused, wide-blur shadow or nothing at all.
+     `--shadow-card` is the base product-card lift; `--shadow-dropdown`
+     extends it with a touch of added blur for floating menus. */
+  --shadow-card: 0 3px 30px -5px rgba(0, 0, 0, 0.18);
+  --shadow-dropdown: 0 10px 40px -5px rgba(0, 0, 0, 0.22);
 
-  /* Radius */
+  /* Radius — aligned with Apple's standard scale. Pills live at 980px. */
   --radius-sm: 6px;
   --radius-md: 8px;
   --radius-lg: 12px;
   --radius-xl: 16px;
+  --radius-pill: 980px;
   --radius-full: 9999px;
 
-  /* Theme-aware color-scheme (affects native scrollbars, form controls) */
   color-scheme: light;
 }
 
-/* Dark theme — next-themes sets data-theme="dark" on <html>.
-   Using a data-attr selector avoids Tailwind v4's class-based dark-mode
-   tree-shaking, which otherwise strips plain `.dark { ... }` rules. */
+/* Dark theme — Apple: pure black canvas, soft near-black cards.
+   next-themes sets data-theme="dark" on <html>. Using a data-attr selector
+   avoids Tailwind v4's class-based dark-mode tree-shaking. */
 html[data-theme="dark"] {
-  /* Backgrounds — near-black canvas, subtle elevation for cards */
-  --bg-sage: #0A0A0B;           /* Page canvas — deepest */
-  --bg-cream: #18181B;          /* Cards, surfaces — one step up */
-  --bg-cream-hover: #232327;    /* Card hover */
-  --bg-muted: #27272A;          /* Chips, inputs, dividers */
+  /* Backgrounds — Apple's cinematic black for canvas, #1d1d1f for surfaces. */
+  --bg-sage: #000000;           /* Page canvas */
+  --bg-cream: #1D1D1F;          /* Cards, surfaces */
+  --bg-cream-hover: #272729;    /* Subtle hover */
+  --bg-muted: #2A2A2D;          /* Chips, inputs, dividers */
 
-  /* Text — inverted with enough contrast for readability */
-  --text-forest: #FAFAFA;       /* Primary — near-white */
-  --text-olive: #A1A1AA;        /* Secondary — neutral gray */
-  --text-cream: #18181B;        /* Text on light/accent backgrounds */
-  --text-muted: #71717A;        /* Tertiary — zero-state, tertiary labels */
+  /* Text — inverted with Apple's proportional opacity ladder. */
+  --text-forest: #F5F5F7;                 /* Primary — Apple near-white */
+  --text-olive: rgba(245, 245, 247, 0.72);/* Secondary */
+  --text-cream: #1D1D1F;                  /* Text on light / accent surfaces */
+  --text-muted: rgba(245, 245, 247, 0.48);/* Tertiary */
 
-  /* Accent — slightly brighter emerald reads better on dark */
-  --accent-olive: #10B981;
-  --accent-olive-hover: #34D399;
-  --accent-olive-soft: rgba(16, 185, 129, 0.12);
-  --accent-coral: #F87171;
+  /* Accent — Apple uses a brighter blue on dark backgrounds for contrast. */
+  --accent-olive: #2997FF;                /* Apple Blue (dark) */
+  --accent-olive-hover: #4DA7FF;
+  --accent-olive-soft: rgba(41, 151, 255, 0.16);
+  --accent-coral: #FF453A;                /* Apple systemRed (dark) */
   --accent-gold: #D4D08E;
-  --accent-teal: #10B981;
+  --accent-teal: #2997FF;
 
-  /* Borders — hairline, white-alpha instead of black-alpha */
+  /* Borders — white alpha hairlines. */
   --border-subtle: rgba(255, 255, 255, 0.08);
   --border-medium: rgba(255, 255, 255, 0.14);
 
-  /* Ghost outline — keep the luminous white-alpha reading on near-black. */
-  --ghost-stroke: rgba(255, 255, 255, 0.14);
+  --ghost-stroke: rgba(245, 245, 247, 0.18);
 
-  /* Shadows — deeper, longer to read on dark backgrounds */
-  --shadow-card:
-    0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 1px 2px rgba(0, 0, 0, 0.4),
-    0 1px 3px rgba(0, 0, 0, 0.3);
-  --shadow-dropdown:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 12px 32px rgba(0, 0, 0, 0.55),
-    0 4px 8px rgba(0, 0, 0, 0.35);
+  /* Shadows — Apple-dark is mostly shadow-less; a gentle lift for cards. */
+  --shadow-card: 0 3px 30px -5px rgba(0, 0, 0, 0.65);
+  --shadow-dropdown: 0 10px 40px -5px rgba(0, 0, 0, 0.75);
 
   color-scheme: dark;
 }
@@ -159,7 +152,36 @@ html, body { overflow-x: clip; }
   body {
     background-color: var(--bg-sage);
     color: var(--text-forest);
-    font-family: var(--font-inter), system-ui, sans-serif;
+    /* Apple: SF Pro on Apple devices (via -apple-system), Inter as a metric
+       compatible fallback everywhere else. Helvetica Neue is the historical
+       fallback Apple's own sites ship. */
+    font-family:
+      -apple-system,
+      BlinkMacSystemFont,
+      "SF Pro Text",
+      "SF Pro Display",
+      var(--font-inter),
+      "Helvetica Neue",
+      Helvetica,
+      Arial,
+      sans-serif;
+    /* Apple applies subtle negative tracking at every size. -0.01em is a
+       compromise that reads right on body without over-compressing labels. */
+    letter-spacing: -0.01em;
+    /* Enable SF Pro's text-size optical switching and better kerning where
+       the rendering engine supports it. */
+    font-feature-settings: "kern", "liga", "calt", "ss01";
+  }
+  /* Apple headlines are famously tight. Apply compressed line-height + slightly
+     harder negative tracking to display-scale text. Component-level overrides
+     still win where needed. */
+  h1, h2, h3, .apple-headline {
+    letter-spacing: -0.022em;
+    line-height: 1.08;
+  }
+  h4, h5, h6 {
+    letter-spacing: -0.018em;
+    line-height: 1.15;
   }
 }
 

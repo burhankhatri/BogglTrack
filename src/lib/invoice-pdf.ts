@@ -27,6 +27,7 @@ export interface InvoicePDFData {
   taxRate: number;
   taxAmount: number;
   total: number;
+  workSummary?: string | null;
   notes?: string | null;
   paymentTerms?: string | null;
 }
@@ -288,8 +289,8 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
 
   y += 16;
 
-  // --- NOTES & PAYMENT TERMS ---
-  if (data.notes || data.paymentTerms) {
+  // --- WORK SUMMARY, NOTES & PAYMENT TERMS ---
+  if (data.workSummary || data.notes || data.paymentTerms) {
     if (y > 250) {
       doc.addPage();
       y = margin;
@@ -300,6 +301,18 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     y += 8;
 
     doc.setFontSize(9);
+
+    if (data.workSummary) {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(...TEXT_SECONDARY);
+      doc.text("Work Summary", margin, y);
+      y += 5;
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(...TEXT_PRIMARY);
+      const summaryLines = doc.splitTextToSize(data.workSummary, contentWidth);
+      doc.text(summaryLines, margin, y);
+      y += summaryLines.length * 4 + 4;
+    }
 
     if (data.notes) {
       doc.setFont("helvetica", "bold");

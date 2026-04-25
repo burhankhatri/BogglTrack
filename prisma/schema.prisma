@@ -195,6 +195,7 @@ model Invoice {
   recipientName    String?
   recipientAddress String?
   recipientEmail   String?
+  workSummary      String?
   clientId         String?
   client           Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   userId           String

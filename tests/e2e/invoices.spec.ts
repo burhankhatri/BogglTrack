@@ -15,6 +15,29 @@ test.describe("Invoices — Smoke", () => {
       page.getByRole("heading", { name: "Sign in" }).or(page.getByRole("heading", { name: "Create Invoice" }))
     ).toBeVisible({ timeout: 15000 });
   });
+
+  test("work summary API keeps Groq behind authentication", async ({ request }) => {
+    const response = await request.post("/api/invoices/work-summary", {
+      data: {
+        entries: [
+          {
+            id: "entry-1",
+            description: "Build invoice summary",
+            projectName: "BogglTrack",
+            commits: [
+              {
+                sha: "abc123456789",
+                message: "Add invoice summary",
+                repo: "burhankhatri/BogglTrack",
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    expect(response.status()).toBe(401);
+  });
 });
 
 // --- Desktop Tests ---

@@ -75,6 +75,7 @@ export async function PATCH(
       "discountPercent", "discountAmount", "total", "notes", "paymentTerms",
       "senderName", "senderAddress", "senderEmail", "senderTaxId",
       "recipientName", "recipientAddress", "recipientEmail", "clientId",
+      "workSummary",
     ];
 
     const updateData: Record<string, unknown> = {};

@@ -55,7 +55,7 @@ const TabsTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttribut
         className={cn(
           "inline-flex items-center justify-center rounded-full px-6 py-2 text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50",
           isSelected 
-            ? "bg-[var(--accent-olive)] text-[var(--text-forest)] shadow-sm"
+            ? "bg-[var(--accent-olive)] text-white shadow-sm"
             : "text-[var(--text-olive)] hover:text-[var(--text-forest)]",
           className
         )}

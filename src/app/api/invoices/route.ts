@@ -69,6 +69,7 @@ export async function POST(request: NextRequest) {
         recipientName: body.recipientName || null,
         recipientAddress: body.recipientAddress || null,
         recipientEmail: body.recipientEmail || null,
+        workSummary: body.workSummary || null,
         clientId: body.clientId || null,
         userId: user.id,
         lineItems: {

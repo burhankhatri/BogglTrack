@@ -202,7 +202,7 @@ export default function CalendarPage() {
                         </div>
                         <button
                           onClick={() => resumeTimerOptimistic(group, userDefaultRate)}
-                          className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
+                          className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-white rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
                           title="Resume timer"
                         >
                           <Play className="h-[18px] w-[18px] fill-current ml-[2px]" />

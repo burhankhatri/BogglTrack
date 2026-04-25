@@ -4,7 +4,6 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from "react"
 import {
   CalendarIcon,
   Filter,
-  ChevronLeft,
   ChevronRight,
   ChevronDown,
   Clock,
@@ -48,11 +47,14 @@ import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-import { Toggle } from "@/components/ui/toggle";
 import { formatCurrency, formatDuration } from "@/lib/earnings";
 import { generateInvoicePDF, type InvoicePDFData } from "@/lib/invoice-pdf";
 import { useAppStore } from "@/stores/app-store";
 import { groupPreviewEntriesByDay } from "./invoice-grouping-helpers";
+import {
+  buildInvoiceSummaryEntries,
+  selectedEntriesHaveCommits,
+} from "./invoice-summary-payload";
 
 // ---- Types ----
 
@@ -180,6 +182,8 @@ export default function InvoicesPage() {
   const [discountPercent, setDiscountPercent] = useState(0);
   const [notes, setNotes] = useState("");
   const [paymentTerms, setPaymentTerms] = useState("");
+  const [workSummary, setWorkSummary] = useState<string | null>(null);
+  const [generatingSummary, setGeneratingSummary] = useState(false);
   const [senderName, setSenderName] = useState("");
   const [senderAddress, setSenderAddress] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
@@ -296,6 +300,7 @@ export default function InvoicesPage() {
           discountPercent,
           notes,
           paymentTerms,
+          workSummary,
           recipientName,
           recipientAddress,
           recipientEmail,
@@ -325,6 +330,7 @@ export default function InvoicesPage() {
     discountPercent,
     notes,
     paymentTerms,
+    workSummary,
     recipientName,
     recipientAddress,
     recipientEmail,
@@ -353,6 +359,7 @@ export default function InvoicesPage() {
       setDiscountPercent(d.discountPercent ?? 0);
       setNotes(d.notes ?? "");
       setPaymentTerms(d.paymentTerms ?? "");
+      setWorkSummary(d.workSummary ?? null);
       setRecipientName(d.recipientName ?? "");
       setRecipientAddress(d.recipientAddress ?? "");
       setRecipientEmail(d.recipientEmail ?? "");
@@ -579,7 +586,40 @@ export default function InvoicesPage() {
     setStep(2);
   };
 
-  const goToStep3 = () => setStep(3);
+  const generateWorkSummary = useCallback(async () => {
+    if (!selectedEntriesHaveCommits(selectedEntries)) {
+      setWorkSummary(null);
+      return null;
+    }
+
+    setGeneratingSummary(true);
+    try {
+      const res = await fetch("/api/invoices/work-summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entries: buildInvoiceSummaryEntries(selectedEntries),
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to generate work summary");
+      const data = (await res.json()) as { workSummary: string | null };
+      setWorkSummary(data.workSummary);
+      return data.workSummary;
+    } catch (error) {
+      console.error("Failed to generate work summary:", error);
+      setWorkSummary(null);
+      toast.error("Couldn't generate work summary, continuing without it");
+      return null;
+    } finally {
+      setGeneratingSummary(false);
+    }
+  }, [selectedEntries]);
+
+  const goToStep3 = async () => {
+    await generateWorkSummary();
+    setStep(3);
+  };
 
   // Update line item field
   const updateLineItem = (id: string, field: "description" | "quantity" | "rate", value: string | number) => {
@@ -606,6 +646,9 @@ export default function InvoicesPage() {
   const handleDownload = async () => {
     setDownloading(true);
     try {
+      const summaryForInvoice =
+        workSummary ?? (await generateWorkSummary());
+
       // 1. Create invoice via API
       const invoiceBody = {
         number: invoiceNumber,
@@ -621,6 +664,7 @@ export default function InvoicesPage() {
         total,
         notes: notes || null,
         paymentTerms: paymentTerms || null,
+        workSummary: summaryForInvoice,
         senderName,
         senderAddress,
         senderEmail,
@@ -690,6 +734,7 @@ export default function InvoicesPage() {
         taxRate,
         taxAmount,
         total,
+        workSummary: summaryForInvoice,
         notes,
         paymentTerms,
       };
@@ -705,6 +750,7 @@ export default function InvoicesPage() {
       // Reset to step 1
       setStep(1);
       setSelectedIds(new Set());
+      setWorkSummary(null);
       fetchEntries();
     } catch (err) {
       console.error("Download failed:", err);
@@ -1385,8 +1431,8 @@ export default function InvoicesPage() {
               <ArrowLeft className="size-4 mr-1" />
               Back
             </Button>
-            <Button className="rounded-full" onClick={goToStep3}>
-              Preview
+            <Button className="rounded-full" onClick={goToStep3} disabled={generatingSummary}>
+              {generatingSummary ? "Summarizing..." : "Preview"}
               <ChevronRight className="size-4 ml-1" />
             </Button>
           </div>
@@ -1478,6 +1524,17 @@ export default function InvoicesPage() {
                   <span className="text-base font-bold text-[var(--accent-teal)]">{formatCurrency(total, currSymbol)}</span>
                 </div>
               </div>
+
+              {/* Work summary */}
+              {workSummary && (
+                <>
+                  <Separator className="my-6" />
+                  <div>
+                    <p className="text-xs font-semibold text-[var(--text-olive)] uppercase mb-1">Work Summary</p>
+                    <p className="text-sm text-[var(--text-forest)] whitespace-pre-line">{workSummary}</p>
+                  </div>
+                </>
+              )}
 
               {/* Notes */}
               {(notes || paymentTerms) && (

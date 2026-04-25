@@ -26,7 +26,7 @@ const Toggle = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAttributes<HT
         data-state={internalPressed ? "on" : "off"}
         onClick={handlePressedChange}
         className={cn(
-          "inline-flex items-center justify-center rounded-[var(--radius-md)] text-sm font-medium transition-colors hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-olive)] disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-[var(--accent-olive)] data-[state=on]:text-[var(--text-forest)] bg-transparent",
+          "inline-flex items-center justify-center rounded-[var(--radius-md)] text-sm font-medium transition-colors hover:bg-[var(--bg-muted)] hover:text-[var(--text-forest)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-olive)] disabled:pointer-events-none disabled:opacity-50 data-[state=on]:bg-[var(--accent-olive)] data-[state=on]:text-white bg-transparent",
           className
         )}
         {...props}

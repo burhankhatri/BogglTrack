@@ -891,7 +891,7 @@ export default function TimerPage() {
                               {/* Play Button */}
                               <button
                                 onClick={() => handleResume(entry)}
-                                className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-[var(--text-forest)] rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 ml-1"
+                                className="h-10 w-10 bg-[var(--accent-olive)] hover:bg-[var(--accent-olive-hover)] text-white rounded-full flex items-center justify-center transition-all shadow-sm cursor-pointer shrink-0 ml-1"
                                 title="Resume timer with same details"
                               >
                                 <Play className="h-[18px] w-[18px] fill-current ml-[2px]" />
