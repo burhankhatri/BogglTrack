@@ -524,6 +524,31 @@ export default function TimerPage() {
     }
   }
 
+  async function handleRemoveCommit({
+    entryIds,
+    sha,
+  }: {
+    entryIds: string[];
+    sha: string;
+  }) {
+    try {
+      await Promise.all(
+        entryIds.map(async (entryId) => {
+          const res = await fetch(
+            `/api/time-entries/${entryId}/commits/${encodeURIComponent(sha)}`,
+            { method: "DELETE" }
+          );
+          if (!res.ok) throw new Error("Failed to remove commit");
+        })
+      );
+
+      toast.success("Commit removed from time entry");
+      await fetchEntries();
+    } catch {
+      toast.error("Failed to remove commit");
+    }
+  }
+
   // ---------------------------------------------------------------------------
   // Resume (start new timer with same details)
   // ---------------------------------------------------------------------------
@@ -863,7 +888,10 @@ export default function TimerPage() {
                             </div>
 
                             {/* Attached GitHub commits (if any) */}
-                            <EntryCommits entries={ge.entries} />
+                            <EntryCommits
+                              entries={ge.entries}
+                              onRemoveCommit={handleRemoveCommit}
+                            />
                           </div>
 
                           {/* Right: Duration + Earnings + Play + Controls */}

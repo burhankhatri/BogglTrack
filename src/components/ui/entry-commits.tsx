@@ -1,6 +1,6 @@
 "use client";
 
-import { GitCommit, ExternalLink } from "lucide-react";
+import { GitCommit, ExternalLink, X } from "lucide-react";
 
 export interface AttachedCommit {
   sha: string;
@@ -11,6 +11,7 @@ export interface AttachedCommit {
 }
 
 interface EntryLike {
+  id?: string;
   commits?: AttachedCommit[] | null;
 }
 
@@ -18,6 +19,11 @@ interface Props {
   entries: EntryLike[];
   /** Max commits to display inline before showing "+N more" chip. */
   maxInline?: number;
+  onRemoveCommit?: (commit: { entryIds: string[]; sha: string }) => void;
+}
+
+interface DisplayCommit extends AttachedCommit {
+  entryIds: string[];
 }
 
 /**
@@ -30,17 +36,22 @@ interface Props {
  * short name (`name` from `owner/name`) so multi-repo entries are legible
  * at a glance. Single-repo entries stay clean (no prefix).
  */
-export function EntryCommits({ entries, maxInline = 3 }: Props) {
-  const seen = new Set<string>();
-  const commits: AttachedCommit[] = [];
+export function EntryCommits({ entries, maxInline = 3, onRemoveCommit }: Props) {
+  const bySha = new Map<string, DisplayCommit>();
   for (const e of entries) {
     if (!Array.isArray(e.commits)) continue;
     for (const c of e.commits) {
-      if (seen.has(c.sha)) continue;
-      seen.add(c.sha);
-      commits.push(c);
+      const existing = bySha.get(c.sha);
+      if (existing) {
+        if (e.id && !existing.entryIds.includes(e.id)) {
+          existing.entryIds.push(e.id);
+        }
+        continue;
+      }
+      bySha.set(c.sha, { ...c, entryIds: e.id ? [e.id] : [] });
     }
   }
+  const commits = Array.from(bySha.values());
   if (commits.length === 0) return null;
 
   commits.sort(
@@ -59,26 +70,44 @@ export function EntryCommits({ entries, maxInline = 3 }: Props) {
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
       <GitCommit className="h-3 w-3 text-[var(--text-olive)] shrink-0" />
       {shown.map((c) => (
-        <a
+        <span
           key={c.sha}
-          href={c.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => e.stopPropagation()}
-          className="group inline-flex items-center gap-1 max-w-[360px] px-2 py-0.5 rounded-full bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] text-[11px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
-          title={`${c.repo} · ${c.message}`}
+          className="group inline-flex items-center max-w-[390px] rounded-full bg-[var(--bg-muted)] hover:bg-[var(--bg-cream-hover)] text-[11px] text-[var(--text-olive)] hover:text-[var(--text-forest)] transition-colors"
         >
-          <code className="text-[10px] text-[var(--text-forest)] font-mono shrink-0">
-            {c.sha.slice(0, 7)}
-          </code>
-          {multiRepo && (
-            <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0">
-              {shortRepo(c.repo)}
-            </span>
+          <a
+            href={c.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="inline-flex items-center gap-1 min-w-0 px-2 py-0.5"
+            title={`${c.repo} · ${c.message}`}
+          >
+            <code className="text-[10px] text-[var(--text-forest)] font-mono shrink-0">
+              {c.sha.slice(0, 7)}
+            </code>
+            {multiRepo && (
+              <span className="text-[10px] font-mono text-[var(--text-muted)] shrink-0">
+                {shortRepo(c.repo)}
+              </span>
+            )}
+            <span className="truncate max-w-[200px]">{c.message}</span>
+            <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
+          </a>
+          {onRemoveCommit && c.entryIds.length > 0 && (
+            <button
+              type="button"
+              aria-label={`Remove commit ${c.sha.slice(0, 7)}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onRemoveCommit({ entryIds: c.entryIds, sha: c.sha });
+              }}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[var(--text-olive)] hover:text-[var(--accent-coral)] transition-colors"
+              title="Remove commit from this time entry"
+            >
+              <X className="h-3 w-3" />
+            </button>
           )}
-          <span className="truncate max-w-[200px]">{c.message}</span>
-          <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover:opacity-60 transition-opacity shrink-0" />
-        </a>
+        </span>
       ))}
       {extra > 0 && (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[var(--bg-muted)] text-[11px] text-[var(--text-olive)]">
