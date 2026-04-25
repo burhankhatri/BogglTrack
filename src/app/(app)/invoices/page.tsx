@@ -1443,117 +1443,121 @@ export default function InvoicesPage() {
       {step === 3 && (
         <div className="space-y-5">
           {/* Invoice preview card */}
-          <Card className="max-w-[800px] mx-auto" data-testid="invoice-preview">
-            <CardContent className="pt-8 pb-8 px-8">
-              {/* Header */}
-              <div className="flex justify-between items-start mb-8">
-                <div>
-                  <h2 className="text-3xl font-bold text-[var(--text-forest)] tracking-tight">INVOICE</h2>
-                </div>
-                <div className="text-right text-sm">
-                  <p className="font-semibold text-[var(--text-forest)]">{invoiceNumber}</p>
-                  <p className="text-[var(--text-olive)]">Issued: {format(issueDate, "MMM d, yyyy")}</p>
-                  <p className="text-[var(--text-olive)]">Due: {format(dueDate, "MMM d, yyyy")}</p>
+          <Card className="max-w-[820px] mx-auto border-none shadow-sm bg-[#F7F3E6]" data-testid="invoice-preview">
+            <CardContent className="px-8 py-8 sm:px-12 sm:py-10 text-black">
+              <div className="flex items-start justify-between gap-8">
+                <h2 className="font-serif text-[64px] sm:text-[86px] leading-none font-bold tracking-[-0.06em] text-black">
+                  Invoice
+                </h2>
+                <div className="pt-8 text-right text-[13px] leading-tight">
+                  <p>{format(issueDate, "d MMMM yyyy")}</p>
+                  <p className="font-semibold">Invoice No. {invoiceNumber}</p>
                 </div>
               </div>
 
-              <Separator className="mb-6" />
-
-              {/* Sender / Recipient */}
-              <div className="grid grid-cols-2 gap-8 mb-8">
-                <div>
-                  <p className="text-[10px] font-semibold text-[var(--text-olive)] uppercase tracking-wider mb-2">From</p>
-                  {senderName && <p className="font-semibold text-sm text-[var(--text-forest)]">{senderName}</p>}
-                  {senderAddress && <p className="text-sm text-[var(--text-olive)] whitespace-pre-line">{senderAddress}</p>}
-                  {senderEmail && <p className="text-sm text-[var(--text-olive)]">{senderEmail}</p>}
-                  {senderTaxId && <p className="text-sm text-[var(--text-olive)]">Tax ID: {senderTaxId}</p>}
-                </div>
-                <div>
-                  <p className="text-[10px] font-semibold text-[var(--text-olive)] uppercase tracking-wider mb-2">Bill To</p>
-                  {recipientName && <p className="font-semibold text-sm text-[var(--text-forest)]">{recipientName}</p>}
-                  {recipientAddress && <p className="text-sm text-[var(--text-olive)] whitespace-pre-line">{recipientAddress}</p>}
-                  {recipientEmail && <p className="text-sm text-[var(--text-olive)]">{recipientEmail}</p>}
+              <div className="mt-8 border-t border-black/35 pt-5">
+                <p className="text-[13px] font-bold mb-3">Billed to:</p>
+                <div className="text-[13px] leading-relaxed">
+                  {recipientName && <p>{recipientName}</p>}
+                  {recipientEmail && <p>{recipientEmail}</p>}
+                  {recipientAddress && <p className="whitespace-pre-line">{recipientAddress}</p>}
                 </div>
               </div>
 
-              {/* Line items */}
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[var(--text-forest)]">
-                    <TableHead className="text-white font-semibold w-10">#</TableHead>
-                    <TableHead className="text-white font-semibold">Description</TableHead>
-                    <TableHead className="text-white font-semibold text-right">Hours</TableHead>
-                    <TableHead className="text-white font-semibold text-right">Rate (/hr)</TableHead>
-                    <TableHead className="text-white font-semibold text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {lineItems.map((li, i) => (
-                    <TableRow key={li.id}>
-                      <TableCell className="text-sm text-[var(--text-olive)]">{i + 1}</TableCell>
-                      <TableCell className="text-sm">{li.description}</TableCell>
-                      <TableCell className="text-sm text-right tabular-nums">{li.quantity.toFixed(1)}</TableCell>
-                      <TableCell className="text-sm text-right">{formatCurrency(li.rate, currSymbol)}</TableCell>
-                      <TableCell className="text-sm text-right font-medium">{formatCurrency(li.amount, currSymbol)}</TableCell>
+              <div className="mt-5 border-t border-black/35" />
+
+              <div className="mt-24">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-y border-black/35 hover:bg-transparent">
+                      <TableHead className="h-9 px-0 text-black font-bold">Description</TableHead>
+                      <TableHead className="h-9 px-0 text-right text-black font-bold">Rate</TableHead>
+                      <TableHead className="h-9 px-0 text-right text-black font-bold">Hours</TableHead>
+                      <TableHead className="h-9 px-0 text-right text-black font-bold">Amount</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {lineItems.map((li) => (
+                      <TableRow key={li.id} className="border-b border-black/25 hover:bg-transparent">
+                        <TableCell className="px-0 py-3 text-[13px] text-black">{li.description}</TableCell>
+                        <TableCell className="px-0 py-3 text-right text-[13px] text-black">
+                          {formatCurrency(li.rate, currSymbol)}/hr
+                        </TableCell>
+                        <TableCell className="px-0 py-3 text-right text-[13px] tabular-nums text-black">
+                          {li.quantity.toFixed(1)}
+                        </TableCell>
+                        <TableCell className="px-0 py-3 text-right text-[13px] font-medium text-black">
+                          {formatCurrency(li.amount, currSymbol)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-              {/* Totals */}
-              <div className="flex flex-col items-end mt-6 space-y-1.5">
-                <div className="flex justify-between w-56 text-sm">
-                  <span className="text-[var(--text-olive)]">Subtotal</span>
-                  <span>{formatCurrency(subtotal, currSymbol)}</span>
-                </div>
-                {discountPercent > 0 && (
-                  <div className="flex justify-between w-56 text-sm">
-                    <span className="text-[var(--text-olive)]">Discount ({discountPercent}%)</span>
-                    <span>-{formatCurrency(discountAmount, currSymbol)}</span>
+              <div className="mt-4 flex justify-end">
+                <div className="w-full max-w-[260px] text-[13px] text-black">
+                  <div className="flex justify-between py-2">
+                    <span className="font-bold">Subtotal</span>
+                    <span>{formatCurrency(subtotal, currSymbol)}</span>
                   </div>
-                )}
-                {taxRate > 0 && (
-                  <div className="flex justify-between w-56 text-sm">
-                    <span className="text-[var(--text-olive)]">Tax ({taxRate}%)</span>
+                  {discountPercent > 0 && (
+                    <div className="flex justify-between py-2">
+                      <span className="font-bold">Discount ({discountPercent}%)</span>
+                      <span>-{formatCurrency(discountAmount, currSymbol)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-2">
+                    <span className="font-bold">Tax ({taxRate}%)</span>
                     <span>{formatCurrency(taxAmount, currSymbol)}</span>
                   </div>
-                )}
-                <Separator className="w-56" />
-                <div className="flex justify-between w-56">
-                  <span className="text-base font-bold text-[var(--text-forest)]">Total</span>
-                  <span className="text-base font-bold text-[var(--accent-teal)]">{formatCurrency(total, currSymbol)}</span>
+                  <div className="flex justify-between border-t border-black/35 py-2 text-[14px]">
+                    <span className="font-bold">Total</span>
+                    <span className="font-bold">{formatCurrency(total, currSymbol)}</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Work summary */}
-              {workSummary && (
-                <>
-                  <Separator className="my-6" />
-                  <div>
-                    <p className="text-xs font-semibold text-[var(--text-olive)] uppercase mb-1">Work Summary</p>
-                    <p className="text-sm text-[var(--text-forest)] whitespace-pre-line">{workSummary}</p>
-                  </div>
-                </>
+              {(workSummary || (includeCommits && lineItems.some((li) => li.commits?.length))) && (
+                <div className="mt-12 border-t border-black/35 pt-5 text-[12px] leading-relaxed text-black">
+                  {workSummary && (
+                    <div className="mb-4">
+                      <p className="font-bold mb-2">Work Summary</p>
+                      <p className="whitespace-pre-line">{workSummary}</p>
+                    </div>
+                  )}
+                  {includeCommits && lineItems.some((li) => li.commits?.length) && (
+                    <div>
+                      <p className="font-bold mb-2">Work Details</p>
+                      <div className="space-y-1.5 text-black/75">
+                        {lineItems.flatMap((li) =>
+                          (li.commits ?? []).slice(0, 6).map((commit) => (
+                            <p key={`${li.id}-${commit.sha}`} className="truncate">
+                              <span className="font-mono text-black">{commit.sha.slice(0, 7)}</span>
+                              {" · "}
+                              {li.description}: {commit.message}
+                            </p>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {/* Notes */}
-              {(notes || paymentTerms) && (
-                <>
-                  <Separator className="my-6" />
-                  {notes && (
-                    <div className="mb-4">
-                      <p className="text-xs font-semibold text-[var(--text-olive)] uppercase mb-1">Notes</p>
-                      <p className="text-sm text-[var(--text-forest)] whitespace-pre-line">{notes}</p>
-                    </div>
-                  )}
-                  {paymentTerms && (
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-olive)] uppercase mb-1">Payment Terms</p>
-                      <p className="text-sm text-[var(--text-forest)]">{paymentTerms}</p>
-                    </div>
-                  )}
-                </>
-              )}
+              <div className="mt-24 border-y border-black/35 py-5 grid grid-cols-1 sm:grid-cols-2 gap-8 text-[13px] leading-relaxed text-black">
+                <div>
+                  <p className="font-bold mb-3">Payment Information</p>
+                  {paymentTerms && <p className="whitespace-pre-line">{paymentTerms}</p>}
+                  {notes && <p className="whitespace-pre-line mt-2">{notes}</p>}
+                </div>
+                <div>
+                  {senderName && <p className="font-bold mb-3">{senderName}</p>}
+                  {senderAddress && <p className="whitespace-pre-line">{senderAddress}</p>}
+                  {senderEmail && <p>{senderEmail}</p>}
+                  {senderTaxId && <p>Tax ID: {senderTaxId}</p>}
+                </div>
+              </div>
             </CardContent>
           </Card>
 

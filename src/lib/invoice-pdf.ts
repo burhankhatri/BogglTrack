@@ -32,318 +32,236 @@ export interface InvoicePDFData {
   paymentTerms?: string | null;
 }
 
-const ACCENT: [number, number, number] = [22, 163, 74]; // #16A34A — accent-teal
-const TEXT_PRIMARY: [number, number, number] = [26, 26, 46]; // #1A1A2E — text-forest
-const TEXT_SECONDARY: [number, number, number] = [107, 114, 128]; // #6B7280 — text-olive
-const HEADER_BG: [number, number, number] = [26, 26, 46]; // dark header for table
+const PAPER: [number, number, number] = [247, 243, 230]; // warm cream
+const INK: [number, number, number] = [0, 0, 0];
+const MUTED_INK: [number, number, number] = [72, 72, 72];
+const RULE: [number, number, number] = [120, 116, 104];
+
+function splitText(doc: jsPDF, text: string, width: number): string[] {
+  return doc.splitTextToSize(text, width) as string[];
+}
 
 export function generateInvoicePDF(data: InvoicePDFData): void {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
-  const margin = 20;
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 18;
   const contentWidth = pageWidth - margin * 2;
+  const rightX = pageWidth - margin;
+  const money = (amount: number) => `${data.currencySymbol}${amount.toFixed(2)}`;
   let y = margin;
 
+  const paintBackground = () => {
+    doc.setFillColor(...PAPER);
+    doc.rect(0, 0, pageWidth, pageHeight, "F");
+  };
+
+  const rule = (lineY: number) => {
+    doc.setDrawColor(...RULE);
+    doc.setLineWidth(0.25);
+    doc.line(margin, lineY, rightX, lineY);
+  };
+
+  const addPage = () => {
+    doc.addPage();
+    paintBackground();
+    y = margin;
+  };
+
+  const ensureSpace = (height: number) => {
+    if (y + height > pageHeight - margin) addPage();
+  };
+
+  const renderTableHeader = () => {
+    rule(y);
+    y += 7;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
+    doc.setTextColor(...INK);
+    doc.text("Description", margin, y);
+    doc.text("Rate", margin + 112, y, { align: "right" });
+    doc.text("Hours", margin + 142, y, { align: "right" });
+    doc.text("Amount", rightX, y, { align: "right" });
+    y += 4;
+    rule(y);
+    y += 7;
+    doc.setFont("helvetica", "normal");
+  };
+
+  paintBackground();
+
   // --- HEADER ---
-  doc.setFontSize(28);
+  doc.setTextColor(...INK);
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(...TEXT_PRIMARY);
-  doc.text("INVOICE", margin, y + 8);
+  doc.setFontSize(50);
+  doc.text("Invoice", margin, y + 24);
 
-  // Invoice details (right-aligned)
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...TEXT_SECONDARY);
-  const rightX = pageWidth - margin;
-  doc.text(data.number, rightX, y, { align: "right" });
-  y += 6;
-  doc.text(`Issued: ${data.issueDate}`, rightX, y, { align: "right" });
-  y += 5;
-  doc.text(`Due: ${data.dueDate}`, rightX, y, { align: "right" });
-
-  y += 12;
-
-  // --- SENDER / RECIPIENT ---
-  doc.setDrawColor(230, 230, 230);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 8;
-
-  const colWidth = contentWidth / 2;
-
-  // Sender
-  doc.setFontSize(8);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...TEXT_SECONDARY);
-  doc.text("FROM", margin, y);
-
-  // Recipient
-  doc.text("BILL TO", margin + colWidth, y);
-  y += 5;
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...TEXT_PRIMARY);
-
-  if (data.senderName) {
-    doc.text(data.senderName, margin, y);
-  }
-  if (data.recipientName) {
-    doc.text(data.recipientName, margin + colWidth, y);
-  }
-  y += 5;
-
-  doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.setTextColor(...TEXT_SECONDARY);
-
-  let senderY = y;
-  let recipientY = y;
-
-  if (data.senderAddress) {
-    const lines = doc.splitTextToSize(data.senderAddress, colWidth - 10);
-    doc.text(lines, margin, senderY);
-    senderY += lines.length * 4;
-  }
-  if (data.senderEmail) {
-    doc.text(data.senderEmail, margin, senderY);
-    senderY += 4;
-  }
-  if (data.senderTaxId) {
-    doc.text(`Tax ID: ${data.senderTaxId}`, margin, senderY);
-    senderY += 4;
-  }
-
-  if (data.recipientAddress) {
-    const lines = doc.splitTextToSize(data.recipientAddress, colWidth - 10);
-    doc.text(lines, margin + colWidth, recipientY);
-    recipientY += lines.length * 4;
-  }
-  if (data.recipientEmail) {
-    doc.text(data.recipientEmail, margin + colWidth, recipientY);
-    recipientY += 4;
-  }
-
-  y = Math.max(senderY, recipientY) + 10;
-
-  // --- LINE ITEMS TABLE ---
-  const colWidths = [10, contentWidth - 85, 20, 27, 28];
-  const headers = ["#", "Description", "Hours", "Rate /hr", "Amount"];
-
-  // Table header
-  doc.setFillColor(...HEADER_BG);
-  doc.rect(margin, y - 4, contentWidth, 8, "F");
-  doc.setFontSize(8);
+  doc.setFont("helvetica", "normal");
+  doc.text(data.issueDate, rightX, y + 16, { align: "right" });
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(255, 255, 255);
+  doc.text(`Invoice No. ${data.number}`, rightX, y + 22, { align: "right" });
 
-  let x = margin + 2;
-  headers.forEach((h, i) => {
-    const align = i >= 2 ? "right" : "left";
-    const textX = i >= 2 ? x + colWidths[i] - 2 : x;
-    doc.text(h, textX, y, { align });
-    x += colWidths[i];
-  });
+  y += 48;
+  rule(y);
+  y += 9;
 
+  // --- BILLED TO ---
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.text("Billed to:", margin, y);
   y += 7;
 
-  // Table rows
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-
-  data.lineItems.forEach((item, index) => {
-    if (y > 260) {
-      doc.addPage();
-      y = margin;
-    }
-
-    // Alternating row background
-    if (index % 2 === 0) {
-      doc.setFillColor(248, 248, 248);
-      doc.rect(margin, y - 4, contentWidth, 7, "F");
-    }
-
-    doc.setTextColor(...TEXT_PRIMARY);
-    x = margin + 2;
-
-    // #
-    doc.text(String(index + 1), x, y);
-    x += colWidths[0];
-
-    // Description (truncate if too long)
-    const desc = item.description.length > 60
-      ? item.description.substring(0, 57) + "..."
-      : item.description;
-    doc.text(desc, x, y);
-    x += colWidths[1];
-
-    // Qty (right-aligned)
-    doc.text(item.quantity.toFixed(1), x + colWidths[2] - 2, y, { align: "right" });
-    x += colWidths[2];
-
-    // Rate (right-aligned)
-    doc.text(`${data.currencySymbol}${item.rate.toFixed(2)}`, x + colWidths[3] - 2, y, { align: "right" });
-    x += colWidths[3];
-
-    // Amount (right-aligned)
-    doc.text(`${data.currencySymbol}${item.amount.toFixed(2)}`, x + colWidths[4] - 2, y, { align: "right" });
-
-    y += 7;
-
-    // Commit sub-rows — small, indented.
-    // Provides verifiable work detail directly on the invoice PDF.
-    if (item.commits && item.commits.length > 0) {
-      doc.setFontSize(7.5);
-      doc.setTextColor(...TEXT_SECONDARY);
-      const textStart = margin + 2 + colWidths[0] + 4; // indent under description column
-      const maxWidth = colWidths[1] - 6;
-      const shown = item.commits.slice(0, 8);
-
-      // Only show repo prefix when this line item spans multiple repos; a
-      // single-repo line keeps the repo name out of every row and surfaces
-      // it as a single "repo: name" footer instead.
-      const repoSet = new Set(shown.map((c) => c.repo).filter(Boolean));
-      const multiRepo = repoSet.size > 1;
-      const shortRepo = (r: string) => r.split("/").slice(-1)[0];
-
-      for (const c of shown) {
-        if (y > 270) {
-          doc.addPage();
-          y = margin;
-        }
-        const sha = c.sha.slice(0, 7);
-        const msg = c.message.length > 70 ? c.message.slice(0, 67) + "..." : c.message;
-        const prefix = multiRepo && c.repo ? `[${shortRepo(c.repo)}] ` : "";
-        const label = `  ${sha}  ${prefix}${msg}`;
-        doc.text(label, textStart, y, { maxWidth });
-        y += 4.2;
-      }
-
-      // Single-repo items: add a small footer so the repo is still visible
-      // somewhere on the invoice without cluttering every row.
-      if (!multiRepo && repoSet.size === 1) {
-        const only = Array.from(repoSet)[0];
-        if (only) {
-          doc.text(`  repo: ${only}`, textStart, y);
-          y += 4.2;
-        }
-      }
-
-      const extra = item.commits.length - shown.length;
-      if (extra > 0) {
-        doc.text(`  + ${extra} more commits`, textStart, y);
-        y += 4.2;
-      }
-      y += 1;
-      doc.setFontSize(9);
-      doc.setTextColor(...TEXT_PRIMARY);
-    }
-  });
-
+  doc.setTextColor(...INK);
+  const billedLines = [
+    data.recipientName,
+    data.recipientEmail,
+    data.recipientAddress,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => splitText(doc, String(value), 80));
+  for (const line of billedLines) {
+    doc.text(line, margin, y);
+    y += 5;
+  }
   y += 5;
+  rule(y);
+
+  // --- LINE ITEMS TABLE ---
+  y = Math.max(y + 48, 126);
+  renderTableHeader();
+
+  doc.setFontSize(9);
+  for (const item of data.lineItems) {
+    ensureSpace(12);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(...INK);
+    const descriptionLines = splitText(doc, item.description, 92);
+    const rowHeight = Math.max(8, descriptionLines.length * 5);
+
+    doc.text(descriptionLines, margin, y);
+    doc.text(`${money(item.rate)}/hr`, margin + 112, y, { align: "right" });
+    doc.text(item.quantity.toFixed(1), margin + 142, y, { align: "right" });
+    doc.text(money(item.amount), rightX, y, { align: "right" });
+
+    y += rowHeight;
+    rule(y - 2);
+    y += 3;
+  }
 
   // --- TOTALS ---
-  doc.setDrawColor(230, 230, 230);
-  doc.line(margin + contentWidth - 80, y, margin + contentWidth, y);
-  y += 6;
-
-  const totalsX = margin + contentWidth - 80;
-  const amountX = margin + contentWidth;
-
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(...TEXT_SECONDARY);
-
-  // Subtotal
-  doc.text("Subtotal", totalsX, y);
-  doc.setTextColor(...TEXT_PRIMARY);
-  doc.text(`${data.currencySymbol}${data.subtotal.toFixed(2)}`, amountX, y, { align: "right" });
-  y += 6;
-
-  // Discount (if any)
-  if (data.discountPercent > 0) {
-    doc.setTextColor(...TEXT_SECONDARY);
-    doc.text(`Discount (${data.discountPercent}%)`, totalsX, y);
-    doc.setTextColor(...TEXT_PRIMARY);
-    doc.text(`-${data.currencySymbol}${data.discountAmount.toFixed(2)}`, amountX, y, { align: "right" });
-    y += 6;
-  }
-
-  // Tax (if any)
-  if (data.taxRate > 0) {
-    doc.setTextColor(...TEXT_SECONDARY);
-    doc.text(`Tax (${data.taxRate}%)`, totalsX, y);
-    doc.setTextColor(...TEXT_PRIMARY);
-    doc.text(`${data.currencySymbol}${data.taxAmount.toFixed(2)}`, amountX, y, { align: "right" });
-    y += 6;
-  }
-
-  // Total
   y += 2;
-  doc.setDrawColor(230, 230, 230);
-  doc.line(totalsX, y - 3, amountX, y - 3);
-  doc.setFontSize(12);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(...ACCENT);
-  doc.text("TOTAL", totalsX, y + 2);
-  doc.text(`${data.currencySymbol}${data.total.toFixed(2)}`, amountX, y + 2, { align: "right" });
+  const totalsLabelX = rightX - 48;
+  const totalsAmountX = rightX - 8;
 
-  y += 16;
+  const totalRow = (label: string, value: string, bold = false) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setTextColor(...INK);
+    doc.text(label, totalsLabelX, y, { align: "right" });
+    doc.text(value, totalsAmountX, y, { align: "right" });
+    y += 7;
+  };
 
-  // --- WORK SUMMARY, NOTES & PAYMENT TERMS ---
-  if (data.workSummary || data.notes || data.paymentTerms) {
-    if (y > 250) {
-      doc.addPage();
-      y = margin;
-    }
+  totalRow("Subtotal", money(data.subtotal), true);
+  if (data.discountPercent > 0) {
+    totalRow(`Discount (${data.discountPercent}%)`, `-${money(data.discountAmount)}`, true);
+  }
+  totalRow(`Tax (${data.taxRate}%)`, money(data.taxAmount), true);
+  doc.setDrawColor(...RULE);
+  doc.line(totalsLabelX - 28, y - 3, rightX, y - 3);
+  totalRow("Total", money(data.total), true);
 
-    doc.setDrawColor(230, 230, 230);
-    doc.line(margin, y, pageWidth - margin, y);
+  // --- SECONDARY WORK DETAIL ---
+  const commits = data.lineItems.flatMap((item) =>
+    (item.commits ?? []).map((commit) => ({ ...commit, lineDescription: item.description }))
+  );
+  if (data.workSummary || commits.length > 0) {
+    y += 10;
+    ensureSpace(35);
+    rule(y);
     y += 8;
-
-    doc.setFontSize(9);
+    doc.setFontSize(8);
 
     if (data.workSummary) {
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(...TEXT_SECONDARY);
+      doc.setTextColor(...INK);
       doc.text("Work Summary", margin, y);
       y += 5;
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(...TEXT_PRIMARY);
-      const summaryLines = doc.splitTextToSize(data.workSummary, contentWidth);
+      doc.setTextColor(...MUTED_INK);
+      const summaryLines = splitText(doc, data.workSummary, contentWidth);
       doc.text(summaryLines, margin, y);
-      y += summaryLines.length * 4 + 4;
+      y += summaryLines.length * 4 + 5;
     }
 
-    if (data.notes) {
+    if (commits.length > 0) {
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(...TEXT_SECONDARY);
-      doc.text("Notes", margin, y);
+      doc.setTextColor(...INK);
+      doc.text("Work Details", margin, y);
       y += 5;
       doc.setFont("helvetica", "normal");
-      doc.setTextColor(...TEXT_PRIMARY);
-      const noteLines = doc.splitTextToSize(data.notes, contentWidth);
-      doc.text(noteLines, margin, y);
-      y += noteLines.length * 4 + 4;
-    }
-
-    if (data.paymentTerms) {
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(...TEXT_SECONDARY);
-      doc.text("Payment Terms", margin, y);
-      y += 5;
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(...TEXT_PRIMARY);
-      const termLines = doc.splitTextToSize(data.paymentTerms, contentWidth);
-      doc.text(termLines, margin, y);
+      doc.setTextColor(...MUTED_INK);
+      for (const commit of commits.slice(0, 12)) {
+        ensureSpace(5);
+        const line = `${commit.sha.slice(0, 7)} · ${commit.lineDescription}: ${commit.message}`;
+        doc.text(splitText(doc, line, contentWidth), margin, y);
+        y += 4;
+      }
+      if (commits.length > 12) {
+        doc.text(`+ ${commits.length - 12} more commits`, margin, y);
+        y += 4;
+      }
     }
   }
 
   // --- FOOTER ---
-  const footerY = doc.internal.pageSize.getHeight() - 10;
-  doc.setFontSize(7);
+  const footerTop = Math.max(y + 20, pageHeight - 58);
+  if (footerTop + 42 > pageHeight - margin) addPage();
+  else y = footerTop;
+
+  rule(y);
+  y += 10;
+
+  const footerColWidth = contentWidth / 2 - 10;
+  const footerStartY = y;
+
+  doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(...INK);
+  doc.text("Payment Information", margin, y);
+  y += 7;
   doc.setFont("helvetica", "normal");
-  doc.setTextColor(180, 180, 180);
-  doc.text("Generated by BogglTrack", pageWidth / 2, footerY, { align: "center" });
+  const paymentLines = [data.paymentTerms, data.notes]
+    .filter(Boolean)
+    .flatMap((value) => splitText(doc, String(value), footerColWidth));
+  for (const line of paymentLines) {
+    doc.text(line, margin, y);
+    y += 5;
+  }
+
+  let senderY = footerStartY;
+  const senderX = margin + contentWidth / 2 + 8;
+  if (data.senderName) {
+    doc.setFont("helvetica", "bold");
+    doc.text(data.senderName, senderX, senderY);
+    senderY += 7;
+  }
+  doc.setFont("helvetica", "normal");
+  const senderLines = [
+    data.senderAddress,
+    data.senderEmail,
+    data.senderTaxId ? `Tax ID: ${data.senderTaxId}` : null,
+  ]
+    .filter(Boolean)
+    .flatMap((value) => splitText(doc, String(value), footerColWidth));
+  for (const line of senderLines) {
+    doc.text(line, senderX, senderY);
+    senderY += 5;
+  }
+
+  y = Math.max(y, senderY) + 8;
+  rule(y);
 
   // Download
   doc.save(`invoice-${data.number}-${data.issueDate}.pdf`);
