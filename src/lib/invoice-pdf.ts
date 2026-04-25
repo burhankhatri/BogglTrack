@@ -36,10 +36,11 @@ const PAPER: [number, number, number] = [247, 243, 230]; // warm cream
 const INK: [number, number, number] = [0, 0, 0];
 const MUTED_INK: [number, number, number] = [72, 72, 72];
 const RULE: [number, number, number] = [120, 116, 104];
-const MAX_LINE_ITEMS_ON_PAGE = 12;
+const MAX_LINE_ITEMS_ON_PAGE = 10;
 const MAX_WORK_SUMMARY_LINES = 4;
 const MAX_COMMIT_LINES = 6;
 const MAX_FOOTER_LINES = 5;
+const FOOTER_BLOCK_HEIGHT = 50;
 
 function splitText(doc: jsPDF, text: string, width: number): string[] {
   return doc.splitTextToSize(text, width) as string[];
@@ -102,13 +103,14 @@ export function prepareSinglePageInvoiceContent(data: InvoicePDFData) {
   };
 }
 
-export function generateInvoicePDF(data: InvoicePDFData): void {
+export function buildInvoicePDFDoc(data: InvoicePDFData): jsPDF {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const margin = 18;
   const contentWidth = pageWidth - margin * 2;
   const rightX = pageWidth - margin;
+  const FOOTER_TOP = pageHeight - FOOTER_BLOCK_HEIGHT - 8;
   const money = (amount: number) => `${data.currencySymbol}${amount.toFixed(2)}`;
   const fitted = prepareSinglePageInvoiceContent(data);
   let y = margin;
@@ -181,15 +183,21 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   rule(y);
 
   // --- LINE ITEMS TABLE ---
-  y = Math.max(y + 48, 126);
+  y = Math.max(y + 18, 119);
   renderTableHeader();
 
-  doc.setFontSize(fitted.lineItems.length > 10 ? 8 : 9);
-  for (const item of fitted.lineItems) {
+  doc.setFontSize(fitted.lineItems.length > 8 ? 8 : 9);
+  let renderedCount = 0;
+  for (let i = 0; i < fitted.lineItems.length; i++) {
+    const item = fitted.lineItems[i];
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...INK);
     const descriptionLines = splitText(doc, item.description, 92).slice(0, 2);
     const rowHeight = Math.max(6, descriptionLines.length * 4.2);
+
+    if (y + rowHeight + 2.2 > FOOTER_TOP - 35) {
+      break;
+    }
 
     doc.text(descriptionLines, margin, y);
     doc.text(`${money(item.rate)}/hr`, margin + 112, y, { align: "right" });
@@ -199,14 +207,17 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     y += rowHeight;
     rule(y - 1.5);
     y += 2.2;
+    renderedCount++;
   }
 
-  if (fitted.omittedLineItemCount > 0) {
+  const totalOmitted =
+    fitted.omittedLineItemCount + (fitted.lineItems.length - renderedCount);
+  if (totalOmitted > 0) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(...MUTED_INK);
     doc.text(
-      `+ ${fitted.omittedLineItemCount} additional line items included in totals`,
+      `+ ${totalOmitted} additional line items included in totals`,
       margin,
       y
     );
@@ -236,44 +247,64 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   totalRow("Total", money(data.total), true);
 
   // --- SECONDARY WORK DETAIL ---
-  if (fitted.workSummaryLines.length > 0 || fitted.commitLines.length > 0) {
-    y += 6;
-    if (y > 218) y = 218;
+  const wantWork =
+    fitted.workSummaryLines.length > 0 || fitted.commitLines.length > 0;
+  const workStartY = y + 6;
+  const workAvailable = FOOTER_TOP - workStartY - 4;
+
+  if (wantWork && workAvailable >= 12) {
+    y = workStartY;
     rule(y);
     y += 6;
     doc.setFontSize(7.5);
 
-    if (fitted.workSummaryLines.length > 0) {
+    if (
+      fitted.workSummaryLines.length > 0 &&
+      y + 4 + 3.6 <= FOOTER_TOP - 4
+    ) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...INK);
       doc.text("Work Summary", margin, y);
       y += 4;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...MUTED_INK);
-      doc.text(fitted.workSummaryLines, margin, y);
-      y += fitted.workSummaryLines.length * 3.6 + 4;
+      for (const line of fitted.workSummaryLines) {
+        if (y + 3.6 > FOOTER_TOP - 4) break;
+        doc.text(line, margin, y);
+        y += 3.6;
+      }
+      y += 4;
     }
 
-    if (fitted.commitLines.length > 0) {
+    if (
+      fitted.commitLines.length > 0 &&
+      y + 4 + 3.6 <= FOOTER_TOP - 4
+    ) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...INK);
       doc.text("Work Details", margin, y);
       y += 4;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...MUTED_INK);
+      let renderedCommits = 0;
       for (const line of fitted.commitLines) {
+        if (y + 3.6 > FOOTER_TOP - 4) break;
         doc.text(splitText(doc, line, contentWidth).slice(0, 1), margin, y);
         y += 3.6;
+        renderedCommits++;
       }
-      if (fitted.omittedCommitCount > 0) {
-        doc.text(`+ ${fitted.omittedCommitCount} more commits`, margin, y);
+      const skippedCommits =
+        fitted.omittedCommitCount +
+        (fitted.commitLines.length - renderedCommits);
+      if (skippedCommits > 0 && y + 3.6 <= FOOTER_TOP - 4) {
+        doc.text(`+ ${skippedCommits} more commits`, margin, y);
         y += 3.6;
       }
     }
   }
 
   // --- FOOTER ---
-  y = pageHeight - 58;
+  y = FOOTER_TOP;
 
   rule(y);
   y += 10;
@@ -307,6 +338,10 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   y = Math.max(y, senderY) + 8;
   rule(y);
 
-  // Download
+  return doc;
+}
+
+export function generateInvoicePDF(data: InvoicePDFData): void {
+  const doc = buildInvoicePDFDoc(data);
   doc.save(`invoice-${data.number}-${data.issueDate}.pdf`);
 }
