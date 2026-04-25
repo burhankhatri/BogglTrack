@@ -36,9 +36,70 @@ const PAPER: [number, number, number] = [247, 243, 230]; // warm cream
 const INK: [number, number, number] = [0, 0, 0];
 const MUTED_INK: [number, number, number] = [72, 72, 72];
 const RULE: [number, number, number] = [120, 116, 104];
+const MAX_LINE_ITEMS_ON_PAGE = 12;
+const MAX_WORK_SUMMARY_LINES = 4;
+const MAX_COMMIT_LINES = 6;
+const MAX_FOOTER_LINES = 5;
 
 function splitText(doc: jsPDF, text: string, width: number): string[] {
   return doc.splitTextToSize(text, width) as string[];
+}
+
+function wrapPlainText(text: string, maxChars: number): string[] {
+  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  const lines: string[] = [];
+  let current = "";
+
+  for (const word of words) {
+    const next = current ? `${current} ${word}` : word;
+    if (next.length > maxChars && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = next;
+    }
+  }
+
+  if (current) lines.push(current);
+  return lines;
+}
+
+function capLines(lines: string[], maxLines: number): string[] {
+  if (lines.length <= maxLines) return lines;
+  const capped = lines.slice(0, maxLines);
+  capped[maxLines - 1] = `${capped[maxLines - 1].replace(/\.*$/, "")}...`;
+  return capped;
+}
+
+export function prepareSinglePageInvoiceContent(data: InvoicePDFData) {
+  const allCommitLines = data.lineItems.flatMap((item) =>
+    (item.commits ?? []).map(
+      (commit) =>
+        `${commit.sha.slice(0, 7)} · ${item.description}: ${commit.message}`
+    )
+  );
+
+  const paymentText = [data.paymentTerms, data.notes].filter(Boolean).join("\n");
+  const senderText = [
+    data.senderAddress,
+    data.senderEmail,
+    data.senderTaxId ? `Tax ID: ${data.senderTaxId}` : null,
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  return {
+    lineItems: data.lineItems.slice(0, MAX_LINE_ITEMS_ON_PAGE),
+    omittedLineItemCount: Math.max(0, data.lineItems.length - MAX_LINE_ITEMS_ON_PAGE),
+    workSummaryLines: capLines(
+      wrapPlainText(data.workSummary ?? "", 120),
+      MAX_WORK_SUMMARY_LINES
+    ),
+    commitLines: capLines(allCommitLines, MAX_COMMIT_LINES),
+    omittedCommitCount: Math.max(0, allCommitLines.length - MAX_COMMIT_LINES),
+    paymentLines: capLines(wrapPlainText(paymentText, 54), MAX_FOOTER_LINES),
+    senderLines: capLines(wrapPlainText(senderText, 54), MAX_FOOTER_LINES),
+  };
 }
 
 export function generateInvoicePDF(data: InvoicePDFData): void {
@@ -49,6 +110,7 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   const contentWidth = pageWidth - margin * 2;
   const rightX = pageWidth - margin;
   const money = (amount: number) => `${data.currencySymbol}${amount.toFixed(2)}`;
+  const fitted = prepareSinglePageInvoiceContent(data);
   let y = margin;
 
   const paintBackground = () => {
@@ -60,16 +122,6 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     doc.setDrawColor(...RULE);
     doc.setLineWidth(0.25);
     doc.line(margin, lineY, rightX, lineY);
-  };
-
-  const addPage = () => {
-    doc.addPage();
-    paintBackground();
-    y = margin;
-  };
-
-  const ensureSpace = (height: number) => {
-    if (y + height > pageHeight - margin) addPage();
   };
 
   const renderTableHeader = () => {
@@ -132,13 +184,12 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   y = Math.max(y + 48, 126);
   renderTableHeader();
 
-  doc.setFontSize(9);
-  for (const item of data.lineItems) {
-    ensureSpace(12);
+  doc.setFontSize(fitted.lineItems.length > 10 ? 8 : 9);
+  for (const item of fitted.lineItems) {
     doc.setFont("helvetica", "normal");
     doc.setTextColor(...INK);
-    const descriptionLines = splitText(doc, item.description, 92);
-    const rowHeight = Math.max(8, descriptionLines.length * 5);
+    const descriptionLines = splitText(doc, item.description, 92).slice(0, 2);
+    const rowHeight = Math.max(6, descriptionLines.length * 4.2);
 
     doc.text(descriptionLines, margin, y);
     doc.text(`${money(item.rate)}/hr`, margin + 112, y, { align: "right" });
@@ -146,8 +197,20 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     doc.text(money(item.amount), rightX, y, { align: "right" });
 
     y += rowHeight;
-    rule(y - 2);
-    y += 3;
+    rule(y - 1.5);
+    y += 2.2;
+  }
+
+  if (fitted.omittedLineItemCount > 0) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.setTextColor(...MUTED_INK);
+    doc.text(
+      `+ ${fitted.omittedLineItemCount} additional line items included in totals`,
+      margin,
+      y
+    );
+    y += 5;
   }
 
   // --- TOTALS ---
@@ -173,57 +236,48 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   totalRow("Total", money(data.total), true);
 
   // --- SECONDARY WORK DETAIL ---
-  const commits = data.lineItems.flatMap((item) =>
-    (item.commits ?? []).map((commit) => ({ ...commit, lineDescription: item.description }))
-  );
-  if (data.workSummary || commits.length > 0) {
-    y += 10;
-    ensureSpace(35);
+  if (fitted.workSummaryLines.length > 0 || fitted.commitLines.length > 0) {
+    y += 6;
+    if (y > 218) y = 218;
     rule(y);
-    y += 8;
-    doc.setFontSize(8);
+    y += 6;
+    doc.setFontSize(7.5);
 
-    if (data.workSummary) {
+    if (fitted.workSummaryLines.length > 0) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...INK);
       doc.text("Work Summary", margin, y);
-      y += 5;
+      y += 4;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...MUTED_INK);
-      const summaryLines = splitText(doc, data.workSummary, contentWidth);
-      doc.text(summaryLines, margin, y);
-      y += summaryLines.length * 4 + 5;
+      doc.text(fitted.workSummaryLines, margin, y);
+      y += fitted.workSummaryLines.length * 3.6 + 4;
     }
 
-    if (commits.length > 0) {
+    if (fitted.commitLines.length > 0) {
       doc.setFont("helvetica", "bold");
       doc.setTextColor(...INK);
       doc.text("Work Details", margin, y);
-      y += 5;
+      y += 4;
       doc.setFont("helvetica", "normal");
       doc.setTextColor(...MUTED_INK);
-      for (const commit of commits.slice(0, 12)) {
-        ensureSpace(5);
-        const line = `${commit.sha.slice(0, 7)} · ${commit.lineDescription}: ${commit.message}`;
-        doc.text(splitText(doc, line, contentWidth), margin, y);
-        y += 4;
+      for (const line of fitted.commitLines) {
+        doc.text(splitText(doc, line, contentWidth).slice(0, 1), margin, y);
+        y += 3.6;
       }
-      if (commits.length > 12) {
-        doc.text(`+ ${commits.length - 12} more commits`, margin, y);
-        y += 4;
+      if (fitted.omittedCommitCount > 0) {
+        doc.text(`+ ${fitted.omittedCommitCount} more commits`, margin, y);
+        y += 3.6;
       }
     }
   }
 
   // --- FOOTER ---
-  const footerTop = Math.max(y + 20, pageHeight - 58);
-  if (footerTop + 42 > pageHeight - margin) addPage();
-  else y = footerTop;
+  y = pageHeight - 58;
 
   rule(y);
   y += 10;
 
-  const footerColWidth = contentWidth / 2 - 10;
   const footerStartY = y;
 
   doc.setFontSize(9);
@@ -232,10 +286,7 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
   doc.text("Payment Information", margin, y);
   y += 7;
   doc.setFont("helvetica", "normal");
-  const paymentLines = [data.paymentTerms, data.notes]
-    .filter(Boolean)
-    .flatMap((value) => splitText(doc, String(value), footerColWidth));
-  for (const line of paymentLines) {
+  for (const line of fitted.paymentLines) {
     doc.text(line, margin, y);
     y += 5;
   }
@@ -248,14 +299,7 @@ export function generateInvoicePDF(data: InvoicePDFData): void {
     senderY += 7;
   }
   doc.setFont("helvetica", "normal");
-  const senderLines = [
-    data.senderAddress,
-    data.senderEmail,
-    data.senderTaxId ? `Tax ID: ${data.senderTaxId}` : null,
-  ]
-    .filter(Boolean)
-    .flatMap((value) => splitText(doc, String(value), footerColWidth));
-  for (const line of senderLines) {
+  for (const line of fitted.senderLines) {
     doc.text(line, senderX, senderY);
     senderY += 5;
   }
