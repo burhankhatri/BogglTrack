@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getAuthUser } from "@/lib/user";
+import { pickTimeEntryIdsToMark } from "./helpers";
 
 export async function POST(
   request: NextRequest,
@@ -33,10 +34,11 @@ export async function POST(
       );
     }
 
-    // Collect all time entry IDs linked via line items
-    const timeEntryIds = invoice.lineItems
-      .map((item) => item.timeEntryId)
-      .filter((id): id is string => id !== null);
+    // Read explicit timeEntryIds from the body when present (grouped-mode
+    // line items have null timeEntryId, so the legacy derivation misses
+    // them — the page now sends the full source list).
+    const body = await request.json().catch(() => ({}));
+    const timeEntryIds = pickTimeEntryIdsToMark(invoice, body);
 
     await prisma.$transaction([
       // Mark invoice as sent
@@ -44,11 +46,13 @@ export async function POST(
         where: { id },
         data: { status: "sent" },
       }),
-      // Mark linked time entries as invoiced
+      // Mark linked time entries as invoiced. Scope by userId for
+      // defense-in-depth — even though IDs come from the user, never let
+      // them mark another user's entries.
       ...(timeEntryIds.length > 0
         ? [
             prisma.timeEntry.updateMany({
-              where: { id: { in: timeEntryIds } },
+              where: { id: { in: timeEntryIds }, userId: user.id },
               data: { invoiceId: id },
             }),
           ]

@@ -692,10 +692,14 @@ export default function InvoicesPage() {
       if (!createRes.ok) throw new Error("Failed to create invoice");
       const invoice = await createRes.json();
 
-      // 2. Finalize if marking as invoiced
+      // 2. Finalize if marking as invoiced. Send the full set of selected
+      // source entry IDs so grouped-mode invoices (which collapse multiple
+      // entries into one line item) still mark every contributing entry.
       if (markAsInvoiced) {
         const finalizeRes = await fetch(`/api/invoices/${invoice.id}/finalize`, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ timeEntryIds: Array.from(selectedIds) }),
         });
         if (!finalizeRes.ok) throw new Error("Failed to finalize invoice");
       }
