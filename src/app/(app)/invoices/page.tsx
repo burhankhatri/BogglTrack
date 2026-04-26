@@ -1549,7 +1549,7 @@ export default function InvoicesPage() {
                 </div>
               )}
 
-              <div className="mt-24 border-y border-black/35 py-5 grid grid-cols-1 sm:grid-cols-2 gap-8 text-[13px] leading-relaxed text-black">
+              <div className="mt-24 border-t border-black/35 pt-5 grid grid-cols-1 sm:grid-cols-2 gap-8 text-[13px] leading-relaxed text-black">
                 <div>
                   <p className="font-bold mb-3">Payment Information</p>
                   {paymentTerms && <p className="whitespace-pre-line">{paymentTerms}</p>}
@@ -1561,6 +1561,10 @@ export default function InvoicesPage() {
                   {senderEmail && <p>{senderEmail}</p>}
                   {senderTaxId && <p>Tax ID: {senderTaxId}</p>}
                 </div>
+              </div>
+
+              <div className="mt-5 border-t border-black/35 pt-3 text-center text-[10px] text-black/55 tracking-wide">
+                Created with boggltrack.com
               </div>
             </CardContent>
           </Card>

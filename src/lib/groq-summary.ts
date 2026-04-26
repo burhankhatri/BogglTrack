@@ -66,11 +66,12 @@ export function buildInvoiceWorkSummaryPrompt(
   );
 
   return [
-    "Write an invoice-safe work summary for a client.",
-    "Group the summary by project, focus on outcomes and completed work, and avoid mentioning commit hashes unless they clarify the work.",
-    "Keep it concise: 2-5 bullets total, professional tone, no markdown table.",
+    "Write a polished work summary for a client invoice.",
+    "Translate the development activity below into a complete, thorough description of the work delivered — what was built, fixed, or improved — written so a non-engineer can follow it.",
+    "Cover every project listed; do not omit anything. Do NOT mention commits, commit hashes, branch names, file paths, or any technical jargon. Do not quote commit messages verbatim — translate them into client-facing outcomes.",
+    "Group by project. For each project write a short, flowing paragraph (3–5 sentences). Total length 4–10 sentences across the whole summary. Professional tone. Plain prose only — no bullet points, no headings, no markdown.",
     "",
-    "Work evidence:",
+    "Work evidence (for your reference only — do not echo this back):",
     projectSections.join("\n\n"),
   ].join("\n");
 }

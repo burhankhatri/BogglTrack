@@ -338,6 +338,13 @@ export function buildInvoicePDFDoc(data: InvoicePDFData): jsPDF {
   y = Math.max(y, senderY) + 8;
   rule(y);
 
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(...MUTED_INK);
+  doc.text("Created with boggltrack.com", pageWidth / 2, y + 5, {
+    align: "center",
+  });
+
   return doc;
 }
 
