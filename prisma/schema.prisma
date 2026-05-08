@@ -19,6 +19,7 @@ model User {
   timeFormat        String      @default("24h")
   weekStartDay      String      @default("monday")
   theme             String      @default("system")
+  defaultProjectId  String?
   senderName        String?
   senderAddress     String?
   senderEmail       String?

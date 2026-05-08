@@ -38,6 +38,7 @@ export async function PATCH(request: NextRequest) {
       "timeFormat",
       "weekStartDay",
       "theme",
+      "defaultProjectId",
       "senderName",
       "senderAddress",
       "senderEmail",

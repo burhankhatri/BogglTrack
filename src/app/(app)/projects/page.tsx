@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Plus, FolderKanban } from "lucide-react";
+import { Plus, FolderKanban, Check } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardHeader, CardContent } from "@/components/ui/card";
@@ -61,12 +61,51 @@ export default function ProjectsPage() {
   const fetchPageProjects = useAppStore((s) => s.fetchPageProjects);
   const clients = (useAppStore((s) => s.clients.data) ?? []) as Client[];
   const appSettings = useAppStore((s) => s.settings.data);
+  const invalidate = useAppStore((s) => s.invalidate);
+  const fetchSettings = useAppStore((s) => s.fetchSettings);
   const settings: UserSettings = {
     defaultHourlyRate: appSettings?.defaultHourlyRate ?? 0,
     currencySymbol: appSettings?.currencySymbol ?? "$",
   };
+  const defaultProjectId = appSettings?.defaultProjectId ?? null;
   const storeLoading = useAppStore((s) => s.pageProjects.loading);
   const loading = storeLoading && !projects;
+
+  async function toggleDefaultProject(projectId: string) {
+    const newDefault = defaultProjectId === projectId ? null : projectId;
+    // Optimistic — update the store cache immediately so the pill flips
+    // without waiting for the network round-trip.
+    useAppStore.setState((s) => ({
+      settings: {
+        ...s.settings,
+        data: s.settings.data
+          ? { ...s.settings.data, defaultProjectId: newDefault }
+          : s.settings.data,
+      },
+    }));
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultProjectId: newDefault }),
+      });
+      if (!res.ok) throw new Error();
+      invalidate("settings");
+      fetchSettings(true);
+      toast.success(newDefault ? "Default project set" : "Default project cleared");
+    } catch {
+      // Rollback
+      useAppStore.setState((s) => ({
+        settings: {
+          ...s.settings,
+          data: s.settings.data
+            ? { ...s.settings.data, defaultProjectId }
+            : s.settings.data,
+        },
+      }));
+      toast.error("Failed to update default project");
+    }
+  }
   const [dialogOpen, setDialogOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
@@ -325,14 +364,15 @@ export default function ProjectsPage() {
             const budgetPercent = project.estimatedHours
               ? (totalHours / project.estimatedHours) * 100
               : null;
+            const isDefault = defaultProjectId === project.id;
 
             return (
-              <Link key={project.id} href={`/projects/${project.id}`} className="block">
+              <Link key={project.id} href={`/projects/${project.id}`} className="block group/card">
               <Card
                 className="cursor-pointer transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.06)] hover:-translate-y-1 bg-[var(--bg-cream)] border-[var(--border-subtle)] shadow-[var(--shadow-card)] rounded-[var(--radius-xl)] p-5 flex flex-col"
               >
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
                     <span
                       className="inline-block size-[14px] shrink-0 rounded-full flex-none mt-[2px]"
                       style={{ backgroundColor: project.color }}
@@ -346,6 +386,26 @@ export default function ProjectsPage() {
                       )}
                     </div>
                   </div>
+                  {/* Default project indicator */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      toggleDefaultProject(project.id);
+                    }}
+                    title={isDefault ? "Remove as default" : "Set as default project"}
+                    className={`shrink-0 ml-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium tracking-wide transition-all ${
+                      isDefault
+                        ? "bg-[var(--accent-olive-soft)] text-[var(--accent-olive)] opacity-100"
+                        : "text-[var(--text-muted)] opacity-0 group-hover/card:opacity-100 hover:bg-[var(--bg-muted)] hover:text-[var(--text-olive)]"
+                    }`}
+                  >
+                    <Check className={`h-3 w-3 ${
+                      isDefault ? "opacity-100" : "opacity-50"
+                    }`} />
+                    {isDefault ? "Default" : "Set default"}
+                  </button>
                 </div>
                 
                 <div className="mt-auto space-y-4">
