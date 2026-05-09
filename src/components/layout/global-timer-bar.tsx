@@ -51,6 +51,11 @@ export function GlobalTimerBar() {
   const fetchProjects = useAppStore((s) => s.fetchProjects);
   const runningTimerChecked = useAppStore((s) => s.runningTimerChecked);
   const setRunningTimerChecked = useAppStore((s) => s.setRunningTimerChecked);
+  const settingsData = useAppStore((s) => s.settings.data);
+  const defaultProjectId = settingsData?.defaultProjectId ?? null;
+  // Track whether the user has manually picked a project this session.
+  // Once they choose, we stop overriding with the default.
+  const userPickedProjectRef = useRef(false);
   const [loading] = useState(false);
   const [projectMenuOpen, setProjectMenuOpen] = useState(false);
   const [projectFilter, setProjectFilter] = useState("");
@@ -105,6 +110,21 @@ export function GlobalTimerBar() {
   useEffect(() => {
     fetchProjects();
   }, [fetchProjects]);
+
+  // Auto-select default project when the timer is idle and the user hasn't
+  // manually picked a project yet. Runs once when settings + projects load.
+  useEffect(() => {
+    if (isRunning) return;
+    if (userPickedProjectRef.current) return;
+    if (!defaultProjectId) return;
+    // Only apply if there's currently no project selected
+    if (projectId) return;
+    // Verify the default project still exists in the project list
+    const exists = projects.some((p) => p.id === defaultProjectId);
+    if (exists) {
+      setProjectId(defaultProjectId);
+    }
+  }, [defaultProjectId, projects, isRunning, projectId, setProjectId]);
 
   // Verify running timer with server — only once per session.
   useEffect(() => {
@@ -423,6 +443,8 @@ export function GlobalTimerBar() {
     };
 
     stopTimer();
+    // Reset manual-pick flag so the default project re-applies next time.
+    userPickedProjectRef.current = false;
 
     // Empty-description stop is the most common misclick — offer undo via toast
     // instead of a blocking modal. The DB write is still in flight; the undo
@@ -532,6 +554,7 @@ export function GlobalTimerBar() {
                     onClick={() => {
                       setProjectId(null);
                       setProjectMenuOpen(false);
+                      userPickedProjectRef.current = true;
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-olive)] hover:bg-[var(--bg-muted)] transition-colors text-left"
                   >
@@ -547,6 +570,7 @@ export function GlobalTimerBar() {
                     onClick={() => {
                       setProjectId(p.id);
                       setProjectMenuOpen(false);
+                      userPickedProjectRef.current = true;
                     }}
                     className="w-full flex items-center gap-2 px-3 py-2 rounded-[var(--radius-sm)] text-sm text-[var(--text-forest)] hover:bg-[var(--bg-muted)] transition-colors text-left"
                   >

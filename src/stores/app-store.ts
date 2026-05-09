@@ -37,6 +37,7 @@ interface UserSettings {
   timeFormat: string;
   weekStartDay: string;
   theme: string;
+  defaultProjectId: string | null;
   senderName: string | null;
   senderAddress: string | null;
   senderEmail: string | null;
