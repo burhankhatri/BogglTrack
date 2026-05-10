@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +20,8 @@ export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
   const { id } = await params;
   if (!(await assertOwnsProject(user.id, id))) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });
@@ -38,8 +38,8 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
   const { id } = await params;
   if (!(await assertOwnsProject(user.id, id))) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });
@@ -76,8 +76,8 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
   const { id } = await params;
   if (!(await assertOwnsProject(user.id, id))) {
     return NextResponse.json({ error: "not-found" }, { status: 404 });

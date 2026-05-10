@@ -1,11 +1,11 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const getAuthUserMock = vi.fn();
+const requireUserMock = vi.fn();
 const generateInvoiceWorkSummaryMock = vi.fn();
 
 vi.mock("@/lib/user", () => ({
-  getAuthUser: getAuthUserMock,
+  requireUserOrErrorResponse: requireUserMock,
 }));
 
 vi.mock("@/lib/groq-summary", async () => {
@@ -29,23 +29,26 @@ function request(body: unknown): NextRequest {
 describe("POST /api/invoices/work-summary", () => {
   beforeEach(() => {
     vi.resetModules();
-    getAuthUserMock.mockReset();
+    requireUserMock.mockReset();
     generateInvoiceWorkSummaryMock.mockReset();
   });
 
   it("returns 401 when the user is not authenticated", async () => {
-    getAuthUserMock.mockResolvedValue(null);
+    requireUserMock.mockResolvedValue({
+      user: null,
+      error: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+    });
     const { POST } = await import("../route");
 
     const response = await POST(request({ entries: [] }));
 
     expect(response.status).toBe(401);
-    expect(await response.json()).toEqual({ error: "Unauthorized" });
+    expect(await response.json()).toEqual({ error: "unauthorized" });
     expect(generateInvoiceWorkSummaryMock).not.toHaveBeenCalled();
   });
 
   it("returns null without calling Groq when entries have no commits", async () => {
-    getAuthUserMock.mockResolvedValue({ id: "user-1" });
+    requireUserMock.mockResolvedValue({ user: { id: "user-1" }, error: null });
     const { POST } = await import("../route");
 
     const response = await POST(
@@ -67,7 +70,7 @@ describe("POST /api/invoices/work-summary", () => {
   });
 
   it("returns the Groq-generated work summary", async () => {
-    getAuthUserMock.mockResolvedValue({ id: "user-1" });
+    requireUserMock.mockResolvedValue({ user: { id: "user-1" }, error: null });
     generateInvoiceWorkSummaryMock.mockResolvedValue(
       "Summarized invoice work by project."
     );

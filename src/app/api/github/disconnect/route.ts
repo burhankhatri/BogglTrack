@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 // We don't revoke the token on GitHub's side; the user can do that from their
 // GitHub settings → Applications if they want a full revoke.
 export async function POST() {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   await prisma.gitHubAccount.deleteMany({ where: { userId: user.id } });
   return NextResponse.json({ ok: true });

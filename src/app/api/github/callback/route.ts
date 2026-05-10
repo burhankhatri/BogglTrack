@@ -33,7 +33,13 @@ export async function GET(req: NextRequest) {
     return redirectWith("error-state-mismatch");
   }
 
-  const user = await getAuthUser();
+  let user;
+  try {
+    user = await getAuthUser();
+  } catch (err) {
+    console.error("[github/callback] auth error", err);
+    return redirectWith("error-auth");
+  }
   if (!user) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }

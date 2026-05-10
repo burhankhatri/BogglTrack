@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 
 interface StoredCommit {
   sha?: unknown;
@@ -16,10 +16,8 @@ export async function DELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; sha: string }> }
 ) {
-  const user = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   try {
     const { id, sha } = await params;

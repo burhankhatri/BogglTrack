@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -7,8 +7,8 @@ export const dynamic = "force-dynamic";
 // GET /api/github/status — returns { connected: boolean, login?, avatarUrl?, name? }
 // Public metadata only; never the access token.
 export async function GET() {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const account = await prisma.gitHubAccount.findUnique({
     where: { userId: user.id },

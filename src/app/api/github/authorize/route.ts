@@ -9,7 +9,13 @@ export const dynamic = "force-dynamic";
 // Starts the OAuth dance: generates a state token, stores it in a short-lived
 // httpOnly cookie, and redirects the user to GitHub's authorize page.
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
+  let user;
+  try {
+    user = await getAuthUser();
+  } catch (err) {
+    console.error("[github/authorize] auth error", err);
+    return NextResponse.redirect(new URL("/sign-in", req.url));
+  }
   if (!user) {
     return NextResponse.redirect(new URL("/sign-in", req.url));
   }

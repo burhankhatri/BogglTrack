@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { decryptToken } from "@/lib/github/crypto";
 
 export const dynamic = "force-dynamic";
@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 // Returns up to 50 repos the signed-in user has access to, sorted by most
 // recently pushed. Used to populate the repo-picker on the project page.
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const account = await prisma.gitHubAccount.findUnique({
     where: { userId: user.id },

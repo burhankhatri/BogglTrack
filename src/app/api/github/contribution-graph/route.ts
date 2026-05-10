@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { subDays, startOfDay } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -15,8 +15,8 @@ interface DayCell {
 // Returns per-day commit counts + tracked seconds for a heatmap.
 // `commits` counted from TimeEntry.commits JSON — cheap, no GitHub roundtrip.
 export async function GET(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const url = new URL(req.url);
   const days = Math.min(Math.max(Number(url.searchParams.get("days") ?? 84), 30), 365);

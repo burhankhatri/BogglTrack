@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { fetchCommitsInWindow } from "@/lib/github/commits";
 import { matchProjectIdForCommits } from "@/lib/github/match-project";
 
@@ -13,8 +13,8 @@ export const maxDuration = 60;
 // commits. `onlyMissing` (default true) skips entries that already have
 // commits attached.
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const body = (await req.json()) as {
     from?: string;

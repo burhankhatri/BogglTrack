@@ -4,7 +4,7 @@ import {
   hasSummaryEligibleCommits,
   type InvoiceSummaryEntry,
 } from "@/lib/groq-summary";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,10 +40,8 @@ function parseEntries(body: unknown): InvoiceSummaryEntry[] | null {
 }
 
 export async function POST(request: NextRequest) {
-  const user = await getAuthUser();
-  if (!user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const { error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   try {
     const entries = parseEntries(await request.json());

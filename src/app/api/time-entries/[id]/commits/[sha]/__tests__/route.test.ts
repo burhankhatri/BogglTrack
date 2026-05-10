@@ -1,12 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const getAuthUserMock = vi.fn();
+const requireUserMock = vi.fn();
 const findFirstMock = vi.fn();
 const updateMock = vi.fn();
 
 vi.mock("@/lib/user", () => ({
-  getAuthUser: getAuthUserMock,
+  requireUserOrErrorResponse: requireUserMock,
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -24,13 +24,16 @@ const params = {
 
 describe("DELETE /api/time-entries/[id]/commits/[sha]", () => {
   beforeEach(() => {
-    getAuthUserMock.mockReset();
+    requireUserMock.mockReset();
     findFirstMock.mockReset();
     updateMock.mockReset();
   });
 
   it("returns 401 when the user is not authenticated", async () => {
-    getAuthUserMock.mockResolvedValue(null);
+    requireUserMock.mockResolvedValue({
+      user: null,
+      error: NextResponse.json({ error: "unauthorized" }, { status: 401 }),
+    });
     const { DELETE } = await import("../route");
 
     const response = await DELETE(new NextRequest("http://localhost"), params);
@@ -40,7 +43,7 @@ describe("DELETE /api/time-entries/[id]/commits/[sha]", () => {
   });
 
   it("removes the matching commit from the user's time entry", async () => {
-    getAuthUserMock.mockResolvedValue({ id: "user-1" });
+    requireUserMock.mockResolvedValue({ user: { id: "user-1" }, error: null });
     findFirstMock.mockResolvedValue({
       id: "entry-1",
       userId: "user-1",
@@ -102,7 +105,7 @@ describe("DELETE /api/time-entries/[id]/commits/[sha]", () => {
   });
 
   it("returns 404 when the commit is not attached to the entry", async () => {
-    getAuthUserMock.mockResolvedValue({ id: "user-1" });
+    requireUserMock.mockResolvedValue({ user: { id: "user-1" }, error: null });
     findFirstMock.mockResolvedValue({
       id: "entry-1",
       commits: [],

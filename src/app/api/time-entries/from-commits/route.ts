@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { draftDescriptionFromCommits } from "@/lib/github/description";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,8 @@ export const dynamic = "force-dynamic";
 // auto-drafted description from the commit messages. Used by the dashboard
 // "Untracked commits" banner to materialize a cluster into an entry.
 export async function POST(req: NextRequest) {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const body = (await req.json()) as {
     start?: string;

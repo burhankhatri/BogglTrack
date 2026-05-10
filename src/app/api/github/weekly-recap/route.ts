@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getAuthUser } from "@/lib/user";
+import { requireUserOrErrorResponse } from "@/lib/user";
 import { startOfWeek, endOfWeek } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,8 @@ export const dynamic = "force-dynamic";
 // and all attached commits grouped by repo. Returns a ready-to-copy "standup"
 // message alongside the raw data for custom rendering.
 export async function GET() {
-  const user = await getAuthUser();
-  if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const { user, error } = await requireUserOrErrorResponse();
+  if (error) return error;
 
   const now = new Date();
   const from = startOfWeek(now, { weekStartsOn: 1 });
