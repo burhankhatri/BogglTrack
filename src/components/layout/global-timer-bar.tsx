@@ -62,6 +62,11 @@ export function GlobalTimerBar() {
   const projectMenuRef = useRef<HTMLDivElement>(null);
   const projectFilterInputRef = useRef<HTMLInputElement>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Tracks entries the user clicked Stop on locally — used to ignore the
+  // window where the stop POST is still in flight (the GitHub-commit fetch
+  // can take up to ~8s) and the /running endpoint still returns the entry.
+  // Without this, our own poll would resurrect a just-stopped timer.
+  const recentlyStoppedRef = useRef<Map<string, number>>(new Map());
 
   // Manual "add entry" popover state — a lightweight editor for entering a
   // past block of time without touching the running timer.
@@ -126,43 +131,83 @@ export function GlobalTimerBar() {
     }
   }, [defaultProjectId, projects, isRunning, projectId, setProjectId]);
 
-  // Verify running timer with server — only once per session.
-  useEffect(() => {
-    if (runningTimerChecked) return;
-    async function checkRunning() {
-      try {
-        const res = await fetch("/api/time-entries/running");
-        if (res.ok) {
-          const data = await res.json();
-          if (data && data.id) {
-            const current = useTimerStore.getState();
-            if (current.isRunning && current.entryId === data.id) {
-              // Already in sync
-            } else {
-              restoreTimer({
-                entryId: data.id,
-                startTime: data.startTime,
-                description: data.description || "",
-                projectId: data.projectId || null,
-                billable: data.billable ?? true,
-                tagIds: data.tagIds || [],
-                hourlyRate: data.project?.hourlyRate || 0,
-              });
-            }
-          } else {
-            const current = useTimerStore.getState();
-            if (current.isRunning) {
-              stopTimer();
-            }
-          }
-        }
-      } catch {
-        // Silent — trust localStorage
-      }
-      setRunningTimerChecked();
+  // Cross-device sync: poll /api/time-entries/running so a Stop or Start on
+  // any device (phone, second laptop, Electron) reflects here within ~8s
+  // without needing a refresh. Server is the source of truth.
+  //   - Pause while the tab is hidden; re-check immediately on visibility return.
+  //   - Skip while a local start is in flight (entryId starts with "temp-").
+  //   - Ignore /running results for an entry we just clicked Stop on within
+  //     the last 20s — the stop POST may still be in flight (GitHub commit
+  //     fetch can be slow) and we don't want to resurrect our own stop.
+  const checkRunning = useCallback(async () => {
+    const current = useTimerStore.getState();
+    if (current.entryId?.startsWith("temp-")) return;
+
+    let data: {
+      id: string;
+      startTime: string;
+      description: string | null;
+      projectId: string | null;
+      billable: boolean | null;
+      project?: { hourlyRate: number | null } | null;
+    } | null = null;
+    try {
+      const res = await fetch("/api/time-entries/running");
+      if (!res.ok) return;
+      data = await res.json();
+    } catch {
+      return;
     }
-    checkRunning();
-  }, [runningTimerChecked, restoreTimer, stopTimer, setRunningTimerChecked]);
+
+    // Prune entries the user stopped more than 20s ago so the map doesn't grow.
+    const now = Date.now();
+    for (const [id, stoppedAt] of recentlyStoppedRef.current) {
+      if (now - stoppedAt > 20_000) recentlyStoppedRef.current.delete(id);
+    }
+
+    if (data && data.id) {
+      if (recentlyStoppedRef.current.has(data.id)) return;
+      const latest = useTimerStore.getState();
+      if (latest.isRunning && latest.entryId === data.id) return;
+      restoreTimer({
+        entryId: data.id,
+        startTime: data.startTime,
+        description: data.description || "",
+        projectId: data.projectId || null,
+        billable: data.billable ?? true,
+        tagIds: [],
+        hourlyRate: data.project?.hourlyRate || 0,
+      });
+    } else {
+      const latest = useTimerStore.getState();
+      if (latest.isRunning) stopTimer();
+    }
+  }, [restoreTimer, stopTimer]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
+      if (cancelled) return;
+      if (document.visibilityState !== "visible") return;
+      void checkRunning().then(() => {
+        if (!runningTimerChecked) setRunningTimerChecked();
+      });
+    };
+
+    tick();
+    const id = setInterval(tick, 8_000);
+
+    const onVis = () => {
+      if (document.visibilityState === "visible") tick();
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+  }, [checkRunning, runningTimerChecked, setRunningTimerChecked]);
 
   // Tick interval
   useEffect(() => {
@@ -443,6 +488,10 @@ export function GlobalTimerBar() {
     };
 
     stopTimer();
+    // Tell the cross-device poller to ignore this entry for the next 20s
+    // while our /stop POST is in flight (commit fetch can be slow), so we
+    // don't resurrect our own just-stopped timer.
+    recentlyStoppedRef.current.set(stoppedEntryId, Date.now());
     // Reset manual-pick flag so the default project re-applies next time.
     userPickedProjectRef.current = false;
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { gsap } from "gsap";
 import { useAppStore } from "@/stores/app-store";
+import { useSessionHeartbeat } from "@/hooks/use-session-heartbeat";
 import { BrandLogo } from "@/components/ui/brand-logo";
 
 // Covers the app while the essentials (settings + projects) land, so the
@@ -16,6 +17,10 @@ export function AppBoot({ children }: { children: React.ReactNode }) {
   const projectsData = useAppStore((s) => s.projects.data);
   const fetchSettings = useAppStore((s) => s.fetchSettings);
   const fetchProjects = useAppStore((s) => s.fetchProjects);
+
+  // Roll the Neon Auth session forward while the app is open so an active
+  // user never logs out mid-recording. Runs on every authenticated page.
+  useSessionHeartbeat();
 
   // Decide ONCE on mount whether to show the loader. If the store already
   // has cached data (e.g. SPA navigation within the app), skip it entirely.
