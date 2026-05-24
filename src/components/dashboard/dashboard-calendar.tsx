@@ -2,6 +2,7 @@
 
 import "temporal-polyfill/global";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTheme } from "next-themes";
 import {
   ScheduleXCalendar,
   useNextCalendarApp,
@@ -44,6 +45,18 @@ interface CalendarEntry {
   _entry: TimeEntryAPI;
 }
 
+interface ProjectCalendarColors {
+  main: string;
+  container: string;
+  onContainer: string;
+}
+
+interface ProjectCalendar {
+  colorName: string;
+  lightColors: ProjectCalendarColors;
+  darkColors: ProjectCalendarColors;
+}
+
 const tz = (() => {
   if (typeof Intl === "undefined") return "UTC";
   try {
@@ -69,43 +82,35 @@ function colorFor(seed: string): string {
   return `hsl(${hue} 45% 45%)`;
 }
 
-// Darken a hex/hsl color for the "on container" text. Schedule-X expects
-// 3 color slots per calendar; we derive them from the project color.
+// Build light + dark color slots for a project. Schedule-X uses these
+// directly to render event bars / fills / text. We derive both palettes
+// from the single stored project color so a hex like #2D6B5A reads as a
+// muted tinted card on light bg and a soft glowing card on dark bg.
 function deriveCalendarColors(color: string): {
-  main: string;
-  container: string;
-  onContainer: string;
+  light: ProjectCalendarColors;
+  dark: ProjectCalendarColors;
 } {
-  // For hex inputs, fall back to neutral container colors. The "main" is the
-  // strong project color; "container" is a tinted background; "onContainer"
-  // is dark text that reads on the container.
   return {
-    main: color,
-    container: `${color}26`, // 15% alpha
-    onContainer: "var(--text-forest)",
+    light: {
+      main: color,
+      container: `${color}26`, // 15% alpha tint on cream bg
+      onContainer: "var(--text-forest)",
+    },
+    dark: {
+      main: color,
+      container: `${color}40`, // 25% alpha — more opaque so it pops on dark bg
+      onContainer: "var(--text-cream)",
+    },
   };
 }
 
 export function DashboardCalendar() {
   const [entries, setEntries] = useState<CalendarEntry[] | null>(null);
   const [selected, setSelected] = useState<TimeEntryAPI | null>(null);
-  // The view name we boot the calendar with — chosen once based on
-  // viewport. Re-mounting on resize is intentional: Schedule-X reads the
-  // default view at create time. The user can switch views inside the
-  // calendar's own toolbar.
-  const [bootView] = useState<string>(() => {
-    if (typeof window === "undefined") return viewMonthGrid.name;
-    return window.matchMedia("(max-width: 640px)").matches
-      ? viewMonthAgenda.name
-      : viewMonthGrid.name;
-  });
-
-  const eventsService = useRef(createEventsServicePlugin());
+  const { resolvedTheme } = useTheme();
 
   const load = useMemo(
     () => async () => {
-      // ±60 days around today — covers the typical browse range without
-      // pulling thousands of entries.
       const from = new Date();
       from.setDate(from.getDate() - 60);
       const to = new Date();
@@ -144,62 +149,6 @@ export function DashboardCalendar() {
     };
   }, [load]);
 
-  // Build the per-project `calendars` config. We need this even when entries
-  // is still null so the calendar can mount; we'll populate it once data
-  // arrives. Schedule-X looks up calendarId on each event into this record
-  // to color it.
-  const calendars = useMemo(() => {
-    const map: Record<string, { colorName: string; lightColors: { main: string; container: string; onContainer: string } }> = {
-      "no-project": {
-        colorName: "no-project",
-        lightColors: deriveCalendarColors("#9aa39a"),
-      },
-    };
-    for (const e of entries ?? []) {
-      const proj = e._entry.project;
-      if (!proj) continue;
-      if (map[proj.id]) continue;
-      map[proj.id] = {
-        colorName: proj.id,
-        lightColors: deriveCalendarColors(proj.color || colorFor(proj.id)),
-      };
-    }
-    return map;
-  }, [entries]);
-
-  const calendarApp = useNextCalendarApp(
-    {
-      views: [viewMonthGrid, viewWeek, viewDay, viewMonthAgenda],
-      defaultView: bootView,
-      firstDayOfWeek: 1,
-      events: [],
-      calendars,
-      callbacks: {
-        onEventClick: (event) => {
-          const raw = (event as unknown as { _entry?: TimeEntryAPI })._entry;
-          if (raw) setSelected(raw);
-        },
-      },
-    },
-    [eventsService.current]
-  );
-
-  // Push entries into the events service whenever they change. Calling .set()
-  // is the canonical way to replace the visible event list without rebuilding
-  // the calendar instance.
-  useEffect(() => {
-    if (!calendarApp || !entries) return;
-    const events = entries.map((e) => ({
-      id: e.id,
-      title: e.title,
-      start: toZoned(e.start),
-      end: toZoned(e.end),
-      calendarId: e.calendarId,
-      _entry: e._entry,
-    }));
-    eventsService.current.set(events);
-  }, [calendarApp, entries]);
-
   return (
     <>
       <Card>
@@ -217,9 +166,16 @@ export function DashboardCalendar() {
               untracked commits to see entries here.
             </p>
           ) : (
-            <div className="sx-react-calendar-wrapper h-[560px] sm:h-[640px]">
-              <ScheduleXCalendar calendarApp={calendarApp} />
-            </div>
+            // Force a fresh CalendarBody instance whenever the app theme
+            // switches — Schedule-X reads `isDark` once at calendar-app
+            // creation, so we can't just toggle a prop. The key change
+            // unmounts + remounts the body with a new calendarApp.
+            <CalendarBody
+              key={resolvedTheme === "dark" ? "dark" : "light"}
+              entries={entries}
+              isDark={resolvedTheme === "dark"}
+              onEventClick={(raw) => setSelected(raw)}
+            />
           )}
         </CardContent>
       </Card>
@@ -231,6 +187,87 @@ export function DashboardCalendar() {
         />
       )}
     </>
+  );
+}
+
+function CalendarBody({
+  entries,
+  isDark,
+  onEventClick,
+}: {
+  entries: CalendarEntry[];
+  isDark: boolean;
+  onEventClick: (entry: TimeEntryAPI) => void;
+}) {
+  const eventsService = useRef(createEventsServicePlugin());
+
+  const bootView = useMemo(() => {
+    if (typeof window === "undefined") return viewMonthGrid.name;
+    return window.matchMedia("(max-width: 640px)").matches
+      ? viewMonthAgenda.name
+      : viewMonthGrid.name;
+  }, []);
+
+  const calendars = useMemo<Record<string, ProjectCalendar>>(() => {
+    const noProj = deriveCalendarColors("#9aa39a");
+    const map: Record<string, ProjectCalendar> = {
+      "no-project": {
+        colorName: "no-project",
+        lightColors: noProj.light,
+        darkColors: noProj.dark,
+      },
+    };
+    for (const e of entries) {
+      const proj = e._entry.project;
+      if (!proj) continue;
+      if (map[proj.id]) continue;
+      const palette = deriveCalendarColors(proj.color || colorFor(proj.id));
+      map[proj.id] = {
+        colorName: proj.id,
+        lightColors: palette.light,
+        darkColors: palette.dark,
+      };
+    }
+    return map;
+  }, [entries]);
+
+  const calendarApp = useNextCalendarApp(
+    {
+      views: [viewMonthGrid, viewWeek, viewDay, viewMonthAgenda],
+      defaultView: bootView,
+      firstDayOfWeek: 1,
+      events: [],
+      calendars,
+      isDark,
+      callbacks: {
+        onEventClick: (event) => {
+          const raw = (event as unknown as { _entry?: TimeEntryAPI })._entry;
+          if (raw) onEventClick(raw);
+        },
+      },
+    },
+    [eventsService.current]
+  );
+
+  // Push entries into the events service. Calling .set() is the canonical
+  // way to replace the visible event list without rebuilding the calendar.
+  useEffect(() => {
+    if (!calendarApp) return;
+    const events = entries.map((e) => ({
+      id: e.id,
+      title: e.title,
+      start: toZoned(e.start),
+      end: toZoned(e.end),
+      calendarId: e.calendarId,
+      _entry: e._entry,
+    }));
+    eventsService.current.set(events);
+  }, [calendarApp, entries]);
+
+  return (
+    <div className="sx-react-calendar-wrapper h-[560px] sm:h-[640px]">
+      <ScheduleXCalendar calendarApp={calendarApp} />
+    </div>
   );
 }
 
