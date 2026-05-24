@@ -92,33 +92,51 @@ export function ProjectReposCard({ projectId }: Props) {
 
   const linkedSet = new Set(linked.map((r) => r.repoFullName));
 
-  const addRepo = async (repoFullName: string) => {
-    const r = await fetch(`/api/projects/${projectId}/repos`, {
+  const addRepo = (repoFullName: string) => {
+    // Optimistic — push a temp chip immediately, swap with the server row on
+    // success or remove it on failure. `repoFullName` is a unique key so we
+    // also use it as the temp id to avoid id collisions if the user toggles
+    // a repo multiple times in quick succession.
+    const tempId = `temp-${repoFullName}`;
+    if (linked.find((r) => r.repoFullName === repoFullName)) return;
+    setLinked((prev) => [...prev, { id: tempId, repoFullName }]);
+    toast.success(`Linked ${repoFullName}`);
+    setSearch("");
+
+    void fetch(`/api/projects/${projectId}/repos`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ repoFullName }),
-    });
-    if (!r.ok) {
-      toast.error("Couldn't link repo");
-      return;
-    }
-    const row = await r.json();
-    setLinked((prev) => (prev.find((x) => x.id === row.id) ? prev : [...prev, row]));
-    toast.success(`Linked ${repoFullName}`);
-    setSearch("");
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("link-failed");
+        const row = await r.json();
+        setLinked((prev) =>
+          prev.map((x) => (x.id === tempId ? row : x))
+        );
+      })
+      .catch(() => {
+        setLinked((prev) => prev.filter((x) => x.id !== tempId));
+        toast.error("Couldn't link repo — removed");
+      });
   };
 
-  const removeRepo = async (repoFullName: string) => {
-    const r = await fetch(
-      `/api/projects/${projectId}/repos?repoFullName=${encodeURIComponent(repoFullName)}`,
-      { method: "DELETE" }
-    );
-    if (!r.ok) {
-      toast.error("Couldn't unlink");
-      return;
-    }
+  const removeRepo = (repoFullName: string) => {
+    const previous = linked;
     setLinked((prev) => prev.filter((x) => x.repoFullName !== repoFullName));
     toast.success(`Unlinked ${repoFullName}`);
+
+    void fetch(
+      `/api/projects/${projectId}/repos?repoFullName=${encodeURIComponent(repoFullName)}`,
+      { method: "DELETE" }
+    )
+      .then((r) => {
+        if (!r.ok) throw new Error("unlink-failed");
+      })
+      .catch(() => {
+        setLinked(previous);
+        toast.error("Couldn't unlink — restored");
+      });
   };
 
   return (

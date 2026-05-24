@@ -116,14 +116,12 @@ export default function ProjectDetailPage() {
   const [editClientId, setEditClientId] = useState<string | null>(null);
   const [editHourlyRate, setEditHourlyRate] = useState("");
   const [editEstimatedHours, setEditEstimatedHours] = useState("");
-  const [saving, setSaving] = useState(false);
 
   // Clients for the edit dropdown
   const clients = (useAppStore((s) => s.clients.data) ?? []) as { id: string; name: string }[];
 
   // Delete state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const fetchProject = useCallback(async () => {
     try {
@@ -210,71 +208,96 @@ export default function ProjectDetailPage() {
     setEditDialogOpen(true);
   }
 
-  async function handleSaveProject() {
+  function handleSaveProject() {
     if (!editName.trim() || !project) return;
-    setSaving(true);
-    try {
-      const patch = {
-        name: editName.trim(),
-        color: editColor,
-        clientId: editClientId || null,
-        hourlyRate: editHourlyRate ? parseFloat(editHourlyRate) : null,
-        estimatedHours: editEstimatedHours ? parseFloat(editEstimatedHours) : null,
-      };
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(patch),
+    const previous = project;
+    const patch = {
+      name: editName.trim(),
+      color: editColor,
+      clientId: editClientId || null,
+      hourlyRate: editHourlyRate ? parseFloat(editHourlyRate) : null,
+      estimatedHours: editEstimatedHours ? parseFloat(editEstimatedHours) : null,
+    };
+
+    // Optimistic — apply locally and close the dialog immediately.
+    const optimistic = {
+      ...project,
+      name: patch.name,
+      color: patch.color,
+      hourlyRate: patch.hourlyRate,
+      estimatedHours: patch.estimatedHours,
+      client:
+        patch.clientId == null
+          ? null
+          : project.client?.id === patch.clientId
+            ? project.client
+            : project.client,
+    };
+    setProject(optimistic);
+    setEditDialogOpen(false);
+    toast.success("Project updated");
+
+    void fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("update-failed");
+        const updated = await res.json();
+        setProject(updated);
+        useAppStore.getState().invalidate("projects");
+        useAppStore.getState().invalidate("pageProjects");
+      })
+      .catch(() => {
+        setProject(previous);
+        toast.error("Failed to update project — restored");
       });
-      if (!res.ok) throw new Error("Failed to update");
-      const updated = await res.json();
-      setProject(updated);
-      setEditDialogOpen(false);
-      useAppStore.getState().invalidate("projects");
-      useAppStore.getState().invalidate("pageProjects");
-      toast.success("Project updated");
-    } catch {
-      toast.error("Failed to update project");
-    } finally {
-      setSaving(false);
-    }
   }
 
-  async function handleToggleStatus() {
+  function handleToggleStatus() {
     if (!project) return;
     const newStatus = project.status === "active" ? "archived" : "active";
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+    const previous = project;
+
+    setProject((prev) => (prev ? { ...prev, status: newStatus } : prev));
+    toast.success(
+      newStatus === "archived" ? "Project archived" : "Project reactivated"
+    );
+
+    void fetch(`/api/projects/${project.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("status-failed");
+        useAppStore.getState().invalidate("projects");
+      })
+      .catch(() => {
+        setProject(previous);
+        toast.error("Failed to update status — restored");
       });
-      if (!res.ok) throw new Error("Failed to update status");
-      setProject((prev) => (prev ? { ...prev, status: newStatus } : prev));
-      useAppStore.getState().invalidate("projects");
-      toast.success(
-        newStatus === "archived" ? "Project archived" : "Project reactivated"
-      );
-    } catch {
-      toast.error("Failed to update project status");
-    }
   }
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!project) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/projects/${project.id}`, {
-        method: "DELETE",
+    const projectId = project.id;
+
+    // Optimistic — navigate away immediately. If DELETE fails, we'll surface
+    // an error toast but won't auto-navigate back (the user already moved on).
+    toast.success("Project deleted");
+    router.push("/projects");
+
+    void fetch(`/api/projects/${projectId}`, { method: "DELETE" })
+      .then((res) => {
+        if (!res.ok) throw new Error("delete-failed");
+        useAppStore.getState().invalidate("projects");
+        useAppStore.getState().invalidate("pageProjects");
+      })
+      .catch(() => {
+        toast.error("Failed to delete project — refresh to see current state");
       });
-      if (!res.ok) throw new Error("Failed to delete");
-      useAppStore.getState().invalidate("projects");
-      toast.success("Project deleted");
-      router.push("/projects");
-    } catch {
-      toast.error("Failed to delete project");
-      setDeleting(false);
-    }
   }
 
   if (loading || !project) {
@@ -612,9 +635,9 @@ export default function ProjectDetailPage() {
             <Button
               className="w-full rounded-full h-[44px] text-[15px] font-medium mt-2"
               onClick={handleSaveProject}
-              disabled={saving || !editName.trim()}
+              disabled={!editName.trim()}
             >
-              {saving ? "Saving..." : "Save Changes"}
+              Save Changes
             </Button>
           </div>
         </DialogContent>
@@ -644,9 +667,8 @@ export default function ProjectDetailPage() {
                 variant="destructive"
                 className="rounded-full h-10 px-5 bg-[var(--accent-coral)]"
                 onClick={handleDelete}
-                disabled={deleting}
               >
-                {deleting ? "Deleting..." : "Delete Project"}
+                Delete Project
               </Button>
             </div>
           </div>
