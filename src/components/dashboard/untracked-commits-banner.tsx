@@ -20,6 +20,38 @@ function formatHM(seconds: number): string {
 // localStorage key for the session-level dismiss.
 // The dedicated /untracked page has its own, permanent per-cluster dismiss.
 const SESSION_DISMISS_KEY = "boggl.untracked.banner-dismissed-until";
+// Stale-while-revalidate cache for the banner's cluster summary.
+const CACHE_KEY = "boggl.untracked.banner-cache";
+
+interface CachedSnapshot {
+  clusters: Cluster[];
+  at: number;
+}
+
+function readCachedSnapshot(): Cluster[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedSnapshot;
+    if (!Array.isArray(parsed.clusters)) return null;
+    return parsed.clusters;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedSnapshot(clusters: Cluster[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CACHE_KEY,
+      JSON.stringify({ clusters, at: Date.now() } satisfies CachedSnapshot)
+    );
+  } catch {
+    // Quota or private-mode — silent.
+  }
+}
 
 /**
  * Compact dashboard pill: "N commits · ~4h 29m aren't tracked · Review".
@@ -30,7 +62,11 @@ const SESSION_DISMISS_KEY = "boggl.untracked.banner-dismissed-until";
  * because 30+ clusters drowned the dashboard.
  */
 export function UntrackedCommitsBanner() {
-  const [clusters, setClusters] = useState<Cluster[] | null>(null);
+  // Hydrate from localStorage immediately so the banner paints on first
+  // render. The fetch below revalidates in the background.
+  const [clusters, setClusters] = useState<Cluster[] | null>(() =>
+    readCachedSnapshot()
+  );
   const [unavailable, setUnavailable] = useState(false);
   const [dismissedUntil, setDismissedUntil] = useState<number>(() => {
     if (typeof window === "undefined") return 0;
@@ -44,7 +80,9 @@ export function UntrackedCommitsBanner() {
       return;
     }
     if (!r.ok) return;
-    setClusters(await r.json());
+    const fresh = (await r.json()) as Cluster[];
+    setClusters(fresh);
+    writeCachedSnapshot(fresh);
   }, []);
 
   useEffect(() => {

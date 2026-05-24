@@ -17,6 +17,7 @@ import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
 import { estimateClusterWindow } from "@/lib/github/untracked-estimate";
+import { draftDescriptionFromCommits } from "@/lib/github/description";
 
 interface AttachedCommit {
   sha: string;
@@ -41,7 +42,33 @@ interface Project {
 }
 
 const DISMISSED_KEY = "boggl.untracked.dismissed-cluster-keys";
+const CLUSTERS_CACHE_KEY = "boggl.untracked.clusters-cache";
 const clusterKey = (c: Cluster) => `${c.start}|${c.end}`;
+
+function readClustersCache(): Cluster[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(CLUSTERS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.clusters)) return null;
+    return parsed.clusters as Cluster[];
+  } catch {
+    return null;
+  }
+}
+
+function writeClustersCache(clusters: Cluster[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      CLUSTERS_CACHE_KEY,
+      JSON.stringify({ clusters, at: Date.now() })
+    );
+  } catch {
+    // Quota or private-mode — silent.
+  }
+}
 
 function formatHM(seconds: number): string {
   const h = Math.floor(seconds / 3600);
@@ -68,12 +95,13 @@ function saveDismissed(set: Set<string>) {
 }
 
 export default function UntrackedCommitsPage() {
-  const [clusters, setClusters] = useState<Cluster[]>([]);
+  // Hydrate from localStorage on mount so a returning user sees their last
+  // cluster list instantly — fresh data revalidates in the background.
+  const [clusters, setClusters] = useState<Cluster[]>(() => readClustersCache() ?? []);
   const [projects, setProjects] = useState<Project[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => readClustersCache() === null);
   const [reloading, setReloading] = useState(false);
   const [notConnected, setNotConnected] = useState(false);
-  const [creating, setCreating] = useState<string | null>(null);
   const [created, setCreated] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
   const [showDismissed, setShowDismissed] = useState(false);
@@ -92,7 +120,11 @@ export default function UntrackedCommitsPage() {
         return;
       }
 
-      if (clustersRes.ok) setClusters(await clustersRes.json());
+      if (clustersRes.ok) {
+        const fresh = (await clustersRes.json()) as Cluster[];
+        setClusters(fresh);
+        writeClustersCache(fresh);
+      }
       if (projectsRes.ok) {
         const p = (await projectsRes.json()) as Project[];
         setProjects(p);
@@ -107,29 +139,67 @@ export default function UntrackedCommitsPage() {
     load();
   }, [load]);
 
-  const createEntry = async (cluster: Cluster, projectId: string | null) => {
+  const createEntry = (cluster: Cluster, projectId: string | null) => {
     const key = clusterKey(cluster);
-    setCreating(key);
-    try {
-      const r = await fetch("/api/time-entries/from-commits", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          start: cluster.start,
-          end: cluster.end,
-          commits: cluster.commits,
-          projectId,
-        }),
+
+    // Optimistic — mark created (filters this cluster out of the visible list
+    // instantly) and dispatch a synthetic entry so the timer page's list
+    // updates without a refetch. POST happens in the background; on failure
+    // we roll back.
+    setCreated((prev) => new Set(prev).add(key));
+    toast.success(`Entry created: ${formatHM(cluster.durationSeconds)}`);
+
+    const project = projectId
+      ? projects.find((p) => p.id === projectId) ?? null
+      : null;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const description = draftDescriptionFromCommits(cluster.commits) ?? "";
+    const synthetic = {
+      id: tempId,
+      description,
+      startTime: cluster.start,
+      endTime: cluster.end,
+      duration: cluster.durationSeconds,
+      billable: true,
+      projectId,
+      project,
+      tags: [],
+      commits: cluster.commits,
+    };
+    window.dispatchEvent(
+      new CustomEvent("timer-entry-completed", { detail: synthetic })
+    );
+
+    void fetch("/api/time-entries/from-commits", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        start: cluster.start,
+        end: cluster.end,
+        commits: cluster.commits,
+        projectId,
+      }),
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("create-failed");
+        const entry = await r.json();
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-confirmed", {
+            detail: { ...entry, _replaceId: tempId },
+          })
+        );
+      })
+      .catch(() => {
+        setCreated((prev) => {
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-failed", { detail: { id: tempId } })
+        );
+        toast.error("Couldn't create entry — restored");
       });
-      if (!r.ok) {
-        toast.error("Couldn't create entry");
-        return;
-      }
-      toast.success(`Entry created: ${formatHM(cluster.durationSeconds)}`);
-      setCreated((prev) => new Set(prev).add(key));
-    } finally {
-      setCreating(null);
-    }
   };
 
   const dismissCluster = (cluster: Cluster) => {
@@ -431,7 +501,6 @@ export default function UntrackedCommitsPage() {
             <ul className="space-y-3">
               {filteredVisible.map((cl) => {
               const key = clusterKey(cl);
-              const isCreating = creating === key;
               const isDone = created.has(key);
               const isDismissed = dismissed.has(key);
               const suggested = projects.find((p) => p.id === cl.suggestedProjectId);
@@ -529,18 +598,16 @@ export default function UntrackedCommitsPage() {
                     <div className="flex sm:flex-col items-stretch gap-2 shrink-0 sm:w-[150px]">
                       <button
                         type="button"
-                        disabled={isCreating || isDone}
+                        disabled={isDone}
                         onClick={() => createEntry(cl, cl.suggestedProjectId)}
                         className="inline-flex items-center justify-center gap-1.5 h-9 px-3 rounded-[var(--radius-md)] text-[12px] font-medium bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90 disabled:opacity-60 transition-opacity"
                       >
-                        {isCreating ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        ) : isDone ? (
+                        {isDone ? (
                           <Check className="h-3.5 w-3.5" />
                         ) : (
                           <Plus className="h-3.5 w-3.5" />
                         )}
-                        {isDone ? "Added" : isCreating ? "Adding…" : "Add entry"}
+                        {isDone ? "Added" : "Add entry"}
                       </button>
                       {!isDone && (
                         <button
