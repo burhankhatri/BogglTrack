@@ -76,7 +76,7 @@ export default function UntrackedCommitsPage() {
   const [created, setCreated] = useState<Set<string>>(new Set());
   const [dismissed, setDismissed] = useState<Set<string>>(() => loadDismissed());
   const [showDismissed, setShowDismissed] = useState(false);
-  const [selectedRepo, setSelectedRepo] = useState<string | null>(null);
+  const [selectedRepos, setSelectedRepos] = useState<Set<string>>(new Set());
 
   const load = useCallback(async (opts?: { silent?: boolean }) => {
     if (opts?.silent) setReloading(true);
@@ -159,15 +159,16 @@ export default function UntrackedCommitsPage() {
     return Array.from(set).sort();
   }, [visible]);
 
-  // When a repo is selected, narrow each cluster to commits from that repo,
+  // When repos are selected, narrow each cluster to commits from those repos,
   // drop empty clusters, and recompute the cluster's time window from just
-  // those commits (with the same 5-min padding the API uses).
+  // those commits (with the same 5-min padding the API uses). Empty selection
+  // means "no filter" — show everything.
   const filteredVisible = useMemo<Cluster[]>(() => {
-    if (!selectedRepo) return visible;
+    if (selectedRepos.size === 0) return visible;
     const PAD_MS = 5 * 60 * 1000;
     const out: Cluster[] = [];
     for (const cl of visible) {
-      const matching = cl.commits.filter((c) => c.repo === selectedRepo);
+      const matching = cl.commits.filter((c) => selectedRepos.has(c.repo));
       if (matching.length === 0) continue;
       const times = matching.map((c) => new Date(c.committedAt).getTime());
       const startMs = Math.min(...times) - PAD_MS;
@@ -181,36 +182,54 @@ export default function UntrackedCommitsPage() {
       });
     }
     return out;
-  }, [visible, selectedRepo]);
+  }, [visible, selectedRepos]);
 
   const totalSeconds = filteredVisible.reduce((s, c) => s + c.durationSeconds, 0);
   const totalCommits = filteredVisible.reduce((s, c) => s + c.commits.length, 0);
 
-  const handleSelectRepo = useCallback(
-    (repo: string | null) => {
-      setSelectedRepo(repo);
-      if (!repo) return;
+  const summarizeForRepos = useCallback(
+    (repos: Set<string>) => {
       const PAD_MS = 5 * 60 * 1000;
       let total = 0;
       let commitCount = 0;
       for (const cl of visible) {
-        const matching = cl.commits.filter((c) => c.repo === repo);
+        const matching = cl.commits.filter((c) => repos.has(c.repo));
         if (matching.length === 0) continue;
         const times = matching.map((c) => new Date(c.committedAt).getTime());
         total += Math.floor((Math.max(...times) - Math.min(...times) + 2 * PAD_MS) / 1000);
         commitCount += matching.length;
       }
-      const short = repo.split("/").slice(-1)[0];
-      if (commitCount === 0) {
-        toast(`${short}: no untracked commits in the last 30 days`);
-      } else {
-        toast.success(
-          `${short}: ~${formatHM(total)} across ${commitCount} commit${commitCount === 1 ? "" : "s"}`
-        );
-      }
+      return { total, commitCount };
     },
     [visible]
   );
+
+  const toggleRepo = useCallback(
+    (repo: string) => {
+      const next = new Set(selectedRepos);
+      if (next.has(repo)) next.delete(repo);
+      else next.add(repo);
+      setSelectedRepos(next);
+      if (next.size === 0) return;
+      const { total, commitCount } = summarizeForRepos(next);
+      const label =
+        next.size === 1
+          ? Array.from(next)[0].split("/").slice(-1)[0]
+          : `${next.size} repos`;
+      if (commitCount === 0) {
+        toast(`${label}: no untracked commits in the last 30 days`);
+      } else {
+        toast.success(
+          `${label}: ~${formatHM(total)} across ${commitCount} commit${commitCount === 1 ? "" : "s"}`
+        );
+      }
+    },
+    [selectedRepos, summarizeForRepos]
+  );
+
+  const clearRepoFilter = useCallback(() => {
+    setSelectedRepos(new Set());
+  }, []);
 
   const shortRepo = (r: string) => r.split("/").slice(-1)[0];
 
@@ -272,7 +291,7 @@ export default function UntrackedCommitsPage() {
             Open Settings
           </Link>
         </Card>
-      ) : filteredVisible.length === 0 && !selectedRepo ? (
+      ) : filteredVisible.length === 0 && selectedRepos.size === 0 ? (
         <Card className="p-8 text-center space-y-3">
           <div className="inline-flex items-center justify-center h-10 w-10 rounded-full bg-[var(--accent-olive-soft)] mx-auto">
             <Check className="h-5 w-5 text-[var(--accent-olive-hover)]" />
@@ -304,9 +323,9 @@ export default function UntrackedCommitsPage() {
               </span>
               <button
                 type="button"
-                onClick={() => handleSelectRepo(null)}
+                onClick={clearRepoFilter}
                 className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors ${
-                  selectedRepo === null
+                  selectedRepos.size === 0
                     ? "bg-[var(--text-forest)] text-[var(--text-cream)]"
                     : "bg-[var(--bg-muted)] text-[var(--text-olive)] hover:text-[var(--text-forest)] hover:bg-[var(--bg-cream-hover)]"
                 }`}
@@ -315,12 +334,12 @@ export default function UntrackedCommitsPage() {
               </button>
               {availableRepos.map((repo) => {
                 const short = repo.split("/").slice(-1)[0];
-                const active = selectedRepo === repo;
+                const active = selectedRepos.has(repo);
                 return (
                   <button
                     key={repo}
                     type="button"
-                    onClick={() => handleSelectRepo(active ? null : repo)}
+                    onClick={() => toggleRepo(repo)}
                     title={repo}
                     className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-mono transition-colors ${
                       active
@@ -349,12 +368,21 @@ export default function UntrackedCommitsPage() {
                 {filteredVisible.length}
               </span>{" "}
               sessions
-              {selectedRepo && (
+              {selectedRepos.size === 1 && (
                 <>
                   {" "}
                   in{" "}
                   <span className="font-mono font-semibold text-[var(--text-forest)]">
-                    {selectedRepo.split("/").slice(-1)[0]}
+                    {Array.from(selectedRepos)[0].split("/").slice(-1)[0]}
+                  </span>
+                </>
+              )}
+              {selectedRepos.size > 1 && (
+                <>
+                  {" "}
+                  across{" "}
+                  <span className="font-semibold text-[var(--text-forest)]">
+                    {selectedRepos.size} repos
                   </span>
                 </>
               )}
@@ -382,13 +410,15 @@ export default function UntrackedCommitsPage() {
               <p className="text-[13px] text-[var(--text-olive)]">
                 No untracked commits in{" "}
                 <span className="font-mono font-semibold text-[var(--text-forest)]">
-                  {selectedRepo?.split("/").slice(-1)[0]}
+                  {selectedRepos.size === 1
+                    ? Array.from(selectedRepos)[0].split("/").slice(-1)[0]
+                    : `${selectedRepos.size} selected repos`}
                 </span>{" "}
                 in the last 30 days.
               </p>
               <button
                 type="button"
-                onClick={() => handleSelectRepo(null)}
+                onClick={clearRepoFilter}
                 className="text-[12px] text-[var(--text-olive)] hover:text-[var(--text-forest)] underline"
               >
                 Show all repos
