@@ -76,34 +76,42 @@ export default function SettingsPage() {
     });
   }, [fetchStoreSettings]);
 
-  // Debounced auto-save — PATCHes 600ms after the last change.
+  // Debounced auto-save — writes to the app store synchronously so the
+  // sidebar / timer / project pages reflect changes instantly, then PATCHes
+  // the server 600ms after the last change.
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+
+    const currencyObj = CURRENCIES.find((c) => c.code === currency);
+    const patch = {
+      name: name.trim(),
+      email: email.trim() || null,
+      defaultHourlyRate: parseFloat(defaultHourlyRate) || 0,
+      currency,
+      currencySymbol: currencyObj?.symbol || "$",
+      dateFormat,
+      timeFormat,
+      weekStartDay,
+      theme: themeValue,
+    };
+
+    // Write to the store NOW so downstream consumers see the new value.
+    useAppStore.getState().optimisticUpdateSettings(patch);
+
     setSaveStatus("saving");
     saveTimerRef.current = setTimeout(async () => {
-      const currencyObj = CURRENCIES.find((c) => c.code === currency);
       try {
         const res = await fetch("/api/settings", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            name: name.trim(),
-            email: email.trim() || null,
-            defaultHourlyRate: parseFloat(defaultHourlyRate) || 0,
-            currency,
-            currencySymbol: currencyObj?.symbol || "$",
-            dateFormat,
-            timeFormat,
-            weekStartDay,
-            theme: themeValue,
-          }),
+          body: JSON.stringify(patch),
         });
         if (!res.ok) throw new Error();
         const updated = await res.json();
         setSettings(updated);
-        useAppStore.getState().invalidate("settings");
+        useAppStore.getState().optimisticUpdateSettings(updated);
         setSaveStatus("saved");
         savedFlashTimerRef.current = setTimeout(() => setSaveStatus("idle"), 1500);
       } catch {

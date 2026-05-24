@@ -259,6 +259,7 @@ interface AppState {
   optimisticUpdatePageProjects: (updater: (projects: ProjectWithStats[]) => ProjectWithStats[]) => void;
   optimisticUpdatePageClients: (updater: (clients: ClientWithStats[]) => ClientWithStats[]) => void;
   optimisticUpdatePageTags: (updater: (tags: TagWithCount[]) => TagWithCount[]) => void;
+  optimisticUpdateSettings: (patch: Partial<UserSettings>) => void;
 }
 
 // Create SWR fetchers
@@ -398,6 +399,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       const current = s.pageTags.data;
       if (!current) return {};
       return { pageTags: { ...s.pageTags, data: updater(current) } };
+    });
+  },
+  optimisticUpdateSettings: (patch) => {
+    set((s) => {
+      const current = s.settings.data;
+      if (!current) return {};
+      return { settings: { ...s.settings, data: { ...current, ...patch } } };
     });
   },
 }));
