@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 
 import { Card } from "@/components/ui/card";
+import { estimateClusterWindow } from "@/lib/github/untracked-estimate";
 
 interface AttachedCommit {
   sha: string;
@@ -160,25 +161,24 @@ export default function UntrackedCommitsPage() {
   }, [visible]);
 
   // When repos are selected, narrow each cluster to commits from those repos,
-  // drop empty clusters, and recompute the cluster's time window from just
-  // those commits (with the same 5-min padding the API uses). Empty selection
-  // means "no filter" — show everything.
+  // drop empty clusters, and recompute the cluster's time window using the
+  // same estimate the API uses (ramp-up + commit span + tail). Empty
+  // selection means "no filter" — show everything as the API returned it.
   const filteredVisible = useMemo<Cluster[]>(() => {
     if (selectedRepos.size === 0) return visible;
-    const PAD_MS = 5 * 60 * 1000;
     const out: Cluster[] = [];
     for (const cl of visible) {
       const matching = cl.commits.filter((c) => selectedRepos.has(c.repo));
       if (matching.length === 0) continue;
-      const times = matching.map((c) => new Date(c.committedAt).getTime());
-      const startMs = Math.min(...times) - PAD_MS;
-      const endMs = Math.max(...times) + PAD_MS;
+      const est = estimateClusterWindow(
+        matching.map((c) => new Date(c.committedAt).getTime())
+      );
       out.push({
         ...cl,
         commits: matching,
-        start: new Date(startMs).toISOString(),
-        end: new Date(endMs).toISOString(),
-        durationSeconds: Math.floor((endMs - startMs) / 1000),
+        start: new Date(est.startMs).toISOString(),
+        end: new Date(est.endMs).toISOString(),
+        durationSeconds: est.durationSeconds,
       });
     }
     return out;
@@ -189,14 +189,15 @@ export default function UntrackedCommitsPage() {
 
   const summarizeForRepos = useCallback(
     (repos: Set<string>) => {
-      const PAD_MS = 5 * 60 * 1000;
       let total = 0;
       let commitCount = 0;
       for (const cl of visible) {
         const matching = cl.commits.filter((c) => repos.has(c.repo));
         if (matching.length === 0) continue;
-        const times = matching.map((c) => new Date(c.committedAt).getTime());
-        total += Math.floor((Math.max(...times) - Math.min(...times) + 2 * PAD_MS) / 1000);
+        const est = estimateClusterWindow(
+          matching.map((c) => new Date(c.committedAt).getTime())
+        );
+        total += est.durationSeconds;
         commitCount += matching.length;
       }
       return { total, commitCount };
@@ -253,7 +254,9 @@ export default function UntrackedCommitsPage() {
             <p className="mt-1.5 text-[13px] text-[var(--text-olive)] max-w-[620px]">
               Commits from the last 30 days that aren&apos;t covered by any time entry.
               One-click to convert them into entries — the commit messages become
-              the description, the time range fits the commit window.
+              the description, and the duration is an estimate: commit span plus
+              ramp-up before the first commit and cleanup after the last. Edit
+              any entry afterwards if the estimate is off.
             </p>
           </div>
           <button

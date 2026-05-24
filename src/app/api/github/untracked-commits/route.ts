@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserOrErrorResponse } from "@/lib/user";
 import { fetchCommitsInWindow } from "@/lib/github/commits";
+import {
+  CLUSTER_GAP_MS,
+  estimateClusterWindow,
+} from "@/lib/github/untracked-estimate";
 import { subDays } from "date-fns";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +93,6 @@ export async function GET(req: NextRequest) {
   if (untracked.length === 0) return NextResponse.json([]);
 
   // 4. Cluster commits within 30 min of each other.
-  const GAP_MS = 30 * 60 * 1000;
   interface Cluster {
     start: Date;
     end: Date;
@@ -99,7 +102,7 @@ export async function GET(req: NextRequest) {
   const clusters: Cluster[] = [];
   for (const c of untracked) {
     const last = clusters[clusters.length - 1];
-    if (last && c.at.getTime() - last.end.getTime() <= GAP_MS) {
+    if (last && c.at.getTime() - last.end.getTime() <= CLUSTER_GAP_MS) {
       last.end = c.at;
       last.commits.push(c);
       last.repos.add(c.repo);
@@ -121,14 +124,34 @@ export async function GET(req: NextRequest) {
   const repoToProject = new Map<string, string>();
   for (const link of repoLinks) repoToProject.set(link.repoFullName, link.projectId);
 
-  // 6. Shape response. Pad the window by 5 minutes on each side so a
-  //    single-commit cluster still has a sensible duration.
-  const PAD_MS = 5 * 60 * 1000;
+  // Sorted list of existing entry end times so we can clamp a cluster's
+  // ramp-up start so it doesn't bleed into a previously-tracked entry.
+  const entryEndsAsc = entries
+    .map((e) => e.endTime?.getTime())
+    .filter((t): t is number => typeof t === "number")
+    .sort((a, b) => a - b);
+  const latestEndBefore = (t: number): number | undefined => {
+    let result: number | undefined;
+    for (const end of entryEndsAsc) {
+      if (end < t) result = end;
+      else break;
+    }
+    return result;
+  };
+
+  // 6. Shape response. Use estimateClusterWindow to model the unseen
+  //    pre-first-commit ramp-up and post-last-commit tail rather than the
+  //    old symmetric 5-min pad (which under-counted by ~25-30 min on
+  //    typical sessions).
   const response = clusters
     .filter((cl) => cl.commits.length >= 1)
     .map((cl) => {
-      const start = new Date(cl.start.getTime() - PAD_MS);
-      const end = new Date(cl.end.getTime() + PAD_MS);
+      const firstCommitMs = cl.start.getTime();
+      const earliestStartMs = latestEndBefore(firstCommitMs);
+      const est = estimateClusterWindow(
+        cl.commits.map((c) => c.at.getTime()),
+        { earliestStartMs }
+      );
       let suggestedProjectId: string | null = null;
       for (const repo of cl.repos) {
         const pid = repoToProject.get(repo);
@@ -138,9 +161,9 @@ export async function GET(req: NextRequest) {
         }
       }
       return {
-        start: start.toISOString(),
-        end: end.toISOString(),
-        durationSeconds: Math.floor((end.getTime() - start.getTime()) / 1000),
+        start: new Date(est.startMs).toISOString(),
+        end: new Date(est.endMs).toISOString(),
+        durationSeconds: est.durationSeconds,
         commits: cl.commits.map(({ at, ...rest }) => rest),
         suggestedProjectId,
       };
