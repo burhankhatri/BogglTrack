@@ -174,7 +174,6 @@ export function GlobalTimerBar() {
         description: data.description || "",
         projectId: data.projectId || null,
         billable: data.billable ?? true,
-        tagIds: [],
         hourlyRate: data.project?.hourlyRate || 0,
       });
     } else {
@@ -357,7 +356,6 @@ export function GlobalTimerBar() {
       description,
       projectId,
       billable,
-      tagIds: [],
       hourlyRate: project?.hourlyRate || 0,
     });
 
@@ -369,7 +367,6 @@ export function GlobalTimerBar() {
         startTime: now,
         projectId: projectId || undefined,
         billable,
-        tagIds: [],
       }),
     })
       .then((res) => {
@@ -423,7 +420,6 @@ export function GlobalTimerBar() {
       billable: addBillable,
       projectId: resolvedProjectId,
       project,
-      tags: [],
       commits: null,
     };
 
@@ -445,7 +441,6 @@ export function GlobalTimerBar() {
         endTime: resolved.endISO,
         projectId: resolvedProjectId,
         billable: addBillable,
-        tagIds: [],
       }),
     })
       .then(async (res) => {
@@ -509,7 +504,6 @@ export function GlobalTimerBar() {
       description: timerState.description,
       projectId: timerState.projectId,
       billable: timerState.billable,
-      tagIds: timerState.tagIds,
       hourlyRate: timerState.hourlyRate,
     };
     const hadDescription = timerState.description.trim().length > 0;
@@ -525,7 +519,6 @@ export function GlobalTimerBar() {
       project: proj
         ? { id: proj.id, name: proj.name, color: proj.color, hourlyRate: proj.hourlyRate, client: null }
         : null,
-      tags: [],
     };
 
     stopTimer();

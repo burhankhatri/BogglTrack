@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
     },
     include: {
       project: { include: { client: true } },
-      tags: { include: { tag: true } },
     },
   });
 

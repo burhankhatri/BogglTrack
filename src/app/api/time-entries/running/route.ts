@@ -17,9 +17,6 @@ export async function GET() {
         project: {
           include: { client: true },
         },
-        tags: {
-          include: { tag: true },
-        },
       },
     });
 

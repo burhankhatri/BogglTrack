@@ -75,7 +75,6 @@ interface PreviewEntry {
   earnings: number;
   rate: number;
   projectId: string | null;
-  tags: { tagId: string }[];
   commits?: InvoiceCommit[] | null;
   project: {
     id: string;
@@ -455,7 +454,7 @@ export default function InvoicesPage() {
     }
   };
 
-  // Group entries by same-day + identical description/project/billable/tags
+  // Group entries by same-day + identical description/project/billable
   // so the Step 1 table shows one row per unit of work instead of one row
   // per timer session.
   const groupedRows = useMemo(() => groupPreviewEntriesByDay(entries), [entries]);

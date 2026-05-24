@@ -83,7 +83,6 @@ interface TimeEntry {
     hourlyRate: number | null;
     client: Client | null;
   } | null;
-  tags: { tag: { id: string; name: string; color: string } }[];
 }
 
 interface UserSettings {

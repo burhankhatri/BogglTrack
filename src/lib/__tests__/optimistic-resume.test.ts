@@ -21,7 +21,6 @@ const makeEntry = (overrides = {}) => ({
   billable: true,
   projectId: "proj-1",
   project: { id: "proj-1", name: "MattBrown", color: "#2D6B5A", hourlyRate: 100, client: null },
-  tags: [{ tagId: "tag-1", tag: { id: "tag-1", name: "meetings", color: "#ccc" } }],
   ...overrides,
 });
 
@@ -50,7 +49,6 @@ describe("resumeTimerOptimistic", () => {
     expect(state.description).toBe("Client meeting");
     expect(state.projectId).toBe("proj-1");
     expect(state.billable).toBe(true);
-    expect(state.tagIds).toEqual(["tag-1"]);
   });
 
   it("carries over hourlyRate from project when available", () => {
@@ -135,7 +133,6 @@ describe("resumeTimerOptimistic", () => {
     const body = JSON.parse((fetch as ReturnType<typeof vi.fn>).mock.calls[0][1].body);
     expect(body.projectId).toBe("proj-1");
     expect(body.billable).toBe(true);
-    expect(body.tagIds).toEqual(["tag-1"]);
     expect(body.startTime).toBeDefined();
   });
 });

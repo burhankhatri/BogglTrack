@@ -1,17 +1,6 @@
 // Pure functions that group a day's time entries into display rows.
 // Extracted from timer/page.tsx so the merge rules can be unit-tested
-// in isolation (same pattern as calendar/calendar-helpers.ts).
-
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface TimeEntryTag {
-  tagId: string;
-  tag: Tag;
-}
+// in isolation.
 
 interface Project {
   id: string;
@@ -38,7 +27,6 @@ export interface GroupableTimeEntry {
   billable: boolean;
   projectId: string | null;
   project: Project | null;
-  tags: TimeEntryTag[];
   commits?: AttachedCommit[] | null;
 }
 
@@ -51,23 +39,20 @@ export interface GroupedEntry {
   billable: boolean;
   projectId: string | null;
   project: Project | null;
-  tags: TimeEntryTag[];
   startTime: string;
   endTime: string | null;
 }
 
 // Strict merge key: two entries only merge when they represent the *same
-// work* — same description, same project, same billable state, same tag set.
-// Client is derived from project (one-to-many), so including projectId
-// covers client too. Null projectId is stable as an empty string so two
-// no-project entries with the same description still merge together.
+// work* — same description, same project, same billable state. Client is
+// derived from project (one-to-many), so projectId covers client too.
+// Null projectId is stable as an empty string so two no-project entries
+// with the same description still merge together.
 function buildMergeKey(entry: GroupableTimeEntry): string {
-  const tagIds = entry.tags.map((t) => t.tagId).sort().join(",");
   return [
     entry.description || "",
     entry.projectId ?? "",
     entry.billable ? "1" : "0",
-    tagIds,
   ].join("|");
 }
 
@@ -111,7 +96,6 @@ export function groupEntriesByDesc<T extends GroupableTimeEntry>(
         billable: entry.billable,
         projectId: entry.projectId,
         project: entry.project,
-        tags: entry.tags,
         startTime: entry.startTime,
         endTime: entry.endTime,
       });

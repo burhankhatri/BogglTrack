@@ -5,13 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Clock,
-  Calendar,
   LayoutDashboard,
-  List,
   FolderKanban,
   Users,
-  Tags,
-  BarChart3,
   FileText,
   Settings,
   LogOut,
@@ -36,14 +32,10 @@ type NavItem = {
 const navItems: NavItem[] = [
   { title: "Timer", href: "/timer", icon: Clock },
   { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { title: "Calendar", href: "/calendar", icon: Calendar },
-  { title: "Tracking", href: "/tracking", icon: List },
   { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
   { title: "Projects", href: "/projects", icon: FolderKanban },
   { title: "Clients", href: "/clients", icon: Users },
-  { title: "Tags", href: "/tags", icon: Tags },
   { title: "Untracked", href: "/untracked", icon: GitCommit, badgeKey: "untracked" },
-  { title: "Reports", href: "/reports", icon: BarChart3 },
   { title: "Invoices", href: "/invoices", icon: FileText },
 ];
 

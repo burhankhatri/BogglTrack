@@ -7,7 +7,6 @@ interface ResumeEntry {
   projectId: string | null;
   billable: boolean;
   project: { hourlyRate: number | null } | null;
-  tags: { tagId: string }[];
 }
 
 export function resumeTimerOptimistic(
@@ -20,7 +19,6 @@ export function resumeTimerOptimistic(
     entry.project?.hourlyRate ?? null,
     userDefaultRate
   );
-  const tagIds = entry.tags.map((t) => t.tagId);
 
   // 1. Start timer instantly (optimistic)
   useTimerStore.getState().startTimer({
@@ -29,7 +27,6 @@ export function resumeTimerOptimistic(
     description: entry.description,
     projectId: entry.projectId,
     billable: entry.billable,
-    tagIds,
     hourlyRate: rate,
   });
 
@@ -42,7 +39,6 @@ export function resumeTimerOptimistic(
       startTime: now,
       projectId: entry.projectId,
       billable: entry.billable,
-      tagIds,
     }),
   })
     .then((res) => {

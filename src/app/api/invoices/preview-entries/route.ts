@@ -47,9 +47,6 @@ export async function GET(request: NextRequest) {
           project: {
             include: { client: true },
           },
-          tags: {
-            include: { tag: true },
-          },
         },
         orderBy: { startTime: "desc" },
       }),

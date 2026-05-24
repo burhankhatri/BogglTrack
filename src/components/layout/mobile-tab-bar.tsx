@@ -5,16 +5,12 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   Clock,
-  Calendar,
   User,
-  List,
   GitBranchPlus,
   LayoutDashboard,
   FolderOpen,
   Users,
-  Tag,
   AlertCircle,
-  BarChart3,
   FileText,
   Settings as SettingsIcon,
   Menu,
@@ -22,23 +18,19 @@ import {
 import { useAppStore } from "@/stores/app-store";
 
 // Primary tabs — the 4 most-frequent actions live here. The 5th slot opens
-// a "More" sheet so every other route (Invoices, Projects, Reports…) stays
-// one tap away. Mobile users kept hitting dead ends trying to invoice from
-// their phone; this puts the whole nav in reach without squeezing 11 tabs.
+// a "More" sheet so every other route stays one tap away. The dashboard
+// hosts the calendar inline, so it gets a primary slot; Untracked is also
+// primary because that's the most-actioned surface in this product.
 const primaryTabs = [
   { title: "Timer", href: "/timer", icon: Clock },
-  { title: "Calendar", href: "/calendar", icon: Calendar },
+  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Canvas", href: "/canvas", icon: GitBranchPlus },
-  { title: "Overview", href: "/tracking", icon: List },
+  { title: "Untracked", href: "/untracked", icon: AlertCircle },
 ];
 
 const moreRoutes = [
-  { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { title: "Projects", href: "/projects", icon: FolderOpen },
   { title: "Clients", href: "/clients", icon: Users },
-  { title: "Tags", href: "/tags", icon: Tag },
-  { title: "Untracked", href: "/untracked", icon: AlertCircle },
-  { title: "Reports", href: "/reports", icon: BarChart3 },
   { title: "Invoices", href: "/invoices", icon: FileText },
   { title: "Settings", href: "/settings", icon: SettingsIcon },
 ];

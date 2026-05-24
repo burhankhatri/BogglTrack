@@ -21,7 +21,6 @@ interface StartParams {
   description: string;
   projectId: string | null;
   billable: boolean;
-  tagIds: string[];
   hourlyRate: number;
 }
 
@@ -32,7 +31,6 @@ interface TimerState {
   description: string;
   projectId: string | null;
   billable: boolean;
-  tagIds: string[];
   elapsedSeconds: number;
   hourlyRate: number;
 
@@ -42,7 +40,6 @@ interface TimerState {
   setDescription: (desc: string) => void;
   setProjectId: (id: string | null) => void;
   setBillable: (b: boolean) => void;
-  setTagIds: (ids: string[]) => void;
   setHourlyRate: (rate: number) => void;
   setEntryId: (id: string) => void;
   restoreTimer: (params: StartParams) => void;
@@ -57,7 +54,6 @@ export const useTimerStore = create<TimerState>()(
       description: "",
       projectId: null,
       billable: true,
-      tagIds: [],
       elapsedSeconds: 0,
       hourlyRate: 0,
 
@@ -70,7 +66,6 @@ export const useTimerStore = create<TimerState>()(
           description: params.description,
           projectId: params.projectId,
           billable: params.billable,
-          tagIds: params.tagIds,
           hourlyRate: params.hourlyRate,
           elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
         });
@@ -84,7 +79,6 @@ export const useTimerStore = create<TimerState>()(
           description: "",
           projectId: null,
           billable: true,
-          tagIds: [],
           elapsedSeconds: 0,
           hourlyRate: 0,
         });
@@ -100,7 +94,6 @@ export const useTimerStore = create<TimerState>()(
       setDescription: (description) => set({ description }),
       setProjectId: (projectId) => set({ projectId }),
       setBillable: (billable) => set({ billable }),
-      setTagIds: (tagIds) => set({ tagIds }),
       setHourlyRate: (hourlyRate) => set({ hourlyRate }),
       setEntryId: (entryId) => set({ entryId }),
 
@@ -113,7 +106,6 @@ export const useTimerStore = create<TimerState>()(
           description: params.description,
           projectId: params.projectId,
           billable: params.billable,
-          tagIds: params.tagIds,
           hourlyRate: params.hourlyRate,
           elapsedSeconds: Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000)),
         });
@@ -128,7 +120,6 @@ export const useTimerStore = create<TimerState>()(
         description: state.description,
         projectId: state.projectId,
         billable: state.billable,
-        tagIds: state.tagIds,
         hourlyRate: state.hourlyRate,
       }),
       onRehydrateStorage: () => (state) => {
@@ -167,7 +158,6 @@ if (channel) {
       description: string;
       projectId: string | null;
       billable: boolean;
-      tagIds: string[];
       hourlyRate: number;
     };
     const st = p.startTime ? new Date(p.startTime) : null;
@@ -179,7 +169,6 @@ if (channel) {
       description: p.description,
       projectId: p.projectId,
       billable: p.billable,
-      tagIds: p.tagIds,
       hourlyRate: p.hourlyRate,
       elapsedSeconds: st
         ? Math.max(0, Math.floor((Date.now() - st.getTime()) / 1000))
@@ -197,7 +186,6 @@ if (channel) {
     "description",
     "projectId",
     "billable",
-    "tagIds",
     "hourlyRate",
   ] as const;
 
@@ -214,7 +202,6 @@ if (channel) {
         description: state.description,
         projectId: state.projectId,
         billable: state.billable,
-        tagIds: state.tagIds,
         hourlyRate: state.hourlyRate,
       },
     });

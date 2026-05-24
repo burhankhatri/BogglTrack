@@ -24,7 +24,6 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get("to");
     const projectId = searchParams.get("projectId");
     const clientId = searchParams.get("clientId");
-    const tagId = searchParams.get("tagId");
     const billable = searchParams.get("billable");
     const limit = Math.min(parseInt(searchParams.get("limit") || "50") || 50, 200);
     const offset = parseInt(searchParams.get("offset") || "0") || 0;
@@ -43,10 +42,6 @@ export async function GET(request: NextRequest) {
       where.project = { clientId };
     }
 
-    if (tagId) {
-      where.tags = { some: { tagId } };
-    }
-
     if (billable !== null && billable !== undefined && billable !== "") {
       where.billable = billable === "true";
     }
@@ -56,9 +51,6 @@ export async function GET(request: NextRequest) {
       include: {
         project: {
           include: { client: true },
-        },
-        tags: {
-          include: { tag: true },
         },
       },
       orderBy: { startTime: "desc" },
@@ -82,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { description, startTime, endTime, projectId, billable, tagIds } = body;
+    const { description, startTime, endTime, projectId, billable } = body;
 
     const startDate = new Date(startTime);
     if (isNaN(startDate.getTime())) {
@@ -159,20 +151,10 @@ export async function POST(request: NextRequest) {
         ...(fetchedCommits && fetchedCommits.length > 0
           ? { commits: fetchedCommits as object }
           : {}),
-        ...(tagIds && tagIds.length > 0
-          ? {
-              tags: {
-                create: tagIds.map((tagId: string) => ({ tagId })),
-              },
-            }
-          : {}),
       },
       include: {
         project: {
           include: { client: true },
-        },
-        tags: {
-          include: { tag: true },
         },
       },
     });

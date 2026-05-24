@@ -33,14 +33,13 @@ function make(
     billable: true,
     projectId: projectA.id,
     project: projectA,
-    tags: [],
     commits: null,
     ...overrides,
   };
 }
 
 describe("groupEntriesByDesc — strict composite merge key", () => {
-  it("merges two entries with identical description + project + billable + tags", () => {
+  it("merges two entries with identical description + project + billable", () => {
     const grouped = groupEntriesByDesc([
       make("1"),
       make("2", { startTime: "2026-04-19T11:00:00Z", endTime: "2026-04-19T12:00:00Z" }),
@@ -69,31 +68,6 @@ describe("groupEntriesByDesc — strict composite merge key", () => {
     ]);
 
     expect(grouped).toHaveLength(2);
-  });
-
-  it("does NOT merge entries with different tag sets", () => {
-    const tagDesign = { tagId: "t-design", tag: { id: "t-design", name: "design", color: "#f0f" } };
-    const tagDev = { tagId: "t-dev", tag: { id: "t-dev", name: "dev", color: "#0ff" } };
-
-    const grouped = groupEntriesByDesc([
-      make("1", { tags: [tagDesign] }),
-      make("2", { tags: [tagDev] }),
-    ]);
-
-    expect(grouped).toHaveLength(2);
-  });
-
-  it("merges entries with identical tags regardless of tag order", () => {
-    const tagA = { tagId: "t-a", tag: { id: "t-a", name: "a", color: "#aaa" } };
-    const tagB = { tagId: "t-b", tag: { id: "t-b", name: "b", color: "#bbb" } };
-
-    const grouped = groupEntriesByDesc([
-      make("1", { tags: [tagA, tagB] }),
-      make("2", { tags: [tagB, tagA] }),
-    ]);
-
-    expect(grouped).toHaveLength(1);
-    expect(grouped[0].entries).toHaveLength(2);
   });
 
   it("merges two no-project entries with the same description", () => {

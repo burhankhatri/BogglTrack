@@ -16,12 +16,6 @@ interface Project {
   _count?: { timeEntries: number };
 }
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
 interface Client {
   id: string;
   name: string;
@@ -69,18 +63,6 @@ interface ClientWithStats {
   _count?: { projects: number };
 }
 
-interface TagWithCount {
-  id: string;
-  name: string;
-  color: string;
-  usageCount: number;
-}
-
-interface TimeEntryTag {
-  tagId: string;
-  tag: { id: string; name: string; color: string };
-}
-
 interface TimeEntry {
   id: string;
   description: string;
@@ -96,10 +78,8 @@ interface TimeEntry {
     hourlyRate: number | null;
     client?: { id: string; name: string } | null;
   } | null;
-  tags: TimeEntryTag[];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 interface DashboardData {
   today: { hours: number; earnings: number };
   thisWeek: { hours: number; earnings: number };
@@ -119,7 +99,7 @@ interface CacheEntry<T> {
   fetchedAt: number | null;
 }
 
-type CacheKey = "projects" | "tags" | "settings" | "clients";
+type CacheKey = "projects" | "settings" | "clients";
 
 const STALE_MS = 30_000; // 30 seconds — return cached + refresh in background
 const EXPIRED_MS = 5 * 60_000; // 5 minutes — must wait for fresh data
@@ -201,15 +181,11 @@ function createSWRFetcher<T>(
 
 const ROUTE_PREFETCH_MAP: Record<string, string[]> = {
   "/dashboard": ["dashboard"],
-  "/timer": ["projects", "tags", "settings", "timerEntries"],
-  "/tracking": ["trackingEntries"],
+  "/timer": ["projects", "settings", "timerEntries"],
   "/projects": ["pageProjects", "clients", "settings"],
   "/clients": ["pageClients"],
-  "/tags": ["pageTags"],
   "/settings": ["settings"],
-  "/reports": ["projects", "clients", "tags", "settings"],
   "/invoices": ["projects", "clients", "settings"],
-  "/calendar": ["projects", "settings"],
   "/canvas": ["projects", "clients", "timerEntries"],
 };
 
@@ -220,7 +196,6 @@ const ROUTE_PREFETCH_MAP: Record<string, string[]> = {
 interface AppState {
   // Global dropdown caches (lightweight)
   projects: CacheEntry<Project[]>;
-  tags: CacheEntry<Tag[]>;
   settings: CacheEntry<UserSettings>;
   clients: CacheEntry<Client[]>;
   runningTimerChecked: boolean;
@@ -228,37 +203,31 @@ interface AppState {
   // Page-specific caches (richer data)
   dashboard: CacheEntry<DashboardData>;
   timerEntries: CacheEntry<TimeEntry[]>;
-  trackingEntries: CacheEntry<TimeEntry[]>;
   pageProjects: CacheEntry<ProjectWithStats[]>;
   pageClients: CacheEntry<ClientWithStats[]>;
-  pageTags: CacheEntry<TagWithCount[]>;
 
   // Global fetchers (SWR)
   fetchProjects: (force?: boolean) => Promise<Project[]>;
-  fetchTags: (force?: boolean) => Promise<Tag[]>;
   fetchSettings: (force?: boolean) => Promise<UserSettings>;
   fetchClients: (force?: boolean) => Promise<Client[]>;
 
   // Page-specific fetchers (SWR)
   fetchDashboard: (force?: boolean) => Promise<DashboardData>;
   fetchTimerEntries: (force?: boolean) => Promise<TimeEntry[]>;
-  fetchTrackingEntries: (force?: boolean) => Promise<TimeEntry[]>;
   fetchPageProjects: (force?: boolean) => Promise<ProjectWithStats[]>;
   fetchPageClients: (force?: boolean) => Promise<ClientWithStats[]>;
-  fetchPageTags: (force?: boolean) => Promise<TagWithCount[]>;
 
   // Prefetch
   prefetchForRoute: (route: string) => void;
 
   // Cache management
-  invalidate: (key: CacheKey | "dashboard" | "timerEntries" | "trackingEntries" | "pageProjects" | "pageClients" | "pageTags") => void;
+  invalidate: (key: CacheKey | "dashboard" | "timerEntries" | "pageProjects" | "pageClients") => void;
   setRunningTimerChecked: () => void;
 
   // Optimistic mutation helpers
   optimisticUpdateTimerEntries: (updater: (entries: TimeEntry[]) => TimeEntry[]) => void;
   optimisticUpdatePageProjects: (updater: (projects: ProjectWithStats[]) => ProjectWithStats[]) => void;
   optimisticUpdatePageClients: (updater: (clients: ClientWithStats[]) => ClientWithStats[]) => void;
-  optimisticUpdatePageTags: (updater: (tags: TagWithCount[]) => TagWithCount[]) => void;
   optimisticUpdateSettings: (patch: Partial<UserSettings>) => void;
 }
 
@@ -267,11 +236,6 @@ const swrProjects = createSWRFetcher<Project[]>(
   "projects", "/api/projects",
   (s) => s.projects,
   (set, entry) => set((s) => ({ projects: { ...s.projects, ...entry } }))
-);
-const swrTags = createSWRFetcher<Tag[]>(
-  "tags", "/api/tags",
-  (s) => s.tags,
-  (set, entry) => set((s) => ({ tags: { ...s.tags, ...entry } }))
 );
 const swrSettings = createSWRFetcher<UserSettings>(
   "settings", "/api/settings",
@@ -293,11 +257,6 @@ const swrTimerEntries = createSWRFetcher<TimeEntry[]>(
   (s) => s.timerEntries,
   (set, entry) => set((s) => ({ timerEntries: { ...s.timerEntries, ...entry } }))
 );
-const swrTrackingEntries = createSWRFetcher<TimeEntry[]>(
-  "trackingEntries", "/api/time-entries?limit=200",
-  (s) => s.trackingEntries,
-  (set, entry) => set((s) => ({ trackingEntries: { ...s.trackingEntries, ...entry } }))
-);
 const swrPageProjects = createSWRFetcher<ProjectWithStats[]>(
   "pageProjects", "/api/projects",
   (s) => s.pageProjects,
@@ -308,39 +267,28 @@ const swrPageClients = createSWRFetcher<ClientWithStats[]>(
   (s) => s.pageClients,
   (set, entry) => set((s) => ({ pageClients: { ...s.pageClients, ...entry } }))
 );
-const swrPageTags = createSWRFetcher<TagWithCount[]>(
-  "pageTags", "/api/tags",
-  (s) => s.pageTags,
-  (set, entry) => set((s) => ({ pageTags: { ...s.pageTags, ...entry } }))
-);
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Initial state
   projects: freshCache(),
-  tags: freshCache(),
   settings: freshCache(),
   clients: freshCache(),
   runningTimerChecked: false,
   dashboard: freshCache(),
   timerEntries: freshCache(),
-  trackingEntries: freshCache(),
   pageProjects: freshCache(),
   pageClients: freshCache(),
-  pageTags: freshCache(),
 
   // Global fetchers
   fetchProjects: (force) => swrProjects(set, get, force),
-  fetchTags: (force) => swrTags(set, get, force),
   fetchSettings: (force) => swrSettings(set, get, force),
   fetchClients: (force) => swrClients(set, get, force),
 
   // Page-specific fetchers
   fetchDashboard: (force) => swrDashboard(set, get, force),
   fetchTimerEntries: (force) => swrTimerEntries(set, get, force),
-  fetchTrackingEntries: (force) => swrTrackingEntries(set, get, force),
   fetchPageProjects: (force) => swrPageProjects(set, get, force),
   fetchPageClients: (force) => swrPageClients(set, get, force),
-  fetchPageTags: (force) => swrPageTags(set, get, force),
 
   // Prefetch: fire fetches for a target route
   prefetchForRoute: (route: string) => {
@@ -350,15 +298,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     for (const key of keys) {
       switch (key) {
         case "projects": state.fetchProjects(); break;
-        case "tags": state.fetchTags(); break;
         case "settings": state.fetchSettings(); break;
         case "clients": state.fetchClients(); break;
         case "dashboard": state.fetchDashboard(); break;
         case "timerEntries": state.fetchTimerEntries(); break;
-        case "trackingEntries": state.fetchTrackingEntries(); break;
         case "pageProjects": state.fetchPageProjects(); break;
         case "pageClients": state.fetchPageClients(); break;
-        case "pageTags": state.fetchPageTags(); break;
       }
     }
   },
@@ -392,13 +337,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       const current = s.pageClients.data;
       if (!current) return {};
       return { pageClients: { ...s.pageClients, data: updater(current) } };
-    });
-  },
-  optimisticUpdatePageTags: (updater) => {
-    set((s) => {
-      const current = s.pageTags.data;
-      if (!current) return {};
-      return { pageTags: { ...s.pageTags, data: updater(current) } };
     });
   },
   optimisticUpdateSettings: (patch) => {

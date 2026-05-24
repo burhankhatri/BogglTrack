@@ -53,17 +53,6 @@ import { groupEntriesByDesc, resolveActiveEntry, type GroupedEntry } from "./gro
 // Types
 // ---------------------------------------------------------------------------
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
-interface TimeEntryTag {
-  tagId: string;
-  tag: Tag;
-}
-
 interface Project {
   id: string;
   name: string;
@@ -89,7 +78,6 @@ interface TimeEntry {
   billable: boolean;
   projectId: string | null;
   project: Project | null;
-  tags: TimeEntryTag[];
   commits?: AttachedCommit[] | null;
 }
 
@@ -255,9 +243,8 @@ export default function TimerPage() {
     async function init() {
       if (!storeEntries) setLoading(true);
       try {
-        const [, , , entriesResult] = await Promise.all([
+        const [, , entriesResult] = await Promise.all([
           appStore.fetchProjects(),
-          appStore.fetchTags(),
           appStore.fetchSettings(),
           appStore.fetchTimerEntries(),
         ]);
@@ -908,7 +895,7 @@ export default function TimerPage() {
                       ) : (
                         /* ---- Normal display mode ---- */
                         <>
-                          {/* Left: Description + project + tags + count */}
+                          {/* Left: Description + project + count */}
                           <div className="flex flex-col gap-[6px] flex-1 min-w-0 pr-4">
                             <span className="text-[15px] font-medium text-[var(--text-forest)] leading-none truncate font-sans">
                               {ge.description || "(No description)"}
@@ -927,15 +914,6 @@ export default function TimerPage() {
                                   {ge.project.name}
                                 </Badge>
                               )}
-                              {ge.tags.map((t) => (
-                                <Badge
-                                  key={t.tagId}
-                                  variant="outline"
-                                  className="font-medium px-2.5 py-1 text-[12px] rounded-[var(--radius-md)] border-[var(--border-subtle)] bg-[var(--bg-muted)] text-[var(--text-olive)]"
-                                >
-                                  {t.tag.name}
-                                </Badge>
-                              ))}
                               {isMerged && (
                                 <button
                                   type="button"

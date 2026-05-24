@@ -10,7 +10,6 @@ export interface GroupableInvoiceEntry {
   billable: boolean;
   earnings: number;
   projectId: string | null;
-  tags: { tagId: string }[];
 }
 
 export interface InvoiceGroupedRow<T extends GroupableInvoiceEntry> {
@@ -21,18 +20,16 @@ export interface InvoiceGroupedRow<T extends GroupableInvoiceEntry> {
   totalEarnings: number; // currency
 }
 
-// Strict composite key — identical convention to timer + calendar grouping
-// (description + project + billable + sorted tag ids). Prefixed with the
-// local date string so entries on different days never collapse together.
+// Strict composite key — identical convention to timer grouping
+// (description + project + billable). Prefixed with the local date
+// string so entries on different days never collapse together.
 function buildDayMergeKey(entry: GroupableInvoiceEntry): string {
-  const tagIds = entry.tags.map((t) => t.tagId).sort().join(",");
   const localDate = format(new Date(entry.startTime), "yyyy-MM-dd");
   return [
     localDate,
     entry.description || "",
     entry.projectId ?? "",
     entry.billable ? "1" : "0",
-    tagIds,
   ].join("|");
 }
 

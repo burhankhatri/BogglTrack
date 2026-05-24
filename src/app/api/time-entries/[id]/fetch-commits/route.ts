@@ -60,7 +60,6 @@ export async function POST(
       },
       include: {
         project: { include: { client: true } },
-        tags: { include: { tag: true } },
       },
     });
 

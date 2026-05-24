@@ -93,9 +93,6 @@ export async function POST(
         project: {
           include: { client: true },
         },
-        tags: {
-          include: { tag: true },
-        },
       },
     });
 

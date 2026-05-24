@@ -54,7 +54,6 @@ export async function DELETE(
       data: { commits: nextCommits as Prisma.InputJsonValue },
       include: {
         project: { include: { client: true } },
-        tags: { include: { tag: true } },
       },
     });
 

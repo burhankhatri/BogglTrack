@@ -16,7 +16,6 @@ describe("timer store persistence", () => {
       description: "Test task",
       projectId: "proj-1",
       billable: true,
-      tagIds: ["tag-1"],
       hourlyRate: 100,
     });
 
@@ -38,7 +37,6 @@ describe("timer store persistence", () => {
       description: "Test task",
       projectId: null,
       billable: true,
-      tagIds: [],
       hourlyRate: 0,
     });
 
@@ -61,7 +59,6 @@ describe("timer store persistence", () => {
       description: "Test",
       projectId: null,
       billable: true,
-      tagIds: [],
       hourlyRate: 0,
     });
 
@@ -80,7 +77,6 @@ describe("timer store persistence", () => {
       description: "Test",
       projectId: null,
       billable: true,
-      tagIds: [],
       hourlyRate: 0,
     });
 

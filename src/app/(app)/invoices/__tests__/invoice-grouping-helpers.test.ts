@@ -16,13 +16,12 @@ function make(
     billable: true,
     earnings: 40,
     projectId: "proj-josh",
-    tags: [],
     ...overrides,
   };
 }
 
 describe("groupPreviewEntriesByDay", () => {
-  it("merges same-day entries with identical description + project + billable + tags", () => {
+  it("merges same-day entries with identical description + project + billable", () => {
     const grouped = groupPreviewEntriesByDay([
       make("1", { duration: 6300, earnings: 70 }),
       make("2", { startTime: "2026-04-19T14:00:00", duration: 8835, earnings: 98.17 }),
@@ -55,25 +54,6 @@ describe("groupPreviewEntriesByDay", () => {
     ]);
 
     expect(grouped).toHaveLength(2);
-  });
-
-  it("does NOT merge entries with different tag sets", () => {
-    const grouped = groupPreviewEntriesByDay([
-      make("1", { tags: [{ tagId: "t-design" }] }),
-      make("2", { tags: [{ tagId: "t-dev" }] }),
-    ]);
-
-    expect(grouped).toHaveLength(2);
-  });
-
-  it("merges entries whose tag sets match regardless of order", () => {
-    const grouped = groupPreviewEntriesByDay([
-      make("1", { tags: [{ tagId: "t-a" }, { tagId: "t-b" }] }),
-      make("2", { tags: [{ tagId: "t-b" }, { tagId: "t-a" }] }),
-    ]);
-
-    expect(grouped).toHaveLength(1);
-    expect(grouped[0].entries).toHaveLength(2);
   });
 
   it("sorts merged entries chronologically", () => {

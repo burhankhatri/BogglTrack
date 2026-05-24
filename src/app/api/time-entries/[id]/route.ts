@@ -18,9 +18,6 @@ export async function GET(
         project: {
           include: { client: true },
         },
-        tags: {
-          include: { tag: true },
-        },
       },
     });
 
@@ -51,7 +48,7 @@ export async function PATCH(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { tagIds, description, startTime, endTime, billable, projectId } = body;
+    const { description, startTime, endTime, billable, projectId } = body;
 
     // Verify ownership
     const existing = await prisma.timeEntry.findFirst({
@@ -85,31 +82,12 @@ export async function PATCH(
       }
     }
 
-    // Handle tag updates
-    if (tagIds !== undefined) {
-      await prisma.timeEntryTag.deleteMany({
-        where: { timeEntryId: id },
-      });
-
-      if (tagIds.length > 0) {
-        await prisma.timeEntryTag.createMany({
-          data: tagIds.map((tagId: string) => ({
-            timeEntryId: id,
-            tagId,
-          })),
-        });
-      }
-    }
-
     const entry = await prisma.timeEntry.update({
       where: { id },
       data: updateData,
       include: {
         project: {
           include: { client: true },
-        },
-        tags: {
-          include: { tag: true },
         },
       },
     });
