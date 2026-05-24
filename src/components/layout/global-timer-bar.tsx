@@ -79,7 +79,6 @@ export function GlobalTimerBar() {
   const [addEndTime, setAddEndTime] = useState("10:00");
   const [addProjectId, setAddProjectId] = useState<string>(NO_PROJECT);
   const [addBillable, setAddBillable] = useState(true);
-  const [addSubmitting, setAddSubmitting] = useState(false);
 
   const resetAddForm = useCallback(() => {
     const t = format(new Date(), "yyyy-MM-dd");
@@ -253,28 +252,39 @@ export function GlobalTimerBar() {
           duration: 10000,
           action: {
             label: `Trim ${awayMin}m`,
-            onClick: async () => {
+            onClick: () => {
               const st = useTimerStore.getState();
               if (!st.entryId || st.entryId.startsWith("temp-") || !st.startTime) return;
+              const previousStart = st.startTime;
+              const previousElapsed = st.elapsedSeconds;
               const newStart = new Date(st.startTime.getTime() + awayMs);
-              try {
-                const res = await fetch(`/api/time-entries/${st.entryId}`, {
-                  method: "PATCH",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ startTime: newStart.toISOString() }),
+
+              // Apply locally first — the timer ticker updates instantly.
+              useTimerStore.setState({
+                startTime: newStart,
+                elapsedSeconds: Math.max(
+                  0,
+                  Math.floor((Date.now() - newStart.getTime()) / 1000)
+                ),
+              });
+              toast.success(`Trimmed ${awayMin}m from this entry`);
+
+              // Persist in background; revert if the server rejects.
+              fetch(`/api/time-entries/${st.entryId}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ startTime: newStart.toISOString() }),
+              })
+                .then((res) => {
+                  if (!res.ok) throw new Error();
+                })
+                .catch(() => {
+                  useTimerStore.setState({
+                    startTime: previousStart,
+                    elapsedSeconds: previousElapsed,
+                  });
+                  toast.error("Couldn't trim — restored");
                 });
-                if (!res.ok) throw new Error();
-                useTimerStore.setState({
-                  startTime: newStart,
-                  elapsedSeconds: Math.max(
-                    0,
-                    Math.floor((Date.now() - newStart.getTime()) / 1000)
-                  ),
-                });
-                toast.success(`Trimmed ${awayMin}m from this entry`);
-              } catch {
-                toast.error("Couldn't trim — try editing the entry manually");
-              }
             },
           },
         });
@@ -373,7 +383,7 @@ export function GlobalTimerBar() {
       });
   }, [description, projectId, billable, projects, startTimer, setEntryId, stopTimer]);
 
-  const handleManualAdd = useCallback(async () => {
+  const handleManualAdd = useCallback(() => {
     if (!addStartDate || !addStartTime || !addEndDate || !addEndTime) {
       toast.error("Fill in start and end date & time");
       return;
@@ -388,55 +398,85 @@ export function GlobalTimerBar() {
       toast.error(resolved.error);
       return;
     }
-    setAddSubmitting(true);
-    try {
-      const res = await fetch("/api/time-entries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          description: addDescription,
-          startTime: resolved.startISO,
-          endTime: resolved.endISO,
-          projectId: addProjectId === NO_PROJECT ? null : addProjectId,
-          billable: addBillable,
-          tagIds: [],
-        }),
-      });
-      if (!res.ok) {
-        toast.error("Failed to add entry");
-        return;
-      }
-      const entry = await res.json();
-      toast.success("Entry added");
-      // Feed the timer page's list the same way handleStop does, so the new
-      // entry appears instantly without a refetch.
-      window.dispatchEvent(
-        new CustomEvent("timer-entry-completed", { detail: entry })
-      );
-      setAddOpen(false);
-      resetAddForm();
 
-      // Auto-link GitHub commits in the background — matches the auto-attach
-      // behaviour that handleStop already has for running timers, so manual
-      // entries for past work get commits without any extra click. Silent on
-      // failure (no GitHub account, network hiccup) — we just skip the link.
-      void fetch(`/api/time-entries/${entry.id}/fetch-commits`, {
-        method: "POST",
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then((data) => {
-          if (data?.entry) {
-            window.dispatchEvent(
-              new CustomEvent("timer-entry-confirmed", { detail: data.entry })
-            );
-          }
+    const resolvedProjectId =
+      addProjectId === NO_PROJECT ? null : addProjectId;
+    const project = resolvedProjectId
+      ? projects.find((p) => p.id === resolvedProjectId) ?? null
+      : null;
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const durationSeconds = Math.floor(
+      (new Date(resolved.endISO).getTime() -
+        new Date(resolved.startISO).getTime()) /
+        1000
+    );
+
+    // Synthetic entry — same shape the timer page's list expects. The server
+    // will return the real one with the canonical ID; we swap via the
+    // `timer-entry-confirmed` event below.
+    const synthetic = {
+      id: tempId,
+      description: addDescription,
+      startTime: resolved.startISO,
+      endTime: resolved.endISO,
+      duration: durationSeconds,
+      billable: addBillable,
+      projectId: resolvedProjectId,
+      project,
+      tags: [],
+      commits: null,
+    };
+
+    window.dispatchEvent(
+      new CustomEvent("timer-entry-completed", { detail: synthetic })
+    );
+    setAddOpen(false);
+    resetAddForm();
+    toast.success("Entry added");
+
+    // Persist in background. On success, swap the temp entry with the real
+    // one; on failure, drop the synthetic and apologise.
+    void fetch("/api/time-entries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        description: addDescription,
+        startTime: resolved.startISO,
+        endTime: resolved.endISO,
+        projectId: resolvedProjectId,
+        billable: addBillable,
+        tagIds: [],
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("create-failed");
+        const entry = await res.json();
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-confirmed", {
+            detail: { ...entry, _replaceId: tempId },
+          })
+        );
+
+        // Auto-link GitHub commits — same as before, optional silent step.
+        void fetch(`/api/time-entries/${entry.id}/fetch-commits`, {
+          method: "POST",
         })
-        .catch(() => {});
-    } catch {
-      toast.error("Failed to add entry");
-    } finally {
-      setAddSubmitting(false);
-    }
+          .then((r) => (r.ok ? r.json() : null))
+          .then((data) => {
+            if (data?.entry) {
+              window.dispatchEvent(
+                new CustomEvent("timer-entry-confirmed", { detail: data.entry })
+              );
+            }
+          })
+          .catch(() => {});
+      })
+      .catch(() => {
+        window.dispatchEvent(
+          new CustomEvent("timer-entry-failed", { detail: { id: tempId } })
+        );
+        toast.error("Failed to add entry — removed");
+      });
   }, [
     addDescription,
     addStartDate,
@@ -445,6 +485,7 @@ export function GlobalTimerBar() {
     addEndTime,
     addProjectId,
     addBillable,
+    projects,
     resetAddForm,
   ]);
 
@@ -898,9 +939,8 @@ export function GlobalTimerBar() {
               <Button
                 className="h-9 px-4 text-[13px] rounded-[var(--radius-md)] bg-[var(--text-forest)] text-[var(--text-cream)] hover:opacity-90"
                 onClick={handleManualAdd}
-                disabled={addSubmitting}
               >
-                {addSubmitting ? "Adding…" : "Add entry"}
+                Add entry
               </Button>
             </div>
           </div>

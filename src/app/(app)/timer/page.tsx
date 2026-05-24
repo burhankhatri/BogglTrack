@@ -277,10 +277,14 @@ export default function TimerPage() {
     };
     const handleConfirmed = (e: Event) => {
       const confirmed = (e as CustomEvent).detail;
+      // `_replaceId` lets a temp/synthetic entry get swapped for the real one
+      // returned from POST. Without it, fall back to matching the real id.
+      const matchId = confirmed._replaceId ?? confirmed.id;
+      const { _replaceId, ...clean } = confirmed;
+      void _replaceId;
       setEntries((prev) =>
-        prev.map((entry) => (entry.id === confirmed.id ? confirmed : entry))
+        prev.map((entry) => (entry.id === matchId ? clean : entry))
       );
-      fetchEntries();
     };
     const handleFailed = (e: Event) => {
       const { id } = (e as CustomEvent).detail;
@@ -445,39 +449,80 @@ export default function TimerPage() {
   }
 
   async function saveEdit(entryId: string) {
+    const newProjectId = editProjectId === NO_PROJECT ? null : editProjectId;
     const body: Record<string, unknown> = {
       description: editDescription,
-      projectId: editProjectId === NO_PROJECT ? null : editProjectId,
+      projectId: newProjectId,
       billable: editBillable,
     };
 
-    try {
-      const hasEndFields = Boolean(editEndDate && editEndTime);
-      const hasPartialEnd =
-        Boolean(editEndDate) !== Boolean(editEndTime);
+    const hasEndFields = Boolean(editEndDate && editEndTime);
+    const hasPartialEnd = Boolean(editEndDate) !== Boolean(editEndTime);
 
-      if (hasPartialEnd) {
-        toast.error("Fill in both end date and end time, or clear both");
+    if (hasPartialEnd) {
+      toast.error("Fill in both end date and end time, or clear both");
+      return;
+    }
+
+    if (editStartDate && editStartTime && hasEndFields) {
+      const resolved = buildExplicitRange(
+        editStartDate,
+        editStartTime,
+        editEndDate,
+        editEndTime
+      );
+      if (!resolved.ok) {
+        toast.error(resolved.error);
         return;
       }
+      body.startTime = resolved.startISO;
+      body.endTime = resolved.endISO;
+    } else if (editStartDate && editStartTime) {
+      body.startTime = buildTimestampISO(editStartDate, editStartTime);
+    }
 
-      if (editStartDate && editStartTime && hasEndFields) {
-        const resolved = buildExplicitRange(
-          editStartDate,
-          editStartTime,
-          editEndDate,
-          editEndTime
-        );
-        if (!resolved.ok) {
-          toast.error(resolved.error);
-          return;
-        }
-        body.startTime = resolved.startISO;
-        body.endTime = resolved.endISO;
-      } else if (editStartDate && editStartTime) {
-        body.startTime = buildTimestampISO(editStartDate, editStartTime);
-      }
+    // Optimistic merge — close the editor and patch local state immediately,
+    // then PATCH in the background. The server is the source of truth for
+    // edge cases (running-timer constraints, overlap rules), so we refetch
+    // on response to reconcile any divergence.
+    const previousEntries = entries;
+    const original = entries.find((e) => e.id === entryId);
+    if (!original) return;
 
+    const nextProject =
+      newProjectId === original.projectId
+        ? original.project
+        : newProjectId
+          ? projects.find((p) => p.id === newProjectId) ?? null
+          : null;
+
+    const nextStart =
+      typeof body.startTime === "string" ? body.startTime : original.startTime;
+    const nextEnd =
+      "endTime" in body ? (body.endTime as string) : original.endTime;
+    const nextDuration =
+      nextEnd != null
+        ? Math.floor(
+            (new Date(nextEnd).getTime() - new Date(nextStart).getTime()) / 1000
+          )
+        : null;
+
+    const optimistic: TimeEntry = {
+      ...original,
+      description: editDescription,
+      projectId: newProjectId,
+      project: nextProject,
+      billable: editBillable,
+      startTime: nextStart,
+      endTime: nextEnd,
+      duration: nextDuration,
+    };
+
+    setEntries((prev) => prev.map((e) => (e.id === entryId ? optimistic : e)));
+    setEditingId(null);
+    toast.success("Entry updated");
+
+    try {
       const res = await fetch(`/api/time-entries/${entryId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -485,15 +530,17 @@ export default function TimerPage() {
       });
 
       if (!res.ok) {
-        toast.error("Failed to update entry");
+        setEntries(previousEntries);
+        toast.error("Failed to update entry — changes reverted");
         return;
       }
 
-      toast.success("Entry updated");
-      setEditingId(null);
-      await fetchEntries();
+      // Background reconcile — server may have adjusted timestamps for
+      // overlap/running-timer rules.
+      fetchEntries();
     } catch {
-      toast.error("Failed to update entry");
+      setEntries(previousEntries);
+      toast.error("Failed to update entry — changes reverted");
     }
   }
 
@@ -506,21 +553,24 @@ export default function TimerPage() {
   // ---------------------------------------------------------------------------
 
   async function handleDelete(entryId: string) {
+    // Optimistic — splice locally, close confirmation, then DELETE in the
+    // background. Restore the previous list on failure.
+    const previousEntries = entries;
+    setEntries((prev) => prev.filter((e) => e.id !== entryId));
+    setDeletingId(null);
+    toast.success("Entry deleted");
+
     try {
       const res = await fetch(`/api/time-entries/${entryId}`, {
         method: "DELETE",
       });
-
       if (!res.ok) {
-        toast.error("Failed to delete entry");
-        return;
+        setEntries(previousEntries);
+        toast.error("Failed to delete entry — restored");
       }
-
-      toast.success("Entry deleted");
-      setDeletingId(null);
-      await fetchEntries();
     } catch {
-      toast.error("Failed to delete entry");
+      setEntries(previousEntries);
+      toast.error("Failed to delete entry — restored");
     }
   }
 
@@ -531,21 +581,36 @@ export default function TimerPage() {
     entryIds: string[];
     sha: string;
   }) {
+    // Optimistic — filter the commit off each affected entry's commits list,
+    // then fan out the DELETEs. If any fail, refetch from the server to
+    // restore the true state.
+    const previousEntries = entries;
+    const entryIdSet = new Set(entryIds);
+    setEntries((prev) =>
+      prev.map((e) =>
+        entryIdSet.has(e.id) && e.commits
+          ? { ...e, commits: e.commits.filter((c) => c.sha !== sha) }
+          : e
+      )
+    );
+    toast.success("Commit removed from time entry");
+
     try {
-      await Promise.all(
-        entryIds.map(async (entryId) => {
-          const res = await fetch(
+      const results = await Promise.all(
+        entryIds.map((entryId) =>
+          fetch(
             `/api/time-entries/${entryId}/commits/${encodeURIComponent(sha)}`,
             { method: "DELETE" }
-          );
-          if (!res.ok) throw new Error("Failed to remove commit");
-        })
+          )
+        )
       );
-
-      toast.success("Commit removed from time entry");
-      await fetchEntries();
+      if (results.some((r) => !r.ok)) {
+        setEntries(previousEntries);
+        toast.error("Failed to remove commit — restored");
+      }
     } catch {
-      toast.error("Failed to remove commit");
+      setEntries(previousEntries);
+      toast.error("Failed to remove commit — restored");
     }
   }
 
