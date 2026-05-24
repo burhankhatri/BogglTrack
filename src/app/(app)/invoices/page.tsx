@@ -616,8 +616,11 @@ export default function InvoicesPage() {
     }
   }, [selectedEntries]);
 
-  const goToStep3 = async () => {
-    await generateWorkSummary();
+  const goToStep3 = () => {
+    // Advance immediately — the summary generates in the background and
+    // populates the preview when ready. `generatingSummary` is already wired
+    // up to display a placeholder/spinner where the summary will appear.
+    void generateWorkSummary();
     setStep(3);
   };
 
@@ -642,126 +645,137 @@ export default function InvoicesPage() {
     }
   }, [groupMode]);
 
-  // Download handler
+  // Download handler — generate the PDF locally first (instant), then persist
+  // the invoice + finalize entries in the background. The PDF is what the
+  // user actually wants; the server-side record is bookkeeping that can lag
+  // a few hundred ms without anyone noticing.
   const handleDownload = async () => {
     setDownloading(true);
+
+    // If the summary is still generating in the background, wait briefly so
+    // the PDF includes it. If it's already there or generation already
+    // failed, we'll use what we have.
+    const summaryForInvoice =
+      workSummary ?? (await generateWorkSummary());
+
+    const pdfData: InvoicePDFData = {
+      number: invoiceNumber,
+      issueDate: format(issueDate, "MMM d, yyyy"),
+      dueDate: format(dueDate, "MMM d, yyyy"),
+      currency: settings?.currency || "USD",
+      currencySymbol: currSymbol,
+      senderName,
+      senderAddress,
+      senderEmail,
+      senderTaxId,
+      recipientName,
+      recipientAddress,
+      recipientEmail,
+      lineItems: lineItems.map((li) => ({
+        description: li.description,
+        quantity: li.quantity,
+        rate: li.rate,
+        amount: li.amount,
+        commits: includeCommits && li.commits && li.commits.length > 0
+          ? li.commits.map((c) => ({
+              sha: c.sha,
+              message: c.message,
+              repo: c.repo,
+              url: c.url,
+            }))
+          : undefined,
+      })),
+      subtotal,
+      discountPercent,
+      discountAmount,
+      taxRate,
+      taxAmount,
+      total,
+      workSummary: summaryForInvoice,
+      notes,
+      paymentTerms,
+    };
+
     try {
-      const summaryForInvoice =
-        workSummary ?? (await generateWorkSummary());
+      generateInvoicePDF(pdfData);
+    } catch (err) {
+      console.error("PDF generation failed:", err);
+      toast.error("Failed to generate PDF");
+      setDownloading(false);
+      return;
+    }
 
-      // 1. Create invoice via API
-      const invoiceBody = {
-        number: invoiceNumber,
-        issueDate: issueDate.toISOString(),
-        dueDate: dueDate.toISOString(),
-        currency: settings?.currency || "USD",
-        currencySymbol: currSymbol,
-        subtotal,
-        taxRate,
-        taxAmount,
-        discountPercent,
-        discountAmount,
-        total,
-        notes: notes || null,
-        paymentTerms: paymentTerms || null,
-        workSummary: summaryForInvoice,
-        senderName,
-        senderAddress,
-        senderEmail,
-        senderTaxId,
-        recipientName,
-        recipientAddress,
-        recipientEmail,
-        clientId: selectedEntries[0]?.project?.client?.id || null,
-        lineItems: lineItems.map((li, i) => ({
-          description: li.description,
-          quantity: li.quantity,
-          rate: li.rate,
-          amount: li.amount,
-          sortOrder: i,
-          timeEntryId: li.timeEntryId,
-        })),
-      };
+    toast.success("Invoice downloaded");
 
-      const createRes = await fetch("/api/invoices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(invoiceBody),
-      });
+    // Persist + finalize in the background. The user is already moving on.
+    const invoiceBody = {
+      number: invoiceNumber,
+      issueDate: issueDate.toISOString(),
+      dueDate: dueDate.toISOString(),
+      currency: settings?.currency || "USD",
+      currencySymbol: currSymbol,
+      subtotal,
+      taxRate,
+      taxAmount,
+      discountPercent,
+      discountAmount,
+      total,
+      notes: notes || null,
+      paymentTerms: paymentTerms || null,
+      workSummary: summaryForInvoice,
+      senderName,
+      senderAddress,
+      senderEmail,
+      senderTaxId,
+      recipientName,
+      recipientAddress,
+      recipientEmail,
+      clientId: selectedEntries[0]?.project?.client?.id || null,
+      lineItems: lineItems.map((li, i) => ({
+        description: li.description,
+        quantity: li.quantity,
+        rate: li.rate,
+        amount: li.amount,
+        sortOrder: i,
+        timeEntryId: li.timeEntryId,
+      })),
+    };
 
-      if (!createRes.ok) throw new Error("Failed to create invoice");
-      const invoice = await createRes.json();
-
-      // 2. Finalize if marking as invoiced. Send the full set of selected
-      // source entry IDs so grouped-mode invoices (which collapse multiple
-      // entries into one line item) still mark every contributing entry.
-      if (markAsInvoiced) {
-        const finalizeRes = await fetch(`/api/invoices/${invoice.id}/finalize`, {
+    const selectedIdsSnapshot = Array.from(selectedIds);
+    const shouldFinalize = markAsInvoiced;
+    void (async () => {
+      try {
+        const createRes = await fetch("/api/invoices", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ timeEntryIds: Array.from(selectedIds) }),
+          body: JSON.stringify(invoiceBody),
         });
-        if (!finalizeRes.ok) throw new Error("Failed to finalize invoice");
+        if (!createRes.ok) throw new Error("Failed to create invoice");
+        const invoice = await createRes.json();
+
+        if (shouldFinalize) {
+          const finalizeRes = await fetch(`/api/invoices/${invoice.id}/finalize`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ timeEntryIds: selectedIdsSnapshot }),
+          });
+          if (!finalizeRes.ok) throw new Error("Failed to finalize invoice");
+        }
+        fetchEntries();
+      } catch (err) {
+        console.error("Background invoice save failed:", err);
+        toast.error("Saved PDF, but couldn't record the invoice — try again");
       }
+    })();
 
-      // 3. Generate PDF
-      const pdfData: InvoicePDFData = {
-        number: invoiceNumber,
-        issueDate: format(issueDate, "MMM d, yyyy"),
-        dueDate: format(dueDate, "MMM d, yyyy"),
-        currency: settings?.currency || "USD",
-        currencySymbol: currSymbol,
-        senderName,
-        senderAddress,
-        senderEmail,
-        senderTaxId,
-        recipientName,
-        recipientAddress,
-        recipientEmail,
-        lineItems: lineItems.map((li) => ({
-          description: li.description,
-          quantity: li.quantity,
-          rate: li.rate,
-          amount: li.amount,
-          commits: includeCommits && li.commits && li.commits.length > 0
-            ? li.commits.map((c) => ({
-                sha: c.sha,
-                message: c.message,
-                repo: c.repo,
-                url: c.url,
-              }))
-            : undefined,
-        })),
-        subtotal,
-        discountPercent,
-        discountAmount,
-        taxRate,
-        taxAmount,
-        total,
-        workSummary: summaryForInvoice,
-        notes,
-        paymentTerms,
-      };
+    // Draft is no longer resumable once the invoice is finalized + downloaded.
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
+    draftHydratedRef.current = false;
 
-      generateInvoicePDF(pdfData);
-
-      toast.success("Invoice downloaded successfully");
-
-      // Draft is no longer resumable once the invoice is finalized + downloaded.
-      try { localStorage.removeItem(DRAFT_KEY); } catch {}
-      draftHydratedRef.current = false;
-
-      // Reset to step 1
-      setStep(1);
-      setSelectedIds(new Set());
-      setWorkSummary(null);
-      fetchEntries();
-    } catch (err) {
-      console.error("Download failed:", err);
-      toast.error("Failed to generate invoice");
-    } finally {
-      setDownloading(false);
-    }
+    setStep(1);
+    setSelectedIds(new Set());
+    setWorkSummary(null);
+    setDownloading(false);
   };
 
   return (
@@ -1435,8 +1449,8 @@ export default function InvoicesPage() {
               <ArrowLeft className="size-4 mr-1" />
               Back
             </Button>
-            <Button className="rounded-full" onClick={goToStep3} disabled={generatingSummary}>
-              {generatingSummary ? "Summarizing..." : "Preview"}
+            <Button className="rounded-full" onClick={goToStep3}>
+              Preview
               <ChevronRight className="size-4 ml-1" />
             </Button>
           </div>
