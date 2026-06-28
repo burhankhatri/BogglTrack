@@ -22,17 +22,12 @@ interface GenerateInvoiceWorkSummaryOptions {
   model?: string;
 }
 
-interface GroqChatCompletionResponse {
-  choices?: {
-    message?: {
-      content?: string | null;
-    };
-  }[];
+interface AnthropicMessage {
+  content?: { type: string; text?: string }[];
 }
 
-const GROQ_CHAT_COMPLETIONS_URL =
-  "https://api.groq.com/openai/v1/chat/completions";
-const DEFAULT_GROQ_MODEL = "llama-3.3-70b-versatile";
+const ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages";
+const DEFAULT_MODEL = "claude-haiku-4-5-20251001";
 
 export function hasSummaryEligibleCommits(entries: InvoiceSummaryEntry[]): boolean {
   return entries.some((entry) => (entry.commits?.length ?? 0) > 0);
@@ -78,45 +73,43 @@ export function buildInvoiceWorkSummaryPrompt(
 
 export async function generateInvoiceWorkSummary({
   entries,
-  apiKey = process.env.GROQ_API_KEY,
+  apiKey = process.env.ANTHROPIC_API_KEY,
   fetchImpl = fetch,
-  model = DEFAULT_GROQ_MODEL,
+  model = DEFAULT_MODEL,
 }: GenerateInvoiceWorkSummaryOptions): Promise<string | null> {
   if (!hasSummaryEligibleCommits(entries) || !apiKey) return null;
 
   try {
-    const response = await fetchImpl(GROQ_CHAT_COMPLETIONS_URL, {
+    const response = await fetchImpl(ANTHROPIC_MESSAGES_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify({
         model,
+        max_tokens: 350,
+        system:
+          "You summarize software development work for invoices. Be accurate, concise, and client-friendly.",
         messages: [
-          {
-            role: "system",
-            content:
-              "You summarize software development work for invoices. Be accurate, concise, and client-friendly.",
-          },
           {
             role: "user",
             content: buildInvoiceWorkSummaryPrompt(entries),
           },
         ],
-        temperature: 0.2,
-        max_tokens: 350,
       }),
     });
 
     if (!response.ok) return null;
 
-    const data = (await response.json()) as GroqChatCompletionResponse;
-    const summary = data.choices?.[0]?.message?.content?.trim();
+    const data = (await response.json()) as AnthropicMessage;
+    const block = data.content?.find((b) => b.type === "text");
+    const summary = block?.text?.trim();
 
     return summary || null;
   } catch (error) {
-    console.error("Failed to generate Groq invoice summary:", error);
+    console.error("Failed to generate invoice summary:", error);
     return null;
   }
 }
